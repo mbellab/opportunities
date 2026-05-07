@@ -1,0 +1,1819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mBELLAb Power Solutions — Operations Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fff;--bg2:#f6f8fa;--bg3:#eaeef2;
+  --bdr:rgba(0,0,0,.08);--bdr2:rgba(0,0,0,.16);
+  --txt:#1c2128;--txt2:#57606a;--txt3:#8c959f;
+  --amber:#e36209;--amber-bg:rgba(227,98,9,.07);--amber-bdr:rgba(227,98,9,.25);
+  --green:#1a7f37;--green-bg:rgba(26,127,55,.08);--green-bdr:rgba(26,127,55,.25);
+  --red:#cf222e;--red-bg:rgba(207,34,46,.08);--red-bdr:rgba(207,34,46,.25);
+  --grey-bg:rgba(140,149,159,.10);--grey-bdr:rgba(140,149,159,.28);
+  --blue:#0969da;--blue-bg:rgba(9,105,218,.08);--blue-bdr:rgba(9,105,218,.25);
+  --purple:#8250df;--purple-bg:rgba(130,80,223,.08);--purple-bdr:rgba(130,80,223,.25);
+  --header:#1c2128;--r:6px;--rl:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans',sans-serif}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+
+/* ── Login ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.lcard{background:var(--bg);border:1px solid var(--bdr2);border-radius:16px;padding:48px 52px;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.ldot{width:10px;height:10px;border-radius:50%;background:var(--amber);margin:0 auto 20px;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltitle{font-size:20px;font-weight:600;letter-spacing:-.3px;margin-bottom:4px}
+.lsub{font-size:12px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;margin-bottom:32px;letter-spacing:.4px}
+.lfield{display:flex;flex-direction:column;gap:6px;text-align:left;margin-bottom:16px}
+.lfield label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
+.linput{width:100%;background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:10px 12px;font-size:14px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none}
+.linput:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
+.lbtn{width:100%;background:var(--amber);color:#fff;border:none;border-radius:var(--r);padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;margin-top:4px}
+.lbtn:hover{opacity:.88}
+.lerr{font-size:12px;color:var(--red);margin-top:10px;min-height:18px}
+
+/* ── Loading ── */
+#loading{display:none;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:20px}
+.lc-card{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:28px 36px;text-align:center;min-width:280px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.lc-brand{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:4px}
+.lc-sub{font-size:11px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;letter-spacing:.4px;margin-bottom:24px}
+.spin{width:28px;height:28px;border:2px solid var(--bg3);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+.lc-bar-wrap{background:var(--bg3);border-radius:20px;height:4px;overflow:hidden;margin-bottom:10px}
+.lc-bar{height:100%;background:var(--amber);border-radius:20px;width:0%;transition:width .4s ease}
+.lc-txt{font-size:12px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
+
+/* ── Top bar ── */
+.top-bar{background:var(--header);padding:0 32px;height:58px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:10;width:100%}
+.brand-line{display:flex;align-items:center;gap:10px}
+.bdot{width:7px;height:7px;border-radius:50%;background:var(--amber);animation:pulse 2.4s ease-in-out infinite}
+.bname{font-size:15px;font-weight:600;letter-spacing:-.3px;color:#e6edf3}
+.bsub{font-size:11px;color:#484f58;font-family:'IBM Plex Mono',monospace;letter-spacing:.4px}
+.hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.save-ind{display:flex;align-items:center;gap:5px;font-size:11px;color:#484f58;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.sdot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.save-ind.saved{color:#3fb950}.save-ind.saving{color:var(--amber)}.save-ind.err{color:#f85149}
+.btn-pri{background:var(--amber);color:#fff;border:none;border-radius:var(--r);padding:7px 15px;font-size:13px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap}
+.btn-pri:hover{opacity:.88}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.15);color:#8b949e;border-radius:var(--r);padding:6px 12px;font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap}
+.btn-ghost:hover{border-color:rgba(255,255,255,.3);color:#c9d1d9}
+
+/* ── Home screen ── */
+#home-screen{display:none}
+.home-inner{padding:60px 40px;max-width:1000px;margin:0 auto}
+.home-sub{font-size:12px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;margin-bottom:36px;letter-spacing:.4px}
+.home-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.home-card{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:32px 28px;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s}
+.home-card:hover{border-color:var(--amber-bdr);box-shadow:0 4px 20px rgba(227,98,9,.10);transform:translateY(-2px)}
+.home-card-icon{font-size:28px;margin-bottom:16px}
+.home-card-title{font-size:17px;font-weight:600;color:var(--txt);margin-bottom:8px;letter-spacing:-.2px}
+.home-card-desc{font-size:13px;color:var(--txt3);line-height:1.6}
+.home-card-arrow{margin-top:20px;font-size:13px;color:var(--amber);font-weight:600}
+
+/* ── Body wrap ── */
+#app{display:none}
+#vendor-screen{display:none}
+.body-wrap{padding:24px 32px;max-width:1800px;margin:0 auto}
+.err-banner{background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:var(--r);padding:12px 16px;font-size:13px;color:var(--red);margin-bottom:20px;display:none;line-height:1.6}
+
+/* ── KPIs ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:20px}
+.kpi{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rl);padding:14px 16px;cursor:pointer;transition:border-color .15s,background .15s,box-shadow .15s}
+.kpi:hover{border-color:var(--bdr2);box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kpi.active{border-color:var(--amber-bdr);background:var(--amber-bg)}
+.kpi.active.won{border-color:var(--green-bdr);background:var(--green-bg)}
+.kpi.active.lost{border-color:var(--red-bdr);background:var(--red-bg)}
+.kpi.active.cancelled{border-color:var(--grey-bdr);background:var(--grey-bg)}
+.kpi.active.process{border-color:var(--blue-bdr);background:var(--blue-bg)}
+.kpi.active.closed{border-color:var(--purple-bdr);background:var(--purple-bg)}
+.kpi.active.activefilter{border-color:var(--green-bdr);background:var(--green-bg)}
+.kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--txt3);margin-bottom:6px;font-family:'IBM Plex Mono',monospace}
+.kpi-val{font-size:28px;font-weight:300;letter-spacing:-1px;color:var(--txt);line-height:1}
+.kpi.active .kpi-val{color:var(--amber)}
+.kpi.active.won .kpi-val{color:var(--green)}
+.kpi.active.lost .kpi-val{color:var(--red)}
+.kpi.active.cancelled .kpi-val{color:var(--txt2)}
+.kpi.active.process .kpi-val{color:var(--blue)}
+.kpi.active.closed .kpi-val{color:var(--purple)}
+.kpi.active.activefilter .kpi-val{color:var(--green)}
+
+/* ── Date range ── */
+.date-range-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.date-range-bar label{font-size:11px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
+.date-input{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none;width:148px}
+.date-input:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
+.date-sep{font-size:12px;color:var(--txt3)}
+.btn-sm{background:transparent;border:1px solid var(--bdr2);color:var(--txt3);border-radius:var(--r);padding:7px 12px;font-size:12px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.btn-sm:hover{color:var(--txt)}
+
+/* ── Filter bar ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none}
+.search{width:100%;background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:8px 12px 8px 32px;font-size:13px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none}
+.search::placeholder{color:var(--txt3)}
+.search:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
+.result-meta{font-size:11px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+.show-toggles{display:flex;gap:16px;align-items:center}
+.toggle-lbl{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--txt2);cursor:pointer;user-select:none;white-space:nowrap}
+.toggle-lbl input[type=checkbox]{width:14px;height:14px;accent-color:var(--amber);cursor:pointer}
+
+/* ── Table ── */
+.tbl-wrap{border:1px solid var(--bdr);border-radius:var(--rl);overflow:hidden;overflow-x:auto;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1200px}
+thead th{background:var(--bg2);color:var(--txt2);font-weight:600;font-size:11px;padding:10px 11px;text-align:left;border-bottom:1px solid var(--bdr);white-space:nowrap;position:relative;user-select:none}
+thead th.sortable{cursor:pointer}
+thead th.sortable:hover{background:var(--bg3)}
+thead th.ctr{text-align:center}
+.sort-icon{display:inline-block;margin-left:3px;font-size:10px;opacity:.35}
+thead th.sort-asc .sort-icon,thead th.sort-desc .sort-icon{opacity:1;color:var(--amber)}
+.col-resizer{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:2}
+.col-resizer:hover,.col-resizer.active{background:var(--amber);opacity:.4}
+tbody tr{border-bottom:1px solid var(--bdr);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+tbody tr.editing{background:#fff8f3!important;box-shadow:inset 3px 0 0 var(--amber)}
+td{padding:8px 11px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt)}
+.c-sr{width:68px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt3)!important}
+.c-date{width:90px;font-size:11px;color:var(--txt2)!important}
+.c-proj{min-width:360px;white-space:normal!important;line-height:1.4;padding-top:6px!important;padding-bottom:6px!important}
+.c-mc{width:120px;font-size:11.5px;color:var(--txt2)!important}
+.c-client{width:88px;font-size:11.5px;color:var(--txt2)!important}
+.c-rtu{width:58px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt2)!important}
+.c-status{width:108px}
+.c-chk{width:44px;text-align:center}
+.c-active{width:72px;text-align:center}
+.c-deadline{width:110px}
+.c-update{width:90px;font-size:12px;color:var(--txt2)}
+.c-actions{width:68px;text-align:right}
+
+/* ── Badges ── */
+.badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-won{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)}
+.b-lost{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)}
+.b-cancelled{background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)}
+.b-process{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)}
+.b-closed{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bdr)}
+
+/* ── Deadline ── */
+.dl-overdue{background:var(--red-bg);color:var(--red);font-weight:600;border-radius:4px;padding:2px 6px;font-size:11px;white-space:nowrap;display:inline-block;border:1px solid var(--red-bdr)}
+.dl-soon{background:var(--amber-bg);color:var(--amber);font-weight:600;border-radius:4px;padding:2px 6px;font-size:11px;white-space:nowrap;display:inline-block;border:1px solid var(--amber-bdr)}
+.dl-normal{font-size:11px;color:var(--txt2)}
+
+/* ── Tick ── */
+.tick{background:none;border:none;cursor:pointer;padding:3px;border-radius:4px;font-size:14px;line-height:1;transition:background .1s,transform .12s;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px}
+.tick:hover{background:var(--bg3);transform:scale(1.15)}
+.tick.on{color:var(--green)}.tick.off{color:var(--red)}.tick.na{color:var(--txt3);font-size:11px}
+
+/* ── Row actions ── */
+.row-actions{display:flex;gap:3px;justify-content:flex-end;align-items:center}
+.icon-btn{background:none;border:none;cursor:pointer;padding:4px;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;transition:background .1s,color .1s;opacity:0;color:var(--txt3)}
+tr:hover .icon-btn,tr.editing .icon-btn{opacity:1}
+.icon-btn.edit:hover{background:var(--blue-bg);color:var(--blue)}
+.icon-btn.del:hover{background:var(--red-bg);color:var(--red)}
+.icon-btn.save{color:var(--green);opacity:1!important}.icon-btn.save:hover{background:var(--green-bg)}
+.icon-btn.cancel-edit{color:var(--txt2);opacity:1!important}.icon-btn.cancel-edit:hover{background:var(--bg3)}
+
+/* ── Inline edit ── */
+.ei{width:100%;background:var(--bg);border:1px solid var(--amber);border-radius:4px;padding:3px 6px;font-size:12px;font-family:'IBM Plex Sans',sans-serif;color:var(--txt);outline:none}
+.ei:focus{box-shadow:0 0 0 2px var(--amber-bg)}
+.ei-sel{width:100%;background:var(--bg);border:1px solid var(--amber);border-radius:4px;padding:3px 5px;font-size:12px;font-family:'IBM Plex Sans',sans-serif;color:var(--txt);outline:none}
+
+/* ── Pagination ── */
+.pag{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px;flex-wrap:wrap}
+.pag-info{font-size:11px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
+.pag-btns{display:flex;gap:4px;align-items:center}
+.pag-btn{background:var(--bg);border:1px solid var(--bdr2);color:var(--txt2);padding:5px 10px;border-radius:var(--r);font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace}
+.pag-btn:hover:not(:disabled){background:var(--bg2)}
+.pag-btn:disabled{opacity:.35;cursor:default}
+.pag-btn.active{background:var(--amber);border-color:var(--amber);color:#fff;font-weight:500}
+.pag-ellipsis{padding:0 4px;font-size:12px;color:var(--txt3)}
+
+/* ── Modals ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:26px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.modal-title span{font-size:11px;color:var(--txt3);font-weight:400;font-family:'IBM Plex Mono',monospace}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.full{grid-column:1/-1}
+.field label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
+.field input,.field select{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:8px 10px;font-size:13px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none}
+.field input:focus,.field select:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
+.field input::placeholder{color:var(--txt3)}
+.field input[readonly]{background:var(--bg2);color:var(--txt3);cursor:default}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.btn-cancel{background:transparent;border:1px solid var(--bdr2);color:var(--txt2);padding:8px 16px;border-radius:var(--r);font-size:13px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.btn-cancel:hover{background:var(--bg2)}
+.confirm-modal{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:24px;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.confirm-title{font-size:15px;font-weight:600;margin-bottom:8px}
+.confirm-body{font-size:13px;color:var(--txt2);line-height:1.6;margin-bottom:20px}
+.confirm-body b{color:var(--txt);font-weight:500}
+.confirm-actions{display:flex;justify-content:flex-end;gap:8px}
+.btn-danger{background:var(--red);color:#fff;border:none;border-radius:var(--r);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
+.btn-danger:hover{opacity:.88}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--txt);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-size:13px;z-index:200;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;max-width:340px;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+
+/* ── Vendor screen ── */
+.vnd-kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:20px}
+table.vnd-table{table-layout:fixed}
+table.vnd-table td{padding:5px 10px}
+.c-vendor{width:90px;font-weight:500}
+.c-ptype{width:90px;font-size:11.5px;color:var(--txt2)}
+.c-pmake{width:90px;font-size:11.5px;color:var(--txt2)}
+.c-item{width:110px}
+.c-desc{width:180px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-rate{width:90px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.c-price{width:100px;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--green)}
+
+/* ── Dashboard ── */
+#dashboard-screen{display:none}
+.dash-wrap{padding:28px 32px;max-width:1400px;margin:0 auto}
+.dash-section-title{font-size:11px;text-transform:uppercase;letter-spacing:.9px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;margin-bottom:12px;margin-top:28px}
+.dash-section-title:first-child{margin-top:0}
+.dash-kpi-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:4px}
+.dash-kpi{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rl);padding:18px 16px}
+.dash-kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--txt3);margin-bottom:8px;font-family:'IBM Plex Mono',monospace}
+.dash-kpi-val{font-size:32px;font-weight:300;letter-spacing:-1.5px;color:var(--txt);line-height:1}
+.dash-kpi-sub{font-size:11px;color:var(--txt3);margin-top:5px;font-family:'IBM Plex Mono',monospace}
+.dash-kpi.green .dash-kpi-val{color:var(--green)}
+.dash-kpi.amber .dash-kpi-val{color:var(--amber)}
+.dash-kpi.red .dash-kpi-val{color:var(--red)}
+.dash-kpi.blue .dash-kpi-val{color:var(--blue)}
+.dash-kpi.purple .dash-kpi-val{color:var(--purple)}
+.dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:4px}
+.dash-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:4px}
+.dash-card{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--rl);padding:20px}
+.dash-card-title{font-size:12px;font-weight:600;color:var(--txt);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.dash-card-title span{font-size:10px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;font-weight:400}
+.bar-chart{display:flex;flex-direction:column;gap:10px}
+.bar-row{display:flex;align-items:center;gap:10px}
+.bar-label{font-size:11px;color:var(--txt2);width:90px;flex-shrink:0;text-align:right}
+.bar-track{flex:1;background:var(--bg3);border-radius:20px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:20px;transition:width .6s ease}
+.bar-val{font-size:11px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;width:30px;text-align:right;flex-shrink:0}
+.rate-ring{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.rate-ring-val{font-size:36px;font-weight:300;color:var(--green);letter-spacing:-2px;line-height:1}
+.rate-ring-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
+.deadline-list{display:flex;flex-direction:column;gap:8px}
+.deadline-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:var(--r);background:var(--bg2)}
+.deadline-item.overdue{background:var(--red-bg);border:1px solid var(--red-bdr)}
+.deadline-item.soon{background:var(--amber-bg);border:1px solid var(--amber-bdr)}
+.deadline-proj{font-size:12px;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deadline-date{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt3);white-space:nowrap}
+.deadline-pill{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 7px;border-radius:20px;white-space:nowrap;font-weight:600}
+.deadline-pill.overdue{background:var(--red-bg);color:var(--red)}
+.deadline-pill.soon{background:var(--amber-bg);color:var(--amber)}
+.dash-table{width:100%;border-collapse:collapse;font-size:12px}
+.dash-table th{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;padding:0 0 8px;text-align:left;border-bottom:1px solid var(--bdr);font-weight:500}
+.dash-table td{padding:10px 0;border-bottom:1px solid var(--bdr);vertical-align:middle;color:var(--txt2)}
+.dash-table tr:last-child td{border-bottom:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:flex">
+  <div class="lcard">
+    <div class="ldot"></div>
+    <div class="ltitle">mBELLAb Power Solutions</div>
+    <div class="lsub">Operations Portal</div>
+    <div class="lfield">
+      <label>Password</label>
+      <input class="linput" id="login-pwd" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')attemptLogin()">
+    </div>
+    <button class="lbtn" onclick="attemptLogin()">Sign in</button>
+    <div class="lerr" id="login-error"></div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div id="loading" style="display:none">
+  <div class="lc-card">
+    <div class="lc-brand">mBELLAb Power Solutions</div>
+    <div class="lc-sub">Loading&hellip;</div>
+    <div class="spin"></div>
+    <div class="lc-bar-wrap"><div class="lc-bar" id="lc-bar"></div></div>
+    <div class="lc-txt" id="lc-txt">Connecting&hellip;</div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="home-screen" style="display:none">
+  <div class="top-bar">
+    <div class="brand-line"><div class="bdot"></div><div><div class="bname">mBELLAb Power Solutions</div><div class="bsub">Operations Portal</div></div></div>
+    <div class="hdr-r"><div class="save-ind saved" id="home-save-ind"><div class="sdot"></div><span>connected</span></div></div>
+  </div>
+  <div class="home-inner">
+    <div class="home-sub">mBELLAb Power Solutions &nbsp;&middot;&nbsp; Select a module to continue</div>
+    <div class="home-cards">
+      <div class="home-card" onclick="showOpportunities()">
+        <div class="home-card-icon">&#128203;</div>
+        <div class="home-card-title">mBELLAb Opportunities</div>
+        <div class="home-card-desc">Customer enquiry log, pipeline tracking, proposal status and LPO management.</div>
+        <div class="home-card-arrow">Open &rarr;</div>
+      </div>
+      <div class="home-card" onclick="showDashboard()">
+        <div class="home-card-icon">&#9782;</div>
+        <div class="home-card-title">Management Dashboard</div>
+        <div class="home-card-desc">Live summary of pipeline, win rates, deadlines and activity across all opportunities.</div>
+        <div class="home-card-arrow">Open &rarr;</div>
+      </div>
+      <div class="home-card" onclick="showVendors()">
+        <div class="home-card-icon">&#128230;</div>
+        <div class="home-card-title">Vendor Equipment Pricing</div>
+        <div class="home-card-desc">Vendor catalogue, equipment sourcing, rates and pricing reference.</div>
+        <div class="home-card-arrow">Open &rarr;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- APP: mBELLAb OPPORTUNITIES -->
+<div id="app" style="display:none">
+  <div class="top-bar">
+    <div class="brand-line"><div class="bdot"></div><div><div class="bname">mBELLAb Power Solutions</div><div class="bsub">Customer Enquiry Log &nbsp;&middot;&nbsp; mBb-FM-13</div></div></div>
+    <div class="hdr-r">
+      <div class="save-ind" id="save-ind"><div class="sdot"></div><span id="save-txt">connecting&hellip;</span></div>
+      <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
+      <button class="btn-ghost" onclick="showDashboard()">&#9782; Dashboard</button>
+      <button class="btn-ghost" onclick="showVendors()">&#128230; Vendor Pricing</button>
+      <button class="btn-ghost" onclick="showFieldNames()">Debug fields</button>
+      <button class="btn-ghost" onclick="exportReport()">&#8681; Export</button>
+      <button class="btn-pri" onclick="showModal()">+ New Opportunity</button>
+    </div>
+  </div>
+  <div class="body-wrap">
+    <div class="err-banner" id="err-banner"></div>
+    <div class="kpi-grid" id="kpis"></div>
+    <div class="date-range-bar">
+      <label>Enquiry Date</label>
+      <input class="date-input" id="date-from" type="date">
+      <span class="date-sep">&rarr;</span>
+      <input class="date-input" id="date-to" type="date">
+      <button class="btn-sm" onclick="clearDates()">Clear</button>
+    </div>
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#8C959F" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="#8C959F" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="search" id="search" type="text" placeholder="Search project, client, contractor, SR number&hellip;" oninput="currentPage=1;applyFilters()">
+      </div>
+      <div class="result-meta" id="meta"></div>
+      <div class="show-toggles">
+        <label class="toggle-lbl"><input type="checkbox" id="show-lost" onchange="currentPage=1;applyFilters()"> Show Lost</label>
+        <label class="toggle-lbl"><input type="checkbox" id="show-cancelled" onchange="currentPage=1;applyFilters()"> Show Cancelled</label>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th class="c-sr sortable" data-col="c-sr" data-sort="sr_no">SR No.<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-date sortable" data-col="c-date" data-sort="date">Enquiry Date<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-proj sortable" data-col="c-proj" data-sort="project">Project Name<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-mc sortable" data-col="c-mc" data-sort="main_cont">Main Contractor<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-client sortable" data-col="c-client" data-sort="client">Client<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-rtu ctr sortable" data-col="c-rtu" data-sort="rtu" title="RTU / Substations">RTU<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-status sortable" data-col="c-status" data-sort="status">Status<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-qtn" title="Quotation">QTN<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-tp" title="Technical Proposal">TP<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-lpoc" title="LPO from Client">LPO-C<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-lpos" title="LPO MBB to Supplier">LPO-S<div class="col-resizer"></div></th>
+          <th class="c-active ctr" data-col="c-active">Active (working on)<div class="col-resizer"></div></th>
+          <th class="c-deadline sortable" data-col="c-deadline" data-sort="deadline">Deadline<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-update sortable" data-col="c-update" data-sort="last_update">Last Update<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-actions"><div class="col-resizer"></div></th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pag"><div class="pag-info" id="pag-info"></div><div class="pag-btns" id="pag-btns"></div></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard-screen" style="display:none">
+  <div class="top-bar">
+    <div class="brand-line"><div class="bdot"></div><div><div class="bname">mBELLAb Power Solutions</div><div class="bsub">Management Dashboard</div></div></div>
+    <div class="hdr-r">
+      <div class="save-ind saved"><div class="sdot"></div><span>live</span></div>
+      <button class="btn-ghost" onclick="showOpportunities()">&#128203; Opportunities</button>
+      <button class="btn-ghost" onclick="showVendors()">&#128230; Vendor Pricing</button>
+      <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
+    </div>
+  </div>
+  <div class="dash-wrap">
+    <div class="dash-section-title">Pipeline Overview</div>
+    <div class="dash-kpi-grid" id="dash-kpis"></div>
+    <div class="dash-grid-3" style="margin-top:20px">
+      <div class="dash-card"><div class="dash-card-title">Status Breakdown <span>by count</span></div><div class="bar-chart" id="dash-bar-chart"></div></div>
+      <div class="dash-card"><div class="dash-card-title">Win Rate <span>closed opportunities</span></div><div id="dash-win-rate" style="display:flex;align-items:center;justify-content:center;height:160px"></div></div>
+      <div class="dash-card"><div class="dash-card-title">RTU / Substations <span>by status</span></div><div class="bar-chart" id="dash-rtu-chart"></div></div>
+    </div>
+    <div class="dash-grid-2" style="margin-top:16px">
+      <div class="dash-card"><div class="dash-card-title">Upcoming &amp; Overdue Deadlines <span id="dash-deadline-count"></span></div><div class="deadline-list" id="dash-deadlines"></div></div>
+      <div class="dash-card"><div class="dash-card-title">Top Clients <span>by opportunity count</span></div><div class="bar-chart" id="dash-client-chart"></div></div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="dash-card">
+        <div class="dash-card-title">Recent Activity <span>last 10 updated</span></div>
+        <table class="dash-table"><thead><tr><th>SR No.</th><th>Project</th><th>Client</th><th>Status</th><th>Last Update</th><th>Deadline</th></tr></thead><tbody id="dash-recent"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- VENDOR EQUIPMENT PRICING -->
+<div id="vendor-screen" style="display:none">
+  <div class="top-bar">
+    <div class="brand-line"><div class="bdot"></div><div><div class="bname">mBELLAb Power Solutions</div><div class="bsub">Vendor Equipment Pricing</div></div></div>
+    <div class="hdr-r">
+      <div class="save-ind" id="vnd-save-ind"><div class="sdot"></div><span id="vnd-save-txt">connected</span></div>
+      <button class="btn-ghost" onclick="showOpportunities()">&#128203; mBELLAb Opportunities</button>
+      <button class="btn-ghost" onclick="showDashboard()">&#9782; Dashboard</button>
+      <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
+      <button class="btn-pri" onclick="showVendorModal()">+ Add Item</button>
+    </div>
+  </div>
+  <div class="body-wrap">
+    <div class="err-banner" id="vnd-err-banner"></div>
+    <div class="kpi-grid vnd-kpi-grid" id="vnd-kpis"></div>
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#8C959F" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="#8C959F" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="search" id="vnd-search" type="text" placeholder="Search vendor, item, description&hellip;" oninput="renderVendorTable()">
+      </div>
+      <div class="result-meta" id="vnd-meta"></div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="vnd-table">
+        <thead><tr>
+          <th class="c-vendor sortable" data-vnd-sort="Vendor" data-col="c-vendor">Vendor<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-pmake sortable" data-vnd-sort="Product Make" data-col="c-pmake">Product Make<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-ptype sortable" data-vnd-sort="Product Type" data-col="c-ptype">Product Type<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-item sortable" data-vnd-sort="Item" data-col="c-item">Item<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-desc" data-col="c-desc">Description<div class="col-resizer"></div></th>
+          <th class="c-price" style="text-align:right" data-vnd-sort="Unit Price" data-col="c-price">Unit Price<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-actions"></th>
+        </tr></thead>
+        <tbody id="vnd-tbody"></tbody>
+      </table>
+    </div>
+    <div class="pag"><div class="pag-info" id="vnd-pag-info"></div><div class="pag-btns" id="vnd-pag-btns"></div></div>
+  </div>
+</div>
+
+<!-- NEW OPPORTUNITY MODAL -->
+<div class="modal-bg" id="modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">New Opportunity <span id="modal-sr-lbl"></span></div>
+    <div class="form-grid">
+      <div class="field"><label>SR Number</label><input id="f-sr" readonly></div>
+      <div class="field"><label>Enquiry Date</label><input id="f-date" placeholder="DD.MM.YYYY"></div>
+      <div class="field full"><label>Project Name *</label><input id="f-proj" placeholder="Full project name or tender reference"></div>
+      <div class="field"><label>Contractor</label><input id="f-cont"></div>
+      <div class="field"><label>Main Contractor</label><input id="f-mc" placeholder="e.g. NPC, IDS, Lucy"></div>
+      <div class="field"><label>Client</label><input id="f-client" placeholder="e.g. ADDC, TAQA, NEDC"></div>
+      <div class="field"><label>RTU / Substations</label><input id="f-rtu" placeholder="e.g. 5"></div>
+      <div class="field"><label>Status</label>
+        <select id="f-status">
+          <option value="PIPELINE">Pipeline</option>
+          <option value="WON">WON</option>
+          <option value="LOST">LOST</option>
+          <option value="CANCELLED">CANCELLED</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+      </div>
+      <div class="field"><label>Proposal Submitted On</label><input id="f-prop" placeholder="DD.MM.YYYY"></div>
+      <div class="field"><label>Upcoming Deadline</label><input id="f-deadline" type="date"></div>
+      <div class="field full"><label>Last Update</label><input id="f-update" placeholder="e.g. Proposal submitted, awaiting LPO&hellip;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-pri" onclick="saveEntry()">Add Opportunity</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT OPPORTUNITY MODAL -->
+<div class="modal-bg" id="edit-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title">Edit Opportunity <span id="edit-sr-lbl"></span></div>
+    <div class="form-grid">
+      <div class="field"><label>SR Number</label><input id="ef-sr" readonly></div>
+      <div class="field"><label>Enquiry Date</label><input id="ef-date" placeholder="DD.MM.YYYY"></div>
+      <div class="field full"><label>Project Name *</label><input id="ef-proj" placeholder="Full project name or tender reference"></div>
+      <div class="field"><label>Contractor</label><input id="ef-cont"></div>
+      <div class="field"><label>Main Contractor</label><input id="ef-mc" placeholder="e.g. NPC, IDS, Lucy"></div>
+      <div class="field"><label>Client</label><input id="ef-client" placeholder="e.g. ADDC, TAQA, NEDC"></div>
+      <div class="field"><label>RTU / Substations</label><input id="ef-rtu" placeholder="e.g. 5"></div>
+      <div class="field"><label>Status</label>
+        <select id="ef-status">
+          <option value="PIPELINE">Pipeline</option>
+          <option value="WON">WON</option>
+          <option value="LOST">LOST</option>
+          <option value="CANCELLED">CANCELLED</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+      </div>
+      <div class="field"><label>Proposal Submitted On</label><input id="ef-prop" placeholder="DD.MM.YYYY"></div>
+      <div class="field"><label>Upcoming Deadline</label><input id="ef-deadline" type="date"></div>
+      <div class="field full"><label>Last Update</label><input id="ef-update" placeholder="e.g. Proposal submitted, awaiting LPO&hellip;"></div>
+      <div class="field full"><label>SharePoint Docs Link</label><input id="ef-docs" type="url" placeholder="https://mbellab.sharepoint.com/&hellip;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-pri" onclick="saveEditModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- VENDOR MODAL -->
+<div class="modal-bg" id="vendor-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="vendor-modal-title">Add Vendor Item</div>
+    <div class="form-grid">
+      <div class="field"><label>Vendor *</label><input id="vf-vendor" placeholder="e.g. Lucy Electric"></div>
+      <div class="field"><label>Item *</label><input id="vf-item" placeholder="e.g. RTU 560"></div>
+      <div class="field"><label>Product Type</label><input id="vf-ptype" placeholder="e.g. RTU, Switch, Cable"></div>
+      <div class="field"><label>Product Make</label><input id="vf-pmake" placeholder="e.g. Siemens, Lucy Electric"></div>
+      <div class="field full"><label>Description</label><input id="vf-desc" placeholder="Brief description of equipment"></div>
+      <div class="field"><label>Unit Price</label><input id="vf-price" placeholder="e.g. 4500.00"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeVendorModal()">Cancel</button>
+      <button class="btn-pri" onclick="saveVendorItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM -->
+<div class="modal-bg" id="confirm-modal" style="display:none">
+  <div class="confirm-modal">
+    <div class="confirm-title">Delete enquiry?</div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+
+// ================================================================
+// CONFIG
+// ================================================================
+var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
+var F = {
+  SR_NO:        'SR. No.',
+  DATE:         'Enquiry Date',
+  PROJECT:      'Name of Project',
+  CONTRACTOR:   'Contractor',
+  MAIN_CONT:    'Main Contractor',
+  CLIENT:       'Client',
+  RTU:          'RTU Substations',
+  STATUS:       'Status',
+  PROPOSAL:     'Proposal Submitted On',
+  QUOTATION:    'Quotation',
+  TECH_PROP:    'Technical Proposal',
+  LPO_CLIENT:   'LPO (Client)',
+  LPO_SUPPLIER: 'LPO (MBB to Supplier)',
+  LAST_UPDATE:  'Last_Update',
+  DEADLINE:     'Deadline',
+  ACTIVE:       'Active',
+  DOCS:         'Docs'
+};
+// ================================================================
+
+var HEADERS = {'Content-Type':'application/json'};
+function getHeaders(){ return {'Content-Type':'application/json','X-App-Password':appPassword}; }
+var allRecords = [], items = [], filtered = [];
+var currentStatus = 'ALL';
+var currentPage = 1;
+var PER_PAGE = 15;
+var editingId = null;
+var pendingDeleteId = null;
+var showLost = false;
+var showCancelled = false;
+var dateFrom = null;
+var dateTo = null;
+var sortField = 'sr_no';
+var sortDir = 'desc';
+var appPassword = sessionStorage.getItem('mbb_pwd') || '';
+
+var IC_PENCIL = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M11.013 1.427a1.75 1.75 0 012.474 2.474L4.92 12.47l-3.795.505.505-3.794 8.383-8.754zM13 3.5L12 2.5 3 11.5l-.25 1.75 1.75-.25L13 3.5z" fill="currentColor"/></svg>';
+var IC_SAVE   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" fill="currentColor"/></svg>';
+var IC_CANCEL = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z" fill="currentColor"/></svg>';
+var IC_TRASH  = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6.5 1h3a.5.5 0 010 1h-3a.5.5 0 010-1zM2 4.5A.5.5 0 012.5 4h11a.5.5 0 010 1H13l-.8 8.02A2 2 0 0110.21 15H5.79a2 2 0 01-1.99-1.98L3 5H2.5A.5.5 0 012 4.5z" fill="currentColor"/></svg>';
+var IC_DOCS   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2.5A2.5 2.5 0 014.5 0h7A2.5 2.5 0 0114 2.5v11a2.5 2.5 0 01-2.5 2.5h-7A2.5 2.5 0 012 13.5V2.5zm2.5-1A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0011.5 1.5h-7zM4.75 8a.75.75 0 01.75-.75h5a.75.75 0 010 1.5h-5A.75.75 0 014.75 8zm0 2.5a.75.75 0 01.75-.75h5a.75.75 0 010 1.5h-5a.75.75 0 01-.75-.75zM5.5 4a.75.75 0 000 1.5h2a.75.75 0 000-1.5h-2z" fill="currentColor"/></svg>';
+
+// ── Helpers ──────────────────────────────────────────────────────
+function s(v) { return (v === null || v === undefined) ? '' : String(v).trim(); }
+function e(v) { return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function normStatus(v) { if(!v) return ''; if(v.indexOf('Under Process')!==-1||v==='Pipeline'||v==='PIPELINE') return 'PIPELINE'; return v; }
+
+function parseDMY(str) {
+  if(!str) return null;
+  var p = str.trim().split('.');
+  if(p.length!==3) return null;
+  var d=parseInt(p[0]),mo=parseInt(p[1]),y=parseInt(p[2]);
+  if(!d||!mo||!y||y<2000) return null;
+  return new Date(y,mo-1,d);
+}
+function parseISO(str) {
+  if(!str) return null;
+  var d=new Date(str+'T00:00:00');
+  return isNaN(d.getTime())?null:d;
+}
+function parseDateStr(str) {
+  if(!str) return null;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    var p=str.split('-');
+    return new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  }
+  return parseISO(str);
+}
+function fmtDeadline(str) {
+  var d=parseDateStr(str);
+  if(!d||isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function businessDaysUntil(str) {
+  if(!str) return null;
+  var target=parseDateStr(str);
+  if(!target||isNaN(target.getTime())) return null;
+  var today=new Date(); today.setHours(0,0,0,0); target.setHours(0,0,0,0);
+  if(target<today) return -1;
+  if(target.getTime()===today.getTime()) return 0;
+  var count=0,cur=new Date(today);
+  while(cur<target){cur.setDate(cur.getDate()+1);var d=cur.getDay();if(d!==0&&d!==6)count++;}
+  return count;
+}
+function renderDeadline(deadline) {
+  if(!deadline) return '';
+  var lbl=fmtDeadline(deadline);
+  if(!lbl) return '';
+  var bd=businessDaysUntil(deadline);
+  if(bd===-1) return '<span class="dl-overdue">&#9888; '+lbl+' (overdue)</span>';
+  if(bd!==null) return '<span class="dl-soon">&#9200; '+lbl+'</span>';
+  return '<span class="dl-normal">'+lbl+'</span>';
+}
+
+function setSave(state) {
+  var ind=document.getElementById('save-ind');
+  var txt=document.getElementById('save-txt');
+  ind.className='save-ind'+(state==='saved'?' saved':state==='saving'?' saving':state==='err'?' err':'');
+  var msgs={loading:'loading\u2026',saving:'saving\u2026',saved:'saved \u2714',err:'save failed',ready:'connected'};
+  txt.textContent=msgs[state]||state;
+}
+function setProgress(pct,msg) {
+  var b=document.getElementById('lc-bar');
+  var t=document.getElementById('lc-txt');
+  if(b) b.style.width=pct+'%';
+  if(t&&msg) t.textContent=msg;
+}
+function showError(msg) {
+  var el=document.getElementById('err-banner');
+  el.innerHTML=msg; el.style.display='block';
+}
+function hideError() {
+  document.getElementById('err-banner').style.display='none';
+}
+var toastTimer;
+function toast(msg,type) {
+  var t=document.getElementById('toast');
+  clearTimeout(toastTimer);
+  t.textContent=msg;
+  t.className='toast show'+(type==='ok'?' ok':type==='err'?' err':'');
+  toastTimer=setTimeout(function(){t.className='toast'+(type==='ok'?' ok':type==='err'?' err':'');},3000);
+}
+
+// ── Login ────────────────────────────────────────────────────────
+function attemptLogin() {
+  var pwd=document.getElementById('login-pwd').value.trim();
+  var errEl=document.getElementById('login-error');
+  errEl.textContent='';
+  if(!pwd){errEl.textContent='Please enter the password.';return;}
+  appPassword=pwd;
+  sessionStorage.setItem('mbb_pwd',pwd);
+  HEADERS['X-App-Password']=pwd;
+  document.getElementById('login-screen').style.display='none';
+  showHome();
+}
+
+// Auto-login if cached
+if(appPassword){
+  HEADERS['X-App-Password']=appPassword;
+  document.getElementById('login-screen').style.display='none';
+  var lastScreen = sessionStorage.getItem('mbb_screen') || 'home';
+  if(lastScreen === 'opportunities') showOpportunities();
+  else if(lastScreen === 'vendors') showVendors();
+  else if(lastScreen === 'dashboard') { showDashboard(); }
+  else showHome();
+} else {
+  document.getElementById('login-screen').style.display='flex';
+}
+
+// ── Load ─────────────────────────────────────────────────────────
+async function loadAll() {
+  setProgress(10,'Connecting\u2026');
+  var loadTimeout=setTimeout(function(){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+    showError('<b>Connection timed out.</b> <a href="#" onclick="sessionStorage.clear();location.reload();return false;" style="color:var(--red)">Clear session &amp; reload</a>');
+  },20000);
+  try {
+    var records=[],offset=null,page=0;
+    do {
+      page++;
+      if(page>20) break;
+      setProgress(Math.min(10+page*30,85),'Loading records\u2026');
+      var url=WORKER_URL+'?pageSize=100'+(offset?'&offset='+encodeURIComponent(offset):'');
+      var ctrl=new AbortController();
+      var timer=setTimeout(function(){ctrl.abort();},15000);
+      var res;
+      try{res=await fetch(url,{headers:getHeaders(),signal:ctrl.signal});}finally{clearTimeout(timer);}
+      if(!res.ok){var er=await res.json().catch(function(){return{};});throw new Error((er.error&&er.error.message)||'HTTP '+res.status);}
+      var data=await res.json();
+      records=records.concat(data.records||[]);
+      offset=data.offset||null;
+    } while(offset);
+    clearTimeout(loadTimeout);
+    allRecords=records;
+    parseItems();
+    setProgress(100,'Done!');
+    await new Promise(function(r){setTimeout(r,200);});
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+    renderKPIs(); applyFilters(); setSave('ready');
+    toast(items.length+' enquiries loaded','ok');
+  } catch(err) {
+    clearTimeout(loadTimeout);
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+    showError('<b>Failed to load:</b> '+err.message);
+    setSave('err');
+  }
+}
+
+// ── Parse ────────────────────────────────────────────────────────
+function parseItems() {
+  items=allRecords.map(function(rec){
+    var f=rec.fields;
+    return {
+      _id:rec.id, sr_no:s(f[F.SR_NO]), date:s(f[F.DATE]), project:s(f[F.PROJECT]),
+      contractor:s(f[F.CONTRACTOR]), main_cont:s(f[F.MAIN_CONT]), client:s(f[F.CLIENT]),
+      rtu:s(f[F.RTU])||'--', status:normStatus(s(f[F.STATUS])), proposal:s(f[F.PROPOSAL]),
+      quotation:s(f[F.QUOTATION]), tech_prop:s(f[F.TECH_PROP]),
+      lpo_client:s(f[F.LPO_CLIENT]), lpo_supplier:s(f[F.LPO_SUPPLIER]),
+      last_update:s(f[F.LAST_UPDATE]), deadline:s(f[F.DEADLINE]), active:s(f[F.ACTIVE]),
+      docs:s(f[F.DOCS])
+    };
+  });
+  sortItems();
+}
+function sortItems() {
+  items.sort(function(a,b){
+    var av=a[sortField]||'',bv=b[sortField]||'';
+    if(sortField==='sr_no'){av=parseInt(av)||0;bv=parseInt(bv)||0;return sortDir==='asc'?av-bv:bv-av;}
+    if(sortField==='date'){var da=parseDMY(av),db=parseDMY(bv);if(!da&&!db)return 0;if(!da)return sortDir==='asc'?1:-1;if(!db)return sortDir==='asc'?-1:1;return sortDir==='asc'?da-db:db-da;}
+    if(sortField==='deadline'){var da2=av?parseDateStr(av):null,db2=bv?parseDateStr(bv):null;if(!da2&&!db2)return 0;if(!da2)return 1;if(!db2)return -1;return sortDir==='asc'?da2-db2:db2-da2;}
+    return sortDir==='asc'?av.localeCompare(bv,undefined,{sensitivity:'base'}):bv.localeCompare(av,undefined,{sensitivity:'base'});
+  });
+}
+
+// ── API ──────────────────────────────────────────────────────────
+async function patchRecord(id,fields) {
+  setSave('saving');
+  var clean={};
+  Object.keys(fields).forEach(function(k){
+    // Keep null explicitly (clears field in Airtable), skip only undefined and empty string
+    if(fields[k]===undefined) return;
+    if(fields[k]==='') return;
+    clean[k]=fields[k];
+  });
+  // Deadline: if empty string was passed, send null to clear it
+  if(fields[F.DEADLINE]===''||fields[F.DEADLINE]===undefined) clean[F.DEADLINE]=null;
+  else if(fields[F.DEADLINE]) clean[F.DEADLINE]=fields[F.DEADLINE];
+  try {
+    var res=await fetch(WORKER_URL+'/'+id,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:clean})});
+    var d=await res.json().catch(function(){return{};});
+    if(!res.ok){var msg=(d.error&&d.error.message)||'HTTP '+res.status;showError('<b>Save failed:</b> '+msg);throw new Error(msg);}
+    setSave('saved'); hideError();
+  } catch(err){setSave('err');toast('Save failed: '+err.message,'err');}
+}
+async function postRecord(fields) {
+  setSave('saving');
+  try {
+    var clean={};Object.keys(fields).forEach(function(k){if(fields[k]!==''&&fields[k]!==null&&fields[k]!==undefined)clean[k]=fields[k];});
+    var res=await fetch(WORKER_URL,{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:clean})});
+    var data=await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    allRecords.push(data); parseItems(); setSave('saved');
+    currentStatus='ACTIVE_ONLY'; currentPage=1;
+    renderKPIs(); applyFilters();
+    toast('SR-'+fields[F.SR_NO]+' added','ok');
+  } catch(err){setSave('err');showError('<b>Failed to add:</b> '+err.message);toast('Failed','err');}
+}
+async function deleteRecord(id) {
+  setSave('saving');
+  try {
+    var res=await fetch(WORKER_URL+'/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    allRecords=allRecords.filter(function(r){return r.id!==id;});
+    parseItems(); setSave('saved');
+    var maxPage=Math.max(1,Math.ceil(filtered.length/PER_PAGE));
+    if(currentPage>maxPage) currentPage=maxPage;
+    renderKPIs(); applyFilters();
+    toast('Enquiry deleted','ok');
+  } catch(err){setSave('err');toast('Delete failed: '+err.message,'err');}
+}
+
+// ── Ticks ────────────────────────────────────────────────────────
+function toggleTick(id,itemField,airtableField) {
+  var item=items.find(function(i){return i._id===id;});
+  if(!item) return;
+  var cur=item[itemField];
+  if(airtableField===F.ACTIVE){
+    item[itemField]=cur==='Yes'?'No':'Yes';
+    var rec=allRecords.find(function(r){return r.id===id;});
+    if(rec) rec.fields[F.ACTIVE]=item[itemField];
+    renderTable(); renderKPIs();
+    patchRecord(id,{[airtableField]:item[itemField]});
+  } else {
+    item[itemField]=cur==='✔'?'✖':cur==='✖'?'':'✔';
+    renderTable();
+    patchRecord(id,{[airtableField]:item[itemField]});
+  }
+}
+function mkTick(id,itemField,af,val) {
+  var isActive=af===F.ACTIVE;
+  var on=isActive?(val==='Yes'):(val==='✔');
+  var off=isActive?(val==='No'):(val==='✖');
+  var cls=on?'on':off?'off':'na';
+  var icon=on?'✔':off?'✖':'–';
+  return '<button class="tick '+cls+'" onclick="toggleTick(\''+id+'\',\''+itemField+'\',\''+af+'\')" title="Click to toggle">'+icon+'</button>';
+}
+
+// ── Edit ─────────────────────────────────────────────────────────
+function startEdit(id){editingId=id;renderTable();setTimeout(function(){var el=document.getElementById('ei-proj');if(el){el.focus();el.select();}},50);}
+function cancelEdit(){if(!editingId)return;editingId=null;renderTable();}
+async function saveEditRow(){
+  if(!editingId) return;
+  function gi(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+  var fields={};
+  fields[F.DATE]=gi('ei-date'); fields[F.PROJECT]=gi('ei-proj');
+  fields[F.MAIN_CONT]=gi('ei-mc'); fields[F.CLIENT]=gi('ei-client');
+  fields[F.RTU]=gi('ei-rtu')||'--'; fields[F.STATUS]=gi('ei-status');
+  fields[F.DEADLINE]=gi('ei-deadline')||null; fields[F.LAST_UPDATE]=gi('ei-update');
+  var item=items.find(function(i){return i._id===editingId;});
+  if(item){
+    item.date=fields[F.DATE]; item.project=fields[F.PROJECT]; item.main_cont=fields[F.MAIN_CONT];
+    item.client=fields[F.CLIENT]; item.rtu=fields[F.RTU]; item.status=normStatus(fields[F.STATUS]);
+    item.deadline=fields[F.DEADLINE]; item.last_update=fields[F.LAST_UPDATE];
+    var rec=allRecords.find(function(r){return r.id===editingId;});
+    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.CLIENT]=fields[F.CLIENT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.DEADLINE]=fields[F.DEADLINE];rec.fields[F.LAST_UPDATE]=fields[F.LAST_UPDATE];}
+  }
+  var savedId=editingId; editingId=null;
+  renderKPIs(); applyFilters();
+  await patchRecord(savedId,fields);
+  toast('Changes saved','ok');
+}
+
+// ── Delete ───────────────────────────────────────────────────────
+function promptDelete(id,srNo,proj){
+  pendingDeleteId=id;
+  document.getElementById('confirm-body').innerHTML='This will permanently delete SR <b>'+e(srNo)+'</b>:<br><b>'+e(proj||'(no name)')+'</b><br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display='flex';
+}
+function closeConfirm(){pendingDeleteId=null;document.getElementById('confirm-modal').style.display='none';}
+function confirmDelete(){if(!pendingDeleteId)return;var id=pendingDeleteId;closeConfirm();deleteRecord(id);}
+
+// ── KPIs ─────────────────────────────────────────────────────────
+function renderKPIs(){
+  var c={ALL:items.length,ACTIVE_ONLY:0,WON:0,LOST:0,CANCELLED:0,PIPELINE:0,CLOSED:0};
+  items.forEach(function(r){
+    if(r.active==='Yes') c.ACTIVE_ONLY++;
+    if(c[r.status]!==undefined) c[r.status]++;
+  });
+  var cards=[
+    {k:'ALL',label:'All Opportunities',cls:''},
+    {k:'ACTIVE_ONLY',label:'Active (working on)',cls:'activefilter'},
+    {k:'WON',label:'Won',cls:'won'},
+    {k:'PIPELINE',label:'Pipeline',cls:'process'},
+    {k:'LOST',label:'Lost',cls:'lost'},
+    {k:'CANCELLED',label:'Cancelled',cls:'cancelled'},
+    {k:'CLOSED',label:'Closed',cls:'closed'}
+  ];
+  var el=document.getElementById('kpis');
+  el.innerHTML=cards.map(function(x){
+    return '<div class="kpi '+x.cls+' '+(currentStatus===x.k?'active':'')+'" onclick="setStatus(\''+x.k+'\')"><div class="kpi-lbl">'+x.label+'</div><div class="kpi-val">'+c[x.k]+'</div></div>';
+  }).join('');
+}
+function setStatus(s){cancelEdit();currentStatus=s;currentPage=1;applyFilters();renderKPIs();}
+
+// ── Filter & table ────────────────────────────────────────────────
+function applyFilters(){
+  var q=document.getElementById('search').value.toLowerCase();
+  var showLost=document.getElementById('show-lost').checked;
+  var showCancelled=document.getElementById('show-cancelled').checked;
+  filtered=items.filter(function(r){
+    var isActive=r.active==='Yes';
+    var ms=currentStatus==='ALL'||(currentStatus==='ACTIVE_ONLY'?isActive:r.status===currentStatus);
+    var mq=!q||[r.project,r.client,r.main_cont,r.sr_no].some(function(f){return f.toLowerCase().indexOf(q)!==-1;});
+    var inDate=true;
+    if(dateFrom||dateTo){var rd=parseDMY(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
+    var hideLost=currentStatus==='ALL'&&r.status==='LOST'&&!showLost;
+    var hideCancelled=currentStatus==='ALL'&&r.status==='CANCELLED'&&!showCancelled;
+    return ms&&mq&&inDate&&!hideLost&&!hideCancelled;
+  });
+  renderTable(); renderPagination();
+}
+
+function badgeCls(st){return st==='WON'?'b-won':st==='LOST'?'b-lost':st==='CANCELLED'?'b-cancelled':st==='CLOSED'?'b-closed':'b-process';}
+function badgeLbl(st){return st==='Under Process'?'Pipeline':(st||'&mdash;');}
+
+var STATUS_OPTS=['PIPELINE','WON','LOST','CANCELLED','CLOSED'];
+
+function mkDisplayRow(r){
+  return '<tr data-id="'+r._id+'" style="cursor:pointer">'+
+    '<td class="c-sr">'+e(r.sr_no)+'</td>'+
+    '<td class="c-date">'+e(r.date)+'</td>'+
+    '<td class="c-proj" title="'+e(r.project)+'">'+e(r.project)+'</td>'+
+    '<td class="c-mc">'+e(r.main_cont||'&mdash;')+'</td>'+
+    '<td class="c-client">'+e(r.client||'&mdash;')+'</td>'+
+    '<td class="c-rtu">'+e(r.rtu)+'</td>'+
+    '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
+    '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
+    '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
+    '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
+    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
+    '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
+    '<td class="c-update" title="'+e(r.last_update)+'">'+e(r.last_update)+'</td>'+
+    '<td class="c-actions"><div class="row-actions">'+
+      (r.docs ? '<a class="icon-btn docs-link has-link" href="'+r.docs+'" target="_blank" rel="noopener" title="Open SharePoint docs">'+IC_DOCS+'</a>' : '<span class="icon-btn docs-link" title="No docs link saved">'+IC_DOCS+'</span>')+
+      '<button class="icon-btn edit" onclick="startEdit(\''+r._id+'\')" title="Edit">'+IC_PENCIL+'</button>'+
+      '<button class="icon-btn del" onclick="promptDelete(\''+r._id+'\',\''+e(r.sr_no)+'\',\''+e(r.project)+'\')" title="Delete">'+IC_TRASH+'</button>'+
+    '</div></td>'+
+  '</tr>';
+}
+
+function mkEditRow(r){
+  var opts=STATUS_OPTS.map(function(st){return '<option value="'+st+'"'+(r.status===st?' selected':'')+'>'+( st==='PIPELINE'?'Pipeline':st)+'</option>';}).join('');
+  return '<tr class="editing" data-id="'+r._id+'">'+
+    '<td class="c-sr" style="font-family:monospace;font-size:11px;color:var(--txt3)">'+e(r.sr_no)+'</td>'+
+    '<td class="c-date" style="overflow:visible"><input class="ei" id="ei-date" value="'+e(r.date)+'" placeholder="DD.MM.YYYY" style="width:88px"></td>'+
+    '<td class="c-proj" style="overflow:visible"><input class="ei" id="ei-proj" value="'+e(r.project)+'" style="width:100%"></td>'+
+    '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
+    '<td class="c-client" style="overflow:visible"><input class="ei" id="ei-client" value="'+e(r.client)+'" style="width:80px"></td>'+
+    '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
+    '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
+    '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
+    '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
+    '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
+    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
+    '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
+    '<td class="c-update" style="overflow:visible"><input class="ei" id="ei-update" value="'+e(r.last_update)+'" placeholder="Latest update&hellip;" style="width:300px"></td>'+
+    '<td class="c-actions"><div class="row-actions">'+
+      '<button class="icon-btn save" onclick="saveEditRow()" title="Save (Enter)">'+IC_SAVE+'</button>'+
+      '<button class="icon-btn cancel-edit" onclick="cancelEdit()" title="Cancel (Esc)">'+IC_CANCEL+'</button>'+
+    '</div></td>'+
+  '</tr>';
+}
+
+function renderTable(){
+  var start=(currentPage-1)*PER_PAGE;
+  var page=filtered.slice(start,start+PER_PAGE);
+  var total=filtered.length;
+  document.getElementById('meta').textContent=total===0?'No results':(start+1)+'\u2013'+Math.min(start+PER_PAGE,total)+' of '+total;
+  var tbody=document.getElementById('tbody');
+  tbody.innerHTML=page.map(function(r){return r._id===editingId?mkEditRow(r):mkDisplayRow(r);}).join('');
+  // Double-click anywhere on a row to open edit modal
+  tbody.addEventListener('dblclick', function(ev) {
+    var row = ev.target.closest('tr[data-id]');
+    if(row && !row.classList.contains('editing')) {
+      openEditModal(row.dataset.id);
+    }
+  });
+  initSortHeaders();
+  initColumnResize();
+}
+
+function renderPagination(){
+  var total=Math.ceil(filtered.length/PER_PAGE);
+  var info=document.getElementById('pag-info');
+  var btns=document.getElementById('pag-btns');
+  info.textContent=total>1?'Page '+currentPage+' of '+total:'';
+  if(total<=1){btns.innerHTML='';return;}
+  var pages=[];for(var i=1;i<=total;i++)pages.push(i);
+  var vis=pages.filter(function(p){return p===1||p===total||Math.abs(p-currentPage)<=1;});
+  var h='<button class="pag-btn" onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'>&#8249; prev</button>';
+  var prev=0;
+  vis.forEach(function(p){
+    if(prev&&p-prev>1) h+='<span class="pag-ellipsis">\u2026</span>';
+    h+='<button class="pag-btn '+(p===currentPage?'active':'')+'" onclick="goPage('+p+')">'+p+'</button>';
+    prev=p;
+  });
+  h+='<button class="pag-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage===total?'disabled':'')+'>next &#8250;</button>';
+  btns.innerHTML=h;
+}
+function goPage(p){var total=Math.ceil(filtered.length/PER_PAGE);if(p<1||p>total)return;cancelEdit();currentPage=p;renderTable();renderPagination();}
+
+// ── Sort headers ─────────────────────────────────────────────────
+function initSortHeaders(){
+  document.querySelectorAll('thead th[data-sort]').forEach(function(th){
+    var newTh=th.cloneNode(true); th.parentNode.replaceChild(newTh,th);
+    newTh.classList.toggle('sort-asc',newTh.dataset.sort===sortField&&sortDir==='asc');
+    newTh.classList.toggle('sort-desc',newTh.dataset.sort===sortField&&sortDir==='desc');
+    var icon=newTh.querySelector('.sort-icon');
+    if(icon) icon.textContent=newTh.dataset.sort===sortField?(sortDir==='asc'?'\u2191':'\u2193'):'\u2195';
+    newTh.addEventListener('click',function(ev){
+      if(_resizing) return;
+      var field=newTh.dataset.sort;
+      if(sortField===field){sortDir=sortDir==='asc'?'desc':'asc';}
+      else{sortField=field;sortDir=(field==='sr_no'||field==='date'||field==='deadline')?'desc':'asc';}
+      sortItems(); applyFilters();
+    });
+  });
+}
+
+// ── Column resize ─────────────────────────────────────────────────
+var _resizing = false;
+
+function initColumnResize(){
+  document.querySelectorAll('thead th').forEach(function(th){
+    var resizer=th.querySelector('.col-resizer');
+    if(!resizer) return;
+
+    resizer.addEventListener('mousedown',function(ev){
+      var startX=ev.clientX, startW=th.offsetWidth, moved=false;
+      resizer.classList.add('active');
+      document.body.style.cursor='col-resize';
+      document.body.style.userSelect='none';
+
+      function onMove(e){
+        if(!moved && Math.abs(e.clientX - startX) < 3) return; // ignore tiny jitter
+        moved = true;
+        _resizing = true;
+        var w = Math.max(40, startW + (e.clientX - startX));
+        th.style.width = w+'px';
+        th.style.minWidth = w+'px';
+        var col = th.dataset.col;
+        if(col) document.querySelectorAll('td.'+col).forEach(function(td){
+          td.style.width=w+'px'; td.style.maxWidth=w+'px';
+        });
+      }
+
+      function onUp(){
+        resizer.classList.remove('active');
+        document.body.style.cursor='';
+        document.body.style.userSelect='';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        // Suppress the click that fires after mouseup
+        if(_resizing){
+          setTimeout(function(){ _resizing = false; }, 10);
+        }
+      }
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      ev.preventDefault();
+      ev.stopPropagation();
+    });
+
+    // Block click on the th if a resize just happened
+    th.addEventListener('click', function(ev){
+      if(_resizing){ ev.stopImmediatePropagation(); }
+    }, true); // capture phase — fires before sort listener
+  });
+}
+
+// ── Date range ────────────────────────────────────────────────────
+document.getElementById('date-from').addEventListener('change',function(ev){dateFrom=parseISO(ev.target.value);currentPage=1;applyFilters();});
+document.getElementById('date-to').addEventListener('change',function(ev){var d=parseISO(ev.target.value);if(d)d.setHours(23,59,59);dateTo=d;currentPage=1;applyFilters();});
+function clearDates(){document.getElementById('date-from').value='';document.getElementById('date-to').value='';dateFrom=null;dateTo=null;currentPage=1;applyFilters();}
+
+// Keyboard shortcuts
+document.addEventListener('keydown',function(ev){
+  if(ev.key==='Escape'){cancelEdit();closeConfirm();closeModal();closeEditModal();}
+  if(ev.key==='Enter'&&editingId) saveEditRow();
+});
+
+// ── Modal ─────────────────────────────────────────────────────────
+function showModal(){
+  var maxSr=Math.max.apply(null,items.map(function(i){return parseInt(i.sr_no)||0;}).concat([17062]));
+  var next=maxSr+1;
+  var now=new Date();
+  var pad=function(n){return String(n).padStart(2,'0');};
+  document.getElementById('f-sr').value=next;
+  document.getElementById('modal-sr-lbl').textContent='SR-'+next;
+  document.getElementById('f-date').value=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear();
+  document.getElementById('f-cont').value='MBB';
+  document.getElementById('f-status').value='PIPELINE';
+  ['f-proj','f-mc','f-client','f-rtu','f-prop','f-update'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('f-deadline').value='';
+  document.getElementById('modal').style.display='flex';
+  setTimeout(function(){document.getElementById('f-proj').focus();},50);
+}
+function closeModal(){document.getElementById('modal').style.display='none';}
+document.getElementById('modal').addEventListener('click',function(ev){if(ev.target===this)closeModal();});
+document.getElementById('confirm-modal').addEventListener('click',function(ev){if(ev.target===this)closeConfirm();});
+
+function saveEntry(){
+  function g(id){return document.getElementById(id).value.trim();}
+  var proj=g('f-proj');
+  if(!proj){document.getElementById('f-proj').focus();return;}
+  closeModal();
+  var fields={};
+  fields[F.SR_NO]=g('f-sr'); fields[F.DATE]=g('f-date'); fields[F.PROJECT]=proj;
+  fields[F.CONTRACTOR]=g('f-cont')||'MBB'; fields[F.MAIN_CONT]=g('f-mc');
+  fields[F.CLIENT]=g('f-client'); fields[F.RTU]=g('f-rtu')||'--';
+  fields[F.STATUS]=g('f-status'); fields[F.PROPOSAL]=g('f-prop')||'--';
+  var dlVal=document.getElementById('f-deadline').value; if(dlVal) fields[F.DEADLINE]=dlVal;
+  fields[F.LAST_UPDATE]=g('f-update');
+  fields[F.QUOTATION]=''; fields[F.TECH_PROP]=''; fields[F.LPO_CLIENT]=''; fields[F.LPO_SUPPLIER]='';
+  postRecord(fields);
+}
+
+// ── Debug ─────────────────────────────────────────────────────────
+async function showFieldNames(){
+  try{
+    var res=await fetch(WORKER_URL+'?maxRecords=1',{headers:getHeaders()});
+    var data=await res.json();
+    var flds=Object.keys((data.records&&data.records[0]&&data.records[0].fields)||{});
+    showError('<b>Airtable column names:</b><br><br>'+flds.map(function(f){return '&nbsp;&nbsp;<code style="background:#eee;padding:1px 5px;border-radius:3px;font-size:12px">'+f+'</code>';}).join('<br>'));
+  }catch(err){showError('Could not fetch: '+err.message);}
+}
+
+
+// ── Edit Modal (double-click) ─────────────────────────────────────
+function openEditModal(id) {
+  var item = items.find(function(i){ return i._id === id; });
+  if(!item) return;
+  document.getElementById('edit-modal').dataset.id = id;
+  document.getElementById('edit-sr-lbl').textContent = 'SR-' + item.sr_no;
+  document.getElementById('ef-sr').value       = item.sr_no;
+  document.getElementById('ef-date').value     = item.date;
+  document.getElementById('ef-proj').value     = item.project;
+  document.getElementById('ef-cont').value     = item.contractor;
+  document.getElementById('ef-mc').value       = item.main_cont;
+  document.getElementById('ef-client').value   = item.client;
+  document.getElementById('ef-rtu').value      = item.rtu === '--' ? '' : item.rtu;
+  document.getElementById('ef-status').value   = item.status;
+  document.getElementById('ef-prop').value     = item.proposal;
+  document.getElementById('ef-deadline').value = item.deadline || '';
+  document.getElementById('ef-update').value   = item.last_update;
+  document.getElementById('ef-docs').value     = item.docs || '';
+  document.getElementById('edit-modal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('ef-proj').focus(); }, 50);
+}
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+async function saveEditModal() {
+  var id = document.getElementById('edit-modal').dataset.id;
+  if(!id) return;
+  function g(eid){ var el=document.getElementById(eid); return el?el.value.trim():''; }
+  var proj = g('ef-proj');
+  if(!proj){ document.getElementById('ef-proj').focus(); return; }
+  var fields = {};
+  fields[F.DATE]        = g('ef-date');
+  fields[F.PROJECT]     = proj;
+  fields[F.CONTRACTOR]  = g('ef-cont') || 'MBB';
+  fields[F.MAIN_CONT]   = g('ef-mc');
+  fields[F.CLIENT]      = g('ef-client');
+  fields[F.RTU]         = g('ef-rtu') || '--';
+  fields[F.STATUS]      = g('ef-status');
+  fields[F.PROPOSAL]    = g('ef-prop');
+  fields[F.LAST_UPDATE] = g('ef-update');
+  var docsVal = g('ef-docs'); if(docsVal) fields[F.DOCS] = docsVal;
+  var dlVal = document.getElementById('ef-deadline').value;
+  fields[F.DEADLINE] = dlVal || null;
+  // Update local item
+  var item = items.find(function(i){ return i._id === id; });
+  if(item){
+    item.date=fields[F.DATE]; item.project=fields[F.PROJECT];
+    item.contractor=fields[F.CONTRACTOR]; item.main_cont=fields[F.MAIN_CONT];
+    item.client=fields[F.CLIENT]; item.rtu=fields[F.RTU]||'--';
+    item.status=normStatus(fields[F.STATUS]); item.proposal=fields[F.PROPOSAL];
+    item.last_update=fields[F.LAST_UPDATE];
+    if(docsVal) item.docs=docsVal;
+    item.deadline = dlVal || '';
+    var rec=allRecords.find(function(r){return r.id===id;});
+    if(rec){
+      Object.keys(fields).forEach(function(k){ rec.fields[k]=fields[k]; });
+    }
+  }
+  closeEditModal();
+  renderKPIs(); applyFilters();
+  await patchRecord(id, fields);
+  toast('Changes saved','ok');
+}
+document.getElementById('edit-modal').addEventListener('click', function(ev){ if(ev.target===this) closeEditModal(); });
+
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+var VENDOR_TABLE = 'Vendor%20Equipment%20Pricing';
+var vndRecords = [];
+var vndSortField = 'Vendor';
+var vndSortDir = 'asc';
+var vndPage = 1;
+var VND_PER_PAGE = 20;
+var vndEditId = null;
+
+function showHome() {
+  sessionStorage.setItem('mbb_screen','home');
+  ['app','vendor-screen','dashboard-screen','loading'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  document.getElementById('home-screen').style.display = 'block';
+}
+function showOpportunities() {
+  sessionStorage.setItem('mbb_screen','opportunities');
+  ['home-screen','vendor-screen','dashboard-screen','app'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  document.getElementById('loading').style.display = 'flex';
+  loadAll();
+}
+function showVendors() {
+  sessionStorage.setItem('mbb_screen','vendors');
+  ['home-screen','app','dashboard-screen','loading'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  document.getElementById('vendor-screen').style.display = 'block';
+  loadVendors();
+}
+
+// Override initApp to show home screen instead of going straight to opportunities
+function initApp() {
+  HEADERS['X-App-Password'] = appPassword;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('loading').style.display = 'none';
+  showHome();
+}
+
+// ================================================================
+// VENDOR DATA
+// ================================================================
+async function loadVendors() {
+  setVndSave('loading');
+  // Show loading state in table immediately
+  var tbody = document.getElementById('vnd-tbody');
+  if(tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--txt3);font-size:13px">Loading…</td></tr>';
+  var errBanner = document.getElementById('vnd-err-banner');
+  try {
+    var records = [], offset = null;
+    do {
+      var url = WORKER_URL+'/vendor?pageSize=100'+(offset?'&offset='+encodeURIComponent(offset):'');
+      var res = await fetch(url, { headers: getHeaders() });
+      if(!res.ok){ var er=await res.json().catch(function(){return{};}); throw new Error((er.error&&er.error.message)||'HTTP '+res.status); }
+      var data = await res.json();
+      records = records.concat(data.records||[]);
+      offset = data.offset||null;
+    } while(offset);
+    vndRecords = records;
+    setVndSave('ready');
+    renderVendorKPIs();
+    renderVendorTable();
+  } catch(err) {
+    setVndSave('err');
+    if(errBanner){ errBanner.innerHTML='<b>Failed to load vendor data:</b> '+err.message; errBanner.style.display='block'; }
+    toast('Failed to load vendors: '+err.message,'err');
+  }
+}
+
+function setVndSave(state) {
+  var ind = document.getElementById('vnd-save-ind');
+  var txt = document.getElementById('vnd-save-txt');
+  if(!ind || !txt) return;
+  ind.className = 'save-ind' + (state==='ready'?' saved':state==='loading'?' saving':state==='err'?' err':'');
+  var msgs = {loading:'loading…', ready:'connected ✔', err:'error', saving:'saving…', saved:'saved ✔'};
+  txt.textContent = msgs[state] || state;
+}
+
+function renderVendorKPIs() {
+  var vendors = {};
+  vndRecords.forEach(function(r){ var v = r.fields['Vendor']||''; if(v) vendors[v] = true; });
+  var el = document.getElementById('vnd-kpis');
+  if(!el) return;
+  el.innerHTML = [
+    {label:'Total Items', val: vndRecords.length, cls:''},
+    {label:'Vendors', val: Object.keys(vendors).length, cls:'process'},
+    {label:'Showing', val: document.getElementById('vnd-tbody') ? document.getElementById('vnd-tbody').querySelectorAll('tr').length : 0, cls:'won'},
+  ].map(function(x){
+    return '<div class="kpi '+x.cls+'"><div class="kpi-lbl">'+x.label+'</div><div class="kpi-val">'+x.val+'</div></div>';
+  }).join('');
+}
+
+function renderVendorTable() {
+  var q = (document.getElementById('vnd-search')||{value:''}).value.toLowerCase();
+  var rows = vndRecords.filter(function(r){
+    var f = r.fields;
+    return !q || ['Vendor','Product Type','Product Make','Item','Description'].some(function(k){ return (f[k]||'').toLowerCase().indexOf(q) !== -1; });
+  });
+
+  // Sort
+  rows.sort(function(a, b){
+    var av = String(a.fields[vndSortField]||''), bv = String(b.fields[vndSortField]||'');
+    if(vndSortField === 'Unit Price') {
+      av = parseFloat(av.replace(/[^0-9.-]/g,''))||0;
+      bv = parseFloat(bv.replace(/[^0-9.-]/g,''))||0;
+      return vndSortDir==='asc' ? av-bv : bv-av;
+    }
+    return vndSortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  var total = rows.length;
+  var start = (vndPage-1)*VND_PER_PAGE;
+  var page  = rows.slice(start, start+VND_PER_PAGE);
+
+  var meta = document.getElementById('vnd-meta');
+  if(meta) meta.textContent = total===0?'No results':(start+1)+'–'+Math.min(start+VND_PER_PAGE,total)+' of '+total;
+
+  var tbody = document.getElementById('vnd-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = page.map(function(r, i){
+    var f = r.fields;
+    var price = f['Price'] ? parseFloat(String(f['Price']).replace(/[^0-9.-]/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    return '<tr data-vnd-id="'+r.id+'" style="cursor:pointer">'+
+      '<td class="c-vendor">'+e(f['Vendor']||'')+'</td>'+
+      '<td class="c-pmake">'+e(f['Product Make']||'')+'</td>'+
+      '<td class="c-ptype">'+e(f['Product Type']||'')+'</td>'+
+      '<td class="c-item">'+e(f['Item']||'')+'</td>'+
+      '<td class="c-desc" title="'+e(f['Description']||'')+'">'+e(f['Description']||'')+'</td>'+
+      '<td class="c-price">'+price+'</td>'+
+      '<td class="c-actions"><div class="row-actions">'+
+        '<button class="icon-btn edit" data-vnd-edit="'+r.id+'" title="Edit">'+IC_PENCIL+'</button>'+
+        '<button class="icon-btn del" data-vnd-del="'+r.id+'" data-vnd-vendor="'+e(f['Vendor']||'')+'" data-vnd-item="'+e(f['Item']||'')+'" title="Delete">'+IC_TRASH+'</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--txt3);font-size:13px">No items found</td></tr>';
+
+  // Pagination
+  renderVendorPagination(total);
+
+  // Row interactions via delegation
+  tbody.addEventListener('dblclick', function(ev){
+    var row = ev.target.closest('tr[data-vnd-id]');
+    if(row) openVendorModal(row.dataset.vndId);
+  });
+  tbody.addEventListener('click', function(ev){
+    var eb = ev.target.closest('[data-vnd-edit]');
+    if(eb){ openVendorModal(eb.dataset.vndEdit); return; }
+    var db = ev.target.closest('[data-vnd-del]');
+    if(db){ deleteVendorItem(db.dataset.vndDel, db.dataset.vndVendor, db.dataset.vndItem); return; }
+  });
+
+  // Sort headers
+  document.querySelectorAll('th[data-vnd-sort]').forEach(function(th){
+    var newTh = th.cloneNode(true);
+    th.parentNode.replaceChild(newTh, th);
+    var field = newTh.dataset.vndSort;
+    newTh.classList.toggle('sort-asc',  field===vndSortField && vndSortDir==='asc');
+    newTh.classList.toggle('sort-desc', field===vndSortField && vndSortDir==='desc');
+    var icon = newTh.querySelector('.sort-icon');
+    if(icon) icon.textContent = field===vndSortField ? (vndSortDir==='asc'?'↑':'↓') : '↕';
+    newTh.addEventListener('click', function(){
+      if(_resizing) return;
+      if(vndSortField===field){ vndSortDir = vndSortDir==='asc'?'desc':'asc'; }
+      else { vndSortField=field; vndSortDir='asc'; }
+      renderVendorTable();
+    });
+  });
+
+  // Column resize — must run after sort headers replaces th elements
+  initColumnResize();
+
+  renderVendorKPIs();
+}
+
+function renderVendorPagination(total) {
+  var pages = Math.ceil(total/VND_PER_PAGE);
+  var info = document.getElementById('vnd-pag-info');
+  var btns = document.getElementById('vnd-pag-btns');
+  if(info) info.textContent = pages>1?'Page '+vndPage+' of '+pages:'';
+  if(!btns) return;
+  if(pages<=1){btns.innerHTML='';return;}
+  var h='<button class="pag-btn" onclick="vndGoPage('+(vndPage-1)+')" '+(vndPage===1?'disabled':'')+'>&#8249; prev</button>';
+  for(var p=1;p<=pages;p++){
+    if(p===1||p===pages||Math.abs(p-vndPage)<=1) h+='<button class="pag-btn '+(p===vndPage?'active':'')+'" onclick="vndGoPage('+p+')">'+p+'</button>';
+    else if(Math.abs(p-vndPage)===2) h+='<span class="pag-ellipsis">…</span>';
+  }
+  h+='<button class="pag-btn" onclick="vndGoPage('+(vndPage+1)+')" '+(vndPage===pages?'disabled':'')+'>next &#8250;</button>';
+  btns.innerHTML=h;
+}
+function vndGoPage(p){vndPage=p;renderVendorTable();}
+
+// ── Vendor Modal ──────────────────────────────────────────────────
+function showVendorModal() {
+  vndEditId = null;
+  document.getElementById('vendor-modal-title').textContent = 'Add Vendor Item';
+  ['vf-vendor','vf-item','vf-desc','vf-rate','vf-price'].forEach(function(id){
+    var el = document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('vendor-modal').style.display = 'flex';
+  setTimeout(function(){ var el=document.getElementById('vf-vendor'); if(el) el.focus(); }, 50);
+}
+
+function openVendorModal(id) {
+  var rec = vndRecords.find(function(r){ return r.id===id; });
+  if(!rec) return;
+  vndEditId = id;
+  var f = rec.fields;
+  document.getElementById('vendor-modal-title').textContent = 'Edit Vendor Item';
+  document.getElementById('vf-vendor').value  = f['Vendor']||'';
+  document.getElementById('vf-item').value    = f['Item']||'';
+  document.getElementById('vf-ptype').value   = f['Product Type']||'';
+  document.getElementById('vf-pmake').value   = f['Product Make']||'';
+  document.getElementById('vf-desc').value    = f['Description']||'';
+  document.getElementById('vf-price').value   = f['Price']||'';
+  document.getElementById('vendor-modal').style.display = 'flex';
+}
+
+function closeVendorModal() {
+  document.getElementById('vendor-modal').style.display = 'none';
+  vndEditId = null;
+}
+
+async function saveVendorItem() {
+  var vendor = document.getElementById('vf-vendor').value.trim();
+  var item   = document.getElementById('vf-item').value.trim();
+  if(!vendor || !item) {
+    if(!vendor) document.getElementById('vf-vendor').focus();
+    else document.getElementById('vf-item').focus();
+    return;
+  }
+  var fields = {};
+  if(vendor) fields['Vendor']      = vendor;
+  if(item)   fields['Item']        = item;
+  var ptype = document.getElementById('vf-ptype').value.trim();
+  var pmake = document.getElementById('vf-pmake').value.trim();
+  var desc  = document.getElementById('vf-desc').value.trim();
+  var price = document.getElementById('vf-price').value.trim();
+  if(ptype) fields['Product Type']  = ptype;
+  if(pmake) fields['Product Make']  = pmake;
+  if(desc)  fields['Description']   = desc;
+  if(price) fields['Price']    = price;
+
+  var savedEditId = vndEditId;
+  closeVendorModal();
+  setVndSave('saving');
+
+  try {
+    var url    = savedEditId ? WORKER_URL+'/vendor/'+savedEditId : WORKER_URL+'/vendor';
+    var method = savedEditId ? 'PATCH' : 'POST';
+    var res    = await fetch(url, { method:method, headers:getHeaders(), body:JSON.stringify({fields:fields}) });
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+
+    if(savedEditId) {
+      var idx = vndRecords.findIndex(function(r){return r.id===savedEditId;});
+      if(idx !== -1) vndRecords[idx] = data;
+    } else {
+      vndRecords.push(data);
+    }
+    setVndSave('saved');
+    renderVendorKPIs();
+    renderVendorTable();
+    toast((savedEditId?'Item updated':'Item added'),'ok');
+  } catch(err) {
+    setVndSave('err');
+    document.getElementById('vnd-err-banner').innerHTML = '<b>Save failed:</b> '+err.message;
+    document.getElementById('vnd-err-banner').style.display = 'block';
+    toast('Save failed: '+err.message,'err');
+  }
+}
+
+async function deleteVendorItem(id, vendor, item) {
+  if(!confirm('Delete "'+item+'" from '+vendor+'? This cannot be undone.')) return;
+  setVndSave('saving');
+  try {
+    var res = await fetch(WORKER_URL+'/vendor/'+id, { method:'DELETE', headers:getHeaders() });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    vndRecords = vndRecords.filter(function(r){return r.id!==id;});
+    setVndSave('saved');
+    renderVendorKPIs();
+    renderVendorTable();
+    toast('Item deleted','ok');
+  } catch(err) {
+    setVndSave('err');
+    toast('Delete failed: '+err.message,'err');
+  }
+}
+
+document.getElementById('vendor-modal').addEventListener('click', function(ev){ if(ev.target===this) closeVendorModal(); });
+document.getElementById('vendor-modal').addEventListener('keydown', function(ev){
+  if(ev.key==='Enter'){ ev.preventDefault(); saveVendorItem(); }
+});
+
+
+// ================================================================
+// DASHBOARD
+// ================================================================
+function showDashboard() {
+  sessionStorage.setItem('mbb_screen','dashboard');
+  ['home-screen','app','vendor-screen','loading'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  if(items.length === 0) {
+    // Data not loaded yet — load it, then show dashboard
+    document.getElementById('loading').style.display='flex';
+    loadDataForDashboard();
+  } else {
+    document.getElementById('dashboard-screen').style.display='block';
+    renderDashboard();
+  }
+}
+
+async function loadDataForDashboard() {
+  try {
+    var records = [], offset = null, page = 0;
+    do {
+      page++; if(page>20) break;
+      setProgress(Math.min(10+page*30,85),'Loading data…');
+      var url = WORKER_URL+'?pageSize=100'+(offset?'&offset='+encodeURIComponent(offset):'');
+      var ctrl = new AbortController();
+      var timer = setTimeout(function(){ctrl.abort();},15000);
+      var res;
+      try { res = await fetch(url,{headers:getHeaders(),signal:ctrl.signal}); } finally { clearTimeout(timer); }
+      if(!res.ok){ var er=await res.json().catch(function(){return{};}); throw new Error((er.error&&er.error.message)||'HTTP '+res.status); }
+      var data = await res.json();
+      records = records.concat(data.records||[]);
+      offset = data.offset||null;
+    } while(offset);
+    allRecords = records;
+    parseItems();
+    setProgress(100,'Done!');
+    await new Promise(function(r){setTimeout(r,150);});
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dashboard-screen').style.display='block';
+    renderDashboard();
+  } catch(err) {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dashboard-screen').style.display='block';
+    document.getElementById('dash-kpis').innerHTML='<div style="color:var(--red);font-size:13px">Failed to load data: '+err.message+'</div>';
+  }
+}
+
+function renderDashboard() {
+  var all     = items;
+  var won      = all.filter(function(r){return r.status==='WON';});
+  var lost     = all.filter(function(r){return r.status==='LOST';});
+  var pipeline = all.filter(function(r){return r.status==='PIPELINE';});
+  var cancelled= all.filter(function(r){return r.status==='CANCELLED';});
+  var closed   = all.filter(function(r){return r.status==='CLOSED';});
+  var active   = all.filter(function(r){return r.active==='Yes';});
+  var decided  = won.length + lost.length;
+  var winRate  = decided > 0 ? Math.round((won.length/decided)*100) : 0;
+
+  // Total RTU across pipeline + won
+  var activeRtu = pipeline.concat(won).reduce(function(s,r){return s+(parseInt(r.rtu)||0);},0);
+
+  // Overdue + upcoming deadlines
+  var withDeadline = all.filter(function(r){
+    return r.deadline && r.status!=='LOST'&&r.status!=='CANCELLED'&&r.status!=='CLOSED';
+  });
+  var overdue  = withDeadline.filter(function(r){return businessDaysUntil(r.deadline)===-1;});
+  var upcoming = withDeadline.filter(function(r){var bd=businessDaysUntil(r.deadline);return bd!==null&&bd>=0&&bd<=5;});
+
+  // ── KPI cards ─────────────────────────────────────────────────
+  document.getElementById('dash-kpis').innerHTML = [
+    {label:'Total Opportunities', val:all.length,         sub:'all time',        cls:''},
+    {label:'Active (Working On)', val:active.length,      sub:'in progress',     cls:'blue'},
+    {label:'Pipeline',            val:pipeline.length,    sub:'submitted',       cls:''},
+    {label:'Won',                 val:won.length,         sub:'opportunities',   cls:'green'},
+    {label:'Win Rate',            val:winRate+'%',        sub:decided+' decided',cls:'green'},
+    {label:'Overdue Deadlines',   val:overdue.length,     sub:'need attention',  cls:overdue.length>0?'red':''},
+  ].map(function(k){
+    return '<div class="dash-kpi '+k.cls+'">'+
+      '<div class="dash-kpi-lbl">'+k.label+'</div>'+
+      '<div class="dash-kpi-val">'+k.val+'</div>'+
+      '<div class="dash-kpi-sub">'+k.sub+'</div>'+
+    '</div>';
+  }).join('');
+
+  // ── Status bar chart ──────────────────────────────────────────
+  var statusData = [
+    {label:'Pipeline',   count:pipeline.length,  color:'var(--blue)'},
+    {label:'Won',        count:won.length,        color:'var(--green)'},
+    {label:'Lost',       count:lost.length,       color:'var(--red)'},
+    {label:'Cancelled',  count:cancelled.length,  color:'var(--txt3)'},
+    {label:'Closed',     count:closed.length,     color:'var(--purple)'},
+  ];
+  var maxStatus = Math.max.apply(null, statusData.map(function(d){return d.count;})) || 1;
+  document.getElementById('dash-bar-chart').innerHTML = statusData.map(function(d){
+    var pct = Math.round((d.count/maxStatus)*100);
+    return '<div class="bar-row">'+
+      '<div class="bar-label">'+d.label+'</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+d.color+'"></div></div>'+
+      '<div class="bar-val">'+d.count+'</div>'+
+    '</div>';
+  }).join('');
+
+  // ── Win rate display ──────────────────────────────────────────
+  document.getElementById('dash-win-rate').innerHTML =
+    '<div class="rate-ring">'+
+      '<div class="rate-ring-val">'+winRate+'%</div>'+
+      '<div class="rate-ring-lbl">Win Rate</div>'+
+      '<div style="margin-top:16px;font-size:12px;color:var(--txt3);text-align:center;line-height:1.8">'+
+        '<span style="color:var(--green);font-weight:600">'+won.length+'</span> won &nbsp;&middot;&nbsp; '+
+        '<span style="color:var(--red);font-weight:600">'+lost.length+'</span> lost<br>'+
+        '<span style="color:var(--txt3)">'+decided+' decided total</span>'+
+      '</div>'+
+    '</div>';
+
+  // ── RTU by status ─────────────────────────────────────────────
+  var rtuData = [
+    {label:'Pipeline', count:pipeline.reduce(function(s,r){return s+(parseInt(r.rtu)||0);},0), color:'var(--blue)'},
+    {label:'Won',      count:won.reduce(function(s,r){return s+(parseInt(r.rtu)||0);},0),      color:'var(--green)'},
+    {label:'Lost',     count:lost.reduce(function(s,r){return s+(parseInt(r.rtu)||0);},0),     color:'var(--red)'},
+  ];
+  var maxRtu = Math.max.apply(null, rtuData.map(function(d){return d.count;})) || 1;
+  document.getElementById('dash-rtu-chart').innerHTML = rtuData.map(function(d){
+    var pct = Math.round((d.count/maxRtu)*100);
+    return '<div class="bar-row">'+
+      '<div class="bar-label">'+d.label+'</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:'+d.color+'"></div></div>'+
+      '<div class="bar-val">'+d.count+'</div>'+
+    '</div>';
+  }).join('') + '<div style="font-size:10px;color:var(--txt3);font-family:monospace;margin-top:12px">Total RTUs: '+
+    rtuData.reduce(function(s,d){return s+d.count;},0)+'</div>';
+
+  // ── Deadlines ─────────────────────────────────────────────────
+  var deadlineItems = overdue.concat(upcoming).sort(function(a,b){
+    var da=parseDateStr(a.deadline),db=parseDateStr(b.deadline);
+    return da&&db?da-db:0;
+  }).slice(0,8);
+  document.getElementById('dash-deadline-count').textContent = deadlineItems.length + ' items';
+  document.getElementById('dash-deadlines').innerHTML = deadlineItems.length === 0
+    ? '<div style="font-size:13px;color:var(--txt3);padding:16px 0;text-align:center">No upcoming deadlines</div>'
+    : deadlineItems.map(function(r){
+        var bd  = businessDaysUntil(r.deadline);
+        var lbl = fmtDeadline(r.deadline);
+        var isOver = bd === -1;
+        var pill = isOver
+          ? '<span class="deadline-pill overdue">Overdue</span>'
+          : '<span class="deadline-pill soon">'+bd+' day'+(bd===1?'':'s')+'</span>';
+        return '<div class="deadline-item '+(isOver?'overdue':'soon')+'">'+
+          '<div class="deadline-proj" title="'+e(r.project)+'">'+e(r.project)+'</div>'+
+          '<div class="deadline-date">'+lbl+'</div>'+
+          pill+
+        '</div>';
+      }).join('');
+
+  // ── Top clients ───────────────────────────────────────────────
+  var clientMap = {};
+  all.filter(function(r){return r.client&&r.client!=='—';}).forEach(function(r){
+    clientMap[r.client] = (clientMap[r.client]||0)+1;
+  });
+  var topClients = Object.keys(clientMap)
+    .map(function(k){return {label:k,count:clientMap[k]};})
+    .sort(function(a,b){return b.count-a.count;})
+    .slice(0,6);
+  var maxClient = topClients.length > 0 ? topClients[0].count : 1;
+  document.getElementById('dash-client-chart').innerHTML = topClients.length === 0
+    ? '<div style="font-size:13px;color:var(--txt3);padding:16px 0">No client data</div>'
+    : topClients.map(function(d){
+        var pct = Math.round((d.count/maxClient)*100);
+        return '<div class="bar-row">'+
+          '<div class="bar-label" style="font-size:10px">'+d.label+'</div>'+
+          '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--amber)"></div></div>'+
+          '<div class="bar-val">'+d.count+'</div>'+
+        '</div>';
+      }).join('');
+
+  // ── Recent activity ───────────────────────────────────────────
+  var recent = all.filter(function(r){return r.last_update;})
+    .sort(function(a,b){return (parseInt(b.sr_no)||0)-(parseInt(a.sr_no)||0);})
+    .slice(0,10);
+  var badgeStyle = {
+    'WON':           'background:#d1fae5;color:#065f46',
+    'LOST':          'background:#fee2e2;color:#7f1d1d',
+    'CANCELLED':     'background:#f3f4f6;color:#374151',
+    'PIPELINE':      'background:#dbeafe;color:#1e3a5f',
+    'CLOSED':        'background:#ede9fe;color:#4c1d95',
+  };
+  document.getElementById('dash-recent').innerHTML = recent.length === 0
+    ? '<tr><td colspan="6" style="padding:20px 0;color:var(--txt3);text-align:center">No activity data</td></tr>'
+    : recent.map(function(r){
+        var bs = badgeStyle[r.status] || badgeStyle['PIPELINE'];
+        var dl = r.deadline ? fmtDeadline(r.deadline) : '—';
+        return '<tr>'+
+          '<td style="font-family:monospace;font-size:11px;color:var(--txt3)">'+e(r.sr_no)+'</td>'+
+          '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.project)+'">'+e(r.project)+'</td>'+
+          '<td>'+e(r.client||'—')+'</td>'+
+          '<td><span style="'+bs+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;font-family:monospace">'+badgeLbl(r.status)+'</span></td>'+
+          '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(r.last_update)+'">'+e(r.last_update)+'</td>'+
+          '<td style="font-family:monospace;font-size:11px">'+dl+'</td>'+
+        '</tr>';
+      }).join('');
+}
+
+// ── Export Report ─────────────────────────────────────────────────
+function exportReport(){
+  var now=new Date();
+  var pad=function(n){return String(n).padStart(2,'0');};
+  var dateStr=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear();
+  var timeStr=pad(now.getHours())+':'+pad(now.getMinutes());
+  var filterDesc='All Enquiries';
+  if(currentStatus==='ACTIVE_ONLY') filterDesc='Active Enquiries';
+  else if(currentStatus!=='ALL') filterDesc=currentStatus+' Enquiries';
+  var q=document.getElementById('search').value.trim();
+  if(q) filterDesc+=' matching "'+q+'"';
+  var fromV=document.getElementById('date-from').value;
+  var toV=document.getElementById('date-to').value;
+  if(fromV||toV) filterDesc+=' &middot; '+(fromV||'&hellip;')+' to '+(toV||'&hellip;');
+
+  var tick=function(v){
+    if(v==='Yes'||v==='✔') return '<span style="color:#065f46;font-weight:700">&#10004;</span>';
+    if(v==='No'||v==='✖')  return '<span style="color:#9b1c1c">&#10006;</span>';
+    return '<span style="color:#9ca3af">&ndash;</span>';
+  };
+  var statusColors={WON:['#d1fae5','#065f46'],LOST:['#fee2e2','#7f1d1d'],CANCELLED:['#f3f4f6','#374151'],'Under Process':['#dbeafe','#1e3a5f'],CLOSED:['#ede9fe','#4c1d95']};
+  var counts={WON:0,LOST:0,'Under Process':0,CANCELLED:0,CLOSED:0};
+  filtered.forEach(function(r){if(counts[r.status]!==undefined)counts[r.status]++;});
+
+  var rows=filtered.map(function(r,i){
+    var dlCell='';
+    if(r.deadline){var bd=businessDaysUntil(r.deadline);var lbl=fmtDeadline(r.deadline);if(bd===-1)dlCell='<span style="background:#fde8e8;color:#9b1c1c;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600">&#9888; '+lbl+' (overdue)</span>';else if(bd!==null)dlCell='<span style="background:#fef3cd;color:#92400e;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600">&#9200; '+lbl+'</span>';}
+    var sc=statusColors[r.status]||['#dbeafe','#1e3a5f'];
+    var bg=i%2===0?'#fff':'#f9fafb';
+    return '<tr style="background:'+bg+'">'+
+      '<td style="padding:7px 10px;font-family:monospace;font-size:10px;color:#6b7280;border-bottom:1px solid #e5e7eb;white-space:nowrap">'+e(r.sr_no)+'</td>'+
+      '<td style="padding:7px 10px;font-size:10px;color:#6b7280;border-bottom:1px solid #e5e7eb;white-space:nowrap">'+e(r.date)+'</td>'+
+      '<td style="padding:7px 10px;font-size:11px;color:#111827;border-bottom:1px solid #e5e7eb;line-height:1.4;max-width:300px">'+e(r.project)+'</td>'+
+      '<td style="padding:7px 10px;font-size:10px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">'+e(r.main_cont||'—')+'</td>'+
+      '<td style="padding:7px 10px;font-size:10px;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap">'+e(r.client||'—')+'</td>'+
+      '<td style="padding:7px 10px;font-size:10px;color:#374151;border-bottom:1px solid #e5e7eb;text-align:center;white-space:nowrap">'+e(r.rtu)+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap"><span style="background:'+sc[0]+';color:'+sc[1]+';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">'+badgeLbl(r.status)+'</span></td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:center">'+tick(r.active)+'</td>'+
+      '<td style="padding:7px 10px;border-bottom:1px solid #e5e7eb">'+dlCell+'</td>'+
+      '<td style="padding:7px 10px;font-size:10px;color:#374151;border-bottom:1px solid #e5e7eb;max-width:180px">'+e(r.last_update)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var html='<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'+
+    '<title>mBELLAb Enquiry Log &mdash; '+filterDesc+'</title>'+
+    '<style>@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400&display=swap");'+
+    '*{box-sizing:border-box;margin:0;padding:0}body{font-family:"IBM Plex Sans",sans-serif;background:#fff;color:#111827;padding:32px 40px}'+
+    '@media print{body{padding:16px 20px}.no-print{display:none}@page{margin:1cm;size:A4 landscape}}'+
+    '.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #E36209}'+
+    '.bname{font-size:18px;font-weight:600;color:#111827}.bref{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#6b7280;letter-spacing:.4px}'+
+    '.rmeta{text-align:right}.rtitle{font-size:14px;font-weight:600;color:#111827;margin-bottom:3px}.rdate{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#6b7280}'+
+    '.summary{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}'+
+    '.sc{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:10px 14px;min-width:80px;text-align:center}'+
+    '.sc .val{font-size:22px;font-weight:300;color:#111827;letter-spacing:-.5px;line-height:1}.sc .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#9ca3af;margin-top:3px;font-family:"IBM Plex Mono",monospace}'+
+    '.sc.won{border-color:#6ee7b7;background:#f0fdf4}.sc.won .val{color:#065f46}'+
+    '.sc.lost{border-color:#fca5a5;background:#fff5f5}.sc.lost .val{color:#9b1c1c}'+
+    '.sc.proc{border-color:#93c5fd;background:#eff6ff}.sc.proc .val{color:#1e40af}'+
+    'table{width:100%;border-collapse:collapse}'+
+    'thead th{background:#1c2128;color:#e5e7eb;font-weight:600;font-size:10px;padding:9px 10px;text-align:left;white-space:nowrap;letter-spacing:.3px}'+
+    'thead th.ctr{text-align:center}'+
+    'tfoot td{background:#f9fafb;font-size:10px;color:#6b7280;padding:8px 10px;border-top:2px solid #e5e7eb;font-style:italic}'+
+    '.pbtn{background:#E36209;color:#fff;border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:"IBM Plex Sans",sans-serif;margin-right:10px}'+
+    '</style></head><body>'+
+    '<div class="hdr"><div><div class="bname">mBELLAb Power Solutions</div><div class="bref">Customer Enquiry Log &middot; mBb-FM-13</div></div>'+
+    '<div class="rmeta"><div class="rtitle">'+filterDesc+'</div><div class="rdate">Generated '+dateStr+' at '+timeStr+' &middot; '+filtered.length+' record'+(filtered.length===1?'':'s')+'</div></div></div>'+
+    '<div class="summary">'+
+      '<div class="sc"><div class="val">'+filtered.length+'</div><div class="lbl">Total</div></div>'+
+      '<div class="sc won"><div class="val">'+counts.WON+'</div><div class="lbl">Won</div></div>'+
+      '<div class="sc proc"><div class="val">'+counts['Under Process']+'</div><div class="lbl">In Progress</div></div>'+
+      '<div class="sc lost"><div class="val">'+counts.LOST+'</div><div class="lbl">Lost</div></div>'+
+      '<div class="sc"><div class="val">'+counts.CANCELLED+'</div><div class="lbl">Cancelled</div></div>'+
+      '<div class="sc"><div class="val">'+counts.CLOSED+'</div><div class="lbl">Closed</div></div>'+
+    '</div>'+
+    '<div class="no-print" style="margin-bottom:16px"><button class="pbtn" onclick="window.print()">&#128438; Print / Save as PDF</button>'+
+    '<span style="font-size:12px;color:#6b7280">Choose &ldquo;Save as PDF&rdquo; as the printer destination.</span></div>'+
+    '<table><thead><tr><th>SR No.</th><th>Date</th><th>Project Name</th><th>Main Contractor</th><th>Client</th><th class="ctr">RTU</th><th>Status</th><th class="ctr">Active</th><th>Deadline</th><th>Last Update</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody>'+
+    '<tfoot><tr><td colspan="10">mBELLAb Power Solutions &middot; mBb-FM-13 &middot; Exported '+dateStr+' '+timeStr+'</td></tr></tfoot>'+
+    '</table></body></html>';
+
+  var w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+</script>
+</body>
+</html>
