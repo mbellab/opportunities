@@ -227,6 +227,16 @@ tr:hover .icon-btn,tr.editing .icon-btn{opacity:1}
 
 /* ── Vendor screen ── */
 .vnd-kpi-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:20px}
+
+/* Contractors screen */
+#contractors-screen{display:none}
+.c-company{min-width:160px;font-weight:500}
+.c-contact{width:130px}
+.c-phone{width:130px;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.c-email{width:180px;font-size:11.5px}
+.c-comments{min-width:180px;white-space:normal!important;line-height:1.4;padding-top:5px!important;padding-bottom:5px!important}
+.c-website{width:140px;font-size:11.5px}
+
 table.vnd-table{table-layout:fixed}
 table.vnd-table td{padding:5px 10px}
 .c-vendor{width:90px;font-weight:500}
@@ -336,6 +346,12 @@ table.vnd-table td{padding:5px 10px}
         <div class="home-card-desc">Vendor catalogue, equipment sourcing, rates and pricing reference.</div>
         <div class="home-card-arrow">Open &rarr;</div>
       </div>
+      <div class="home-card" onclick="showContractors()">
+        <div class="home-card-icon">&#128101;</div>
+        <div class="home-card-title">Contractors</div>
+        <div class="home-card-desc">Contractor directory with company and contact details for everyone we work with.</div>
+        <div class="home-card-arrow">Open &rarr;</div>
+      </div>
     </div>
   </div>
 </div>
@@ -349,6 +365,7 @@ table.vnd-table td{padding:5px 10px}
       <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
       <button class="btn-ghost" onclick="showDashboard()">&#9782; Dashboard</button>
       <button class="btn-ghost" onclick="showVendors()">&#128230; Vendor Pricing</button>
+      <button class="btn-ghost" onclick="showContractors()">&#128101; Contractors</button>
       <button class="btn-ghost" onclick="showFieldNames()">Debug fields</button>
       <button class="btn-ghost" onclick="exportReport()">&#8681; Export</button>
       <button class="btn-pri" onclick="showModal()">+ New Opportunity</button>
@@ -409,6 +426,7 @@ table.vnd-table td{padding:5px 10px}
       <div class="save-ind saved"><div class="sdot"></div><span>live</span></div>
       <button class="btn-ghost" onclick="showOpportunities()">&#128203; Opportunities</button>
       <button class="btn-ghost" onclick="showVendors()">&#128230; Vendor Pricing</button>
+      <button class="btn-ghost" onclick="showContractors()">&#128101; Contractors</button>
       <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
     </div>
   </div>
@@ -441,6 +459,7 @@ table.vnd-table td{padding:5px 10px}
       <div class="save-ind" id="vnd-save-ind"><div class="sdot"></div><span id="vnd-save-txt">connected</span></div>
       <button class="btn-ghost" onclick="showOpportunities()">&#128203; mBELLAb Opportunities</button>
       <button class="btn-ghost" onclick="showDashboard()">&#9782; Dashboard</button>
+      <button class="btn-ghost" onclick="showContractors()">&#128101; Contractors</button>
       <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
       <button class="btn-pri" onclick="showVendorModal()">+ Add Item</button>
     </div>
@@ -565,6 +584,69 @@ table.vnd-table td{padding:5px 10px}
     <div class="confirm-actions">
       <button class="btn-cancel" onclick="closeConfirm()">Cancel</button>
       <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTRACTORS SCREEN -->
+<div id="contractors-screen" style="display:none">
+  <div class="top-bar">
+    <div class="brand-line"><div class="bdot"></div><div><div class="bname">mBELLAb Power Solutions</div><div class="bsub">Contractors</div></div></div>
+    <div class="hdr-r">
+      <div class="save-ind" id="ctr-save-ind"><div class="sdot"></div><span id="ctr-save-txt">connected</span></div>
+      <button class="btn-ghost" onclick="showOpportunities()">&#128203; Opportunities</button>
+      <button class="btn-ghost" onclick="showDashboard()">&#9782; Dashboard</button>
+      <button class="btn-ghost" onclick="showVendors()">&#128230; Vendor Pricing</button>
+      <button class="btn-ghost" onclick="showHome()">&#8962; Home</button>
+      <button class="btn-pri" onclick="showContractorModal()">+ Add Contractor</button>
+    </div>
+  </div>
+  <div class="body-wrap">
+    <div class="err-banner" id="ctr-err-banner"></div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:20px" id="ctr-kpis"></div>
+
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#8C959F" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="#8C959F" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input class="search" id="ctr-search" type="text" placeholder="Search company, contact, email&hellip;" oninput="renderContractorsTable()">
+      </div>
+      <div class="result-meta" id="ctr-meta"></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table style="min-width:800px">
+        <thead><tr>
+          <th class="c-company sortable" data-ctr-sort="Company Name">Company Name<span class="sort-icon">&#8597;</span></th>
+          <th class="c-contact sortable" data-ctr-sort="Contact Name">Contact Name<span class="sort-icon">&#8597;</span></th>
+          <th class="c-phone" data-ctr-sort="Contact Number">Contact Number</th>
+          <th class="c-email sortable" data-ctr-sort="Contact Email">Contact Email<span class="sort-icon">&#8597;</span></th>
+          <th class="c-website sortable" data-ctr-sort="Website">Website<span class="sort-icon">&#8597;</span></th>
+          <th class="c-comments">Comments</th>
+          <th class="c-actions"></th>
+        </tr></thead>
+        <tbody id="ctr-tbody"></tbody>
+      </table>
+    </div>
+    <div class="pag"><div class="pag-info" id="ctr-pag-info"></div><div class="pag-btns" id="ctr-pag-btns"></div></div>
+  </div>
+</div>
+
+<!-- CONTRACTOR MODAL -->
+<div class="modal-bg" id="contractor-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="ctr-modal-title">Add Contractor</div>
+    <div class="form-grid">
+      <div class="field full"><label>Company Name *</label><input id="cf-company" placeholder="e.g. NPC, IDS, Lucy Electric"></div>
+      <div class="field"><label>Contact Name</label><input id="cf-contact" placeholder="Full name"></div>
+      <div class="field"><label>Contact Number</label><input id="cf-phone" placeholder="+971 XX XXX XXXX" type="tel"></div>
+      <div class="field full"><label>Contact Email</label><input id="cf-email" placeholder="email@company.com" type="email"></div>
+      <div class="field full"><label>Website</label><input id="cf-website" placeholder="https://www.company.com" type="url"></div>
+      <div class="field full"><label>Comments</label><input id="cf-comments" placeholder="Notes, relationship context, specialisms&hellip;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeContractorModal()">Cancel</button>
+      <button class="btn-pri" onclick="saveContractor()">Save Contractor</button>
     </div>
   </div>
 </div>
@@ -723,6 +805,7 @@ if(appPassword){
   if(lastScreen === 'opportunities') showOpportunities();
   else if(lastScreen === 'vendors') showVendors();
   else if(lastScreen === 'dashboard') { showDashboard(); }
+  else if(lastScreen === 'contractors') { showContractors(); }
   else showHome();
 } else {
   document.getElementById('login-screen').style.display='flex';
@@ -1242,7 +1325,7 @@ var vndEditId = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['app','vendor-screen','dashboard-screen','loading'].forEach(function(id){
+  ['app','vendor-screen','dashboard-screen','contractors-screen','loading'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('home-screen').style.display = 'block';
@@ -1728,6 +1811,263 @@ function renderDashboard() {
         '</tr>';
       }).join('');
 }
+
+// ================================================================
+// CONTRACTORS
+// ================================================================
+var ctrRecords  = [];
+var ctrSortField = 'Company Name';
+var ctrSortDir   = 'asc';
+var ctrPage      = 1;
+var CTR_PER_PAGE = 20;
+var ctrEditId    = null;
+
+function showContractors() {
+  sessionStorage.setItem('mbb_screen','contractors');
+  ['home-screen','app','vendor-screen','dashboard-screen','loading'].forEach(function(id){
+    document.getElementById(id).style.display='none';
+  });
+  document.getElementById('contractors-screen').style.display='block';
+  loadContractors();
+}
+
+function setCtrSave(state) {
+  var ind=document.getElementById('ctr-save-ind');
+  var txt=document.getElementById('ctr-save-txt');
+  if(!ind||!txt) return;
+  ind.className='save-ind'+(state==='ready'?' saved':state==='loading'?' saving':state==='err'?' err':'');
+  var msgs={loading:'loading…',ready:'connected ✔',err:'error',saving:'saving…',saved:'saved ✔'};
+  txt.textContent=msgs[state]||state;
+}
+
+async function loadContractors() {
+  setCtrSave('loading');
+  var tbody=document.getElementById('ctr-tbody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--txt3);font-size:13px">Loading…</td></tr>';
+  var errBanner=document.getElementById('ctr-err-banner');
+  try {
+    var records=[],offset=null;
+    do {
+      var url=WORKER_URL+'/contractors?pageSize=100'+(offset?'&offset='+encodeURIComponent(offset):'');
+      var res=await fetch(url,{headers:getHeaders()});
+      if(!res.ok){var er=await res.json().catch(function(){return{};});throw new Error((er.error&&er.error.message)||'HTTP '+res.status);}
+      var data=await res.json();
+      records=records.concat(data.records||[]);
+      offset=data.offset||null;
+    } while(offset);
+    ctrRecords=records;
+    setCtrSave('ready');
+    renderContractorKPIs();
+    renderContractorsTable();
+  } catch(err) {
+    setCtrSave('err');
+    if(errBanner){errBanner.innerHTML='<b>Failed to load contractors:</b> '+err.message;errBanner.style.display='block';}
+    toast('Failed to load contractors: '+err.message,'err');
+  }
+}
+
+function renderContractorKPIs() {
+  var el=document.getElementById('ctr-kpis');
+  if(!el) return;
+  var withEmail=ctrRecords.filter(function(r){return r.fields['Contact Email'];}).length;
+  el.innerHTML=[
+    {label:'Total Contractors', val:ctrRecords.length, cls:''},
+    {label:'With Email',        val:withEmail,          cls:'process'},
+    {label:'Showing',           val:Math.min(ctrRecords.length, CTR_PER_PAGE), cls:'won'},
+  ].map(function(k){
+    return '<div class="kpi '+k.cls+'"><div class="kpi-lbl">'+k.label+'</div><div class="kpi-val">'+k.val+'</div></div>';
+  }).join('');
+}
+
+function renderContractorsTable() {
+  var q=(document.getElementById('ctr-search')||{value:''}).value.toLowerCase();
+  var rows=ctrRecords.filter(function(r){
+    var f=r.fields;
+    return !q||['Company Name','Contact Name','Contact Email','Comments'].some(function(k){
+      return (f[k]||'').toLowerCase().indexOf(q)!==-1;
+    });
+  });
+
+  // Sort
+  rows.sort(function(a,b){
+    var av=String(a.fields[ctrSortField]||''),bv=String(b.fields[ctrSortField]||'');
+    return ctrSortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);
+  });
+
+  var total=rows.length;
+  var start=(ctrPage-1)*CTR_PER_PAGE;
+  var page=rows.slice(start,start+CTR_PER_PAGE);
+
+  var meta=document.getElementById('ctr-meta');
+  if(meta) meta.textContent=total===0?'No results':(start+1)+'–'+Math.min(start+CTR_PER_PAGE,total)+' of '+total;
+
+  var tbody=document.getElementById('ctr-tbody');
+  if(!tbody) return;
+
+  tbody.innerHTML=page.map(function(r){
+    var f=r.fields;
+    var email=f['Contact Email']||'';
+    var emailCell=email?'<a href="mailto:'+e(email)+'" style="color:var(--blue);text-decoration:none">'+e(email)+'</a>':'<span style="color:var(--txt3)">—</span>';
+    var phone=f['Contact Number']||'';
+    var phoneCell=phone?'<a href="tel:'+e(phone)+'" style="color:var(--txt);text-decoration:none">'+e(phone)+'</a>':'<span style="color:var(--txt3)">—</span>';
+    return '<tr data-ctr-id="'+r.id+'" style="cursor:pointer">'+
+      '<td class="c-company">'+e(f['Company Name']||'')+'</td>'+
+      '<td class="c-contact">'+e(f['Contact Name']||'—')+'</td>'+
+      '<td class="c-phone">'+phoneCell+'</td>'+
+      '<td class="c-email">'+emailCell+'</td>'+
+      '<td class="c-website">'+ (f['Website'] ? '<a href="'+e(f['Website'])+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-size:11px">'+e(f['Website'].replace(/^https?:\/\//,''))+'</a>' : '<span style="color:var(--txt3)">—</span>') +'</td>'+
+      '<td class="c-comments" title="'+e(f['Comments']||'')+'">'+e(f['Comments']||'')+'</td>'+
+      '<td class="c-actions"><div class="row-actions">'+
+        '<button class="icon-btn edit" data-ctr-edit="'+r.id+'" title="Edit">'+IC_PENCIL+'</button>'+
+        '<button class="icon-btn del" data-ctr-del="'+r.id+'" data-ctr-name="'+e(f['Company Name']||'')+'" title="Delete">'+IC_TRASH+'</button>'+
+      '</div></td>'+
+    '</tr>';
+  }).join('')||'<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--txt3);font-size:13px">No contractors found</td></tr>';
+
+  // Pagination
+  renderCtrPagination(total);
+
+  // Sort headers
+  document.querySelectorAll('th[data-ctr-sort]').forEach(function(th){
+    var newTh=th.cloneNode(true); th.parentNode.replaceChild(newTh,th);
+    var field=newTh.dataset.ctrSort;
+    newTh.classList.toggle('sort-asc',  field===ctrSortField&&ctrSortDir==='asc');
+    newTh.classList.toggle('sort-desc', field===ctrSortField&&ctrSortDir==='desc');
+    var icon=newTh.querySelector('.sort-icon');
+    if(icon) icon.textContent=field===ctrSortField?(ctrSortDir==='asc'?'↑':'↓'):'↕';
+    newTh.addEventListener('click',function(){
+      if(_resizing) return;
+      if(ctrSortField===field){ctrSortDir=ctrSortDir==='asc'?'desc':'asc';}
+      else{ctrSortField=field;ctrSortDir='asc';}
+      renderContractorsTable();
+    });
+  });
+
+  // Row interactions
+  tbody.addEventListener('dblclick',function(ev){
+    var row=ev.target.closest('tr[data-ctr-id]');
+    if(row) openContractorModal(row.dataset.ctrId);
+  });
+  tbody.addEventListener('click',function(ev){
+    var eb=ev.target.closest('[data-ctr-edit]');
+    if(eb){openContractorModal(eb.dataset.ctrEdit);return;}
+    var db=ev.target.closest('[data-ctr-del]');
+    if(db){deleteContractor(db.dataset.ctrDel,db.dataset.ctrName);return;}
+  });
+
+  renderContractorKPIs();
+}
+
+function renderCtrPagination(total) {
+  var pages=Math.ceil(total/CTR_PER_PAGE);
+  var info=document.getElementById('ctr-pag-info');
+  var btns=document.getElementById('ctr-pag-btns');
+  if(info) info.textContent=pages>1?'Page '+ctrPage+' of '+pages:'';
+  if(!btns) return;
+  if(pages<=1){btns.innerHTML='';return;}
+  var h='<button class="pag-btn" onclick="ctrGoPage('+(ctrPage-1)+')" '+(ctrPage===1?'disabled':'')+'>&#8249; prev</button>';
+  for(var p=1;p<=pages;p++){
+    if(p===1||p===pages||Math.abs(p-ctrPage)<=1) h+='<button class="pag-btn '+(p===ctrPage?'active':'')+'" onclick="ctrGoPage('+p+')">'+p+'</button>';
+    else if(Math.abs(p-ctrPage)===2) h+='<span class="pag-ellipsis">…</span>';
+  }
+  h+='<button class="pag-btn" onclick="ctrGoPage('+(ctrPage+1)+')" '+(ctrPage===pages?'disabled':'')+'>next &#8250;</button>';
+  btns.innerHTML=h;
+}
+function ctrGoPage(p){ctrPage=p;renderContractorsTable();}
+
+// ── Contractor Modal ──────────────────────────────────────────────
+function showContractorModal() {
+  ctrEditId=null;
+  document.getElementById('ctr-modal-title').textContent='Add Contractor';
+  ['cf-company','cf-contact','cf-phone','cf-email','cf-website','cf-comments'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('contractor-modal').style.display='flex';
+  setTimeout(function(){var el=document.getElementById('cf-company');if(el)el.focus();},50);
+}
+
+function openContractorModal(id) {
+  var rec=ctrRecords.find(function(r){return r.id===id;});
+  if(!rec) return;
+  ctrEditId=id;
+  var f=rec.fields;
+  document.getElementById('ctr-modal-title').textContent='Edit Contractor';
+  document.getElementById('cf-company').value  = f['Company Name']||'';
+  document.getElementById('cf-contact').value  = f['Contact Name']||'';
+  document.getElementById('cf-phone').value    = f['Contact Number']||'';
+  document.getElementById('cf-email').value    = f['Contact Email']||'';
+  document.getElementById('cf-website').value  = f['Website']||'';
+  document.getElementById('cf-comments').value = f['Comments']||'';
+  document.getElementById('contractor-modal').style.display='flex';
+  setTimeout(function(){var el=document.getElementById('cf-company');if(el)el.focus();},50);
+}
+
+function closeContractorModal() {
+  document.getElementById('contractor-modal').style.display='none';
+  ctrEditId=null;
+}
+
+async function saveContractor() {
+  var company=document.getElementById('cf-company').value.trim();
+  if(!company){document.getElementById('cf-company').focus();return;}
+  var savedId=ctrEditId;
+  closeContractorModal();
+  setCtrSave('saving');
+  var fields={};
+  fields['Company Name']  = company;
+  var contact=document.getElementById('cf-contact').value.trim();
+  var phone  =document.getElementById('cf-phone').value.trim();
+  var email  =document.getElementById('cf-email').value.trim();
+  var comments=document.getElementById('cf-comments').value.trim();
+  if(contact)  fields['Contact Name']   = contact;
+  if(phone)    fields['Contact Number'] = phone;
+  if(email)    fields['Contact Email']  = email;
+  var website =document.getElementById('cf-website').value.trim();
+  if(website)  fields['Website']        = website;
+  if(comments) fields['Comments']       = comments;
+  try {
+    var url    = savedId ? WORKER_URL+'/contractors/'+savedId : WORKER_URL+'/contractors';
+    var method = savedId ? 'PATCH' : 'POST';
+    var res    = await fetch(url,{method:method,headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    if(savedId){
+      var idx=ctrRecords.findIndex(function(r){return r.id===savedId;});
+      if(idx!==-1) ctrRecords[idx]=data;
+    } else {
+      ctrRecords.push(data);
+    }
+    setCtrSave('saved');
+    renderContractorKPIs();
+    renderContractorsTable();
+    toast((savedId?'Contractor updated':'Contractor added'),'ok');
+  } catch(err) {
+    setCtrSave('err');
+    var eb=document.getElementById('ctr-err-banner');
+    if(eb){eb.innerHTML='<b>Save failed:</b> '+err.message;eb.style.display='block';}
+    toast('Save failed: '+err.message,'err');
+  }
+}
+
+async function deleteContractor(id,name) {
+  if(!confirm('Delete "'+name+'"? This cannot be undone.')) return;
+  setCtrSave('saving');
+  try {
+    var res=await fetch(WORKER_URL+'/contractors/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    ctrRecords=ctrRecords.filter(function(r){return r.id!==id;});
+    setCtrSave('saved');
+    renderContractorKPIs();
+    renderContractorsTable();
+    toast('Contractor deleted','ok');
+  } catch(err) {
+    setCtrSave('err');
+    toast('Delete failed: '+err.message,'err');
+  }
+}
+
+document.getElementById('contractor-modal').addEventListener('click',function(ev){if(ev.target===this)closeContractorModal();});
+document.getElementById('contractor-modal').addEventListener('keydown',function(ev){if(ev.key==='Enter'){ev.preventDefault();saveContractor();}});
 
 // ── Export Report ─────────────────────────────────────────────────
 function exportReport(){
