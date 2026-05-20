@@ -74,19 +74,19 @@ html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:'IBM
 
 /* ── Home screen ── */
 #home-screen{display:none}
-.home-inner{padding:40px 48px;max-width:1200px;margin:0 auto}
+.home-inner{padding:28px 32px;max-width:1100px;margin:0 auto}
 .home-sub{font-size:12px;color:var(--txt3);font-family:'IBM Plex Mono',monospace;margin-bottom:36px;letter-spacing:.4px}
-.home-section{margin-bottom:32px}
-.home-section-hdr{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.home-section{margin-bottom:20px}
+.home-section-hdr{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .home-section-line{flex:1;height:1px;background:var(--bdr2)}
 .home-section-lbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--txt3);font-family:'IBM Plex Mono',monospace;white-space:nowrap}
 .home-cards{display:grid;gap:16px}
-.home-card{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:32px 28px;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s}
+.home-card{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:20px 20px;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s}
 .home-card:hover{border-color:var(--amber-bdr);box-shadow:0 4px 20px rgba(227,98,9,.10);transform:translateY(-2px)}
-.home-card-icon{font-size:28px;margin-bottom:16px}
-.home-card-title{font-size:17px;font-weight:600;color:var(--txt);margin-bottom:8px;letter-spacing:-.2px}
-.home-card-desc{font-size:13px;color:var(--txt3);line-height:1.6}
-.home-card-arrow{margin-top:20px;font-size:13px;color:var(--amber);font-weight:600}
+.home-card-icon{font-size:22px;margin-bottom:10px}
+.home-card-title{font-size:14px;font-weight:600;color:var(--txt);margin-bottom:6px;letter-spacing:-.2px}
+.home-card-desc{font-size:12px;color:var(--txt3);line-height:1.5}
+.home-card-arrow{margin-top:12px;font-size:12px;color:var(--amber);font-weight:600}
 
 /* ── Body wrap ── */
 #app{display:none}
@@ -624,8 +624,8 @@ table.vnd-table td{padding:5px 10px}
       <div class="field"><label>SR Number</label><input id="f-sr" readonly></div>
       <div class="field"><label>Enquiry Date</label><input id="f-date" placeholder="DD.MM.YYYY"></div>
       <div class="field full"><label>Project Name *</label><input id="f-proj" placeholder="Full project name or tender reference"></div>
-      <div class="field"><label>Contractor</label><input id="f-cont"></div>
-      <div class="field"><label>Main Contractor</label><input id="f-mc" placeholder="e.g. NPC, IDS, Lucy"></div>
+      <div class="field"><label>Contractor Project Code</label><input id="f-cont" placeholder="e.g. NPC-2024-001"></div>
+      <div class="field"><label>Main Contractor</label><select id="f-mc"><option value="">— Select Contractor —</option></select></div>
       <div class="field"><label>Client</label><input id="f-client" placeholder="e.g. ADDC, TAQA, NEDC"></div>
       <div class="field"><label>RTU / Substations</label><input id="f-rtu" placeholder="e.g. 5"></div>
       <div class="field"><label>Status</label>
@@ -653,6 +653,8 @@ table.vnd-table td{padding:5px 10px}
     <div class="modal-title">Edit Opportunity <span id="edit-sr-lbl"></span></div>
     <div class="modal-tabs">
       <div class="modal-tab active" onclick="switchTab('tab-details')">Details</div>
+      <div class="modal-tab" onclick="switchTab('tab-quotes')">Quotes <span id="quotes-count-badge" style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
+      <div class="modal-tab" onclick="switchTab('tab-bidders')">Bidders <span id="bidders-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" onclick="switchTab('tab-activity')">Activity <span id="activity-count-badge" style="font-size:10px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
     </div>
     <div id="tab-details" class="tab-pane active">
@@ -660,8 +662,8 @@ table.vnd-table td{padding:5px 10px}
       <div class="field"><label>SR Number</label><input id="ef-sr" readonly></div>
       <div class="field"><label>Enquiry Date</label><input id="ef-date" placeholder="DD.MM.YYYY"></div>
       <div class="field full"><label>Project Name *</label><input id="ef-proj" placeholder="Full project name or tender reference"></div>
-      <div class="field"><label>Contractor</label><input id="ef-cont"></div>
-      <div class="field"><label>Main Contractor</label><input id="ef-mc" placeholder="e.g. NPC, IDS, Lucy"></div>
+      <div class="field"><label>Contractor Project Code</label><input id="ef-cont" placeholder="e.g. NPC-2024-001"></div>
+      <div class="field"><label>Main Contractor</label><select id="ef-mc"><option value="">— Select Contractor —</option></select></div>
       <div class="field"><label>Client</label><input id="ef-client" placeholder="e.g. ADDC, TAQA, NEDC"></div>
       <div class="field"><label>RTU / Substations</label><input id="ef-rtu" placeholder="e.g. 5"></div>
       <div class="field"><label>Status</label>
@@ -678,6 +680,58 @@ table.vnd-table td{padding:5px 10px}
       <div class="field full"><label>SharePoint Docs Link</label><input id="ef-docs" type="url" placeholder="https://mbellab.sharepoint.com/&hellip;"></div>
     </div>
     </div><!-- /tab-details -->
+    <div id="tab-quotes" class="tab-pane">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+        <button class="btn-pri" onclick="showAddQuoteForm()">+ Add Quote</button>
+      </div>
+      <div id="add-quote-form" style="display:none;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+        <div class="form-grid">
+          <div class="field full"><label>Description *</label><input id="qf-desc" placeholder="e.g. Lot 1 - RTU Works, Full tender&hellip;"></div>
+          <div class="field"><label>Quote Amount (AED)</label><input id="qf-quote" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="field"><label>Awarded Amount (AED)</label><input id="qf-awarded" type="number" step="0.01" placeholder="0.00"></div>
+          <div class="field"><label>Date Submitted</label><input id="qf-date" type="date"></div>
+          <div class="field"><label>Status</label>
+            <select id="qf-status">
+              <option value="Pending">Pending</option>
+              <option value="Submitted">Submitted</option>
+              <option value="Awarded">Awarded</option>
+              <option value="Lost">Lost</option>
+            </select>
+          </div>
+          <div class="field full"><label>Notes</label><input id="qf-notes" placeholder="Any additional notes&hellip;"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn-cancel" onclick="hideAddQuoteForm()">Cancel</button>
+          <button class="btn-pri" onclick="saveQuote()">Save Quote</button>
+        </div>
+      </div>
+      <div id="quotes-summary" style="display:none;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap"></div>
+      <div id="quotes-list"></div>
+    </div><!-- /tab-quotes -->
+    <div id="tab-bidders" class="tab-pane">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+        <button class="btn-pri" onclick="showAddBidderForm()">+ Add Bidder</button>
+      </div>
+      <div id="add-bidder-form" style="display:none;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--rl);padding:16px;margin-bottom:16px">
+        <div class="form-grid">
+          <div class="field"><label>Contractor *</label><select id="bidder-contractor-sel"><option value="">— Select Contractor —</option></select></div>
+          <div class="field"><label>Status</label>
+            <select id="bidder-status-sel">
+              <option value="Bidding">Bidding</option>
+              <option value="Won">Won</option>
+              <option value="Lost">Lost</option>
+              <option value="Withdrawn">Withdrawn</option>
+            </select>
+          </div>
+          <div class="field full"><label>Comments</label><input id="bidder-comments" placeholder="Notes on this contractor's bid&hellip;"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn-cancel" onclick="hideAddBidderForm()">Cancel</button>
+          <button class="btn-pri" onclick="saveBidder()">Save Bidder</button>
+        </div>
+      </div>
+      <div id="bidders-list"></div>
+    </div><!-- /tab-bidders -->
     <div id="tab-activity" class="tab-pane">
       <div class="add-note-form">
         <textarea id="note-text" placeholder="Add a note…"></textarea>
@@ -921,6 +975,7 @@ var IC_PENCIL = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><pa
 var IC_SAVE   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" fill="currentColor"/></svg>';
 var IC_CANCEL = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z" fill="currentColor"/></svg>';
 var IC_TRASH  = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M6.5 1h3a.5.5 0 010 1h-3a.5.5 0 010-1zM2 4.5A.5.5 0 012.5 4h11a.5.5 0 010 1H13l-.8 8.02A2 2 0 0110.21 15H5.79a2 2 0 01-1.99-1.98L3 5H2.5A.5.5 0 012 4.5z" fill="currentColor"/></svg>';
+var IC_COPY   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z" fill="currentColor"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z" fill="currentColor"/></svg>';
 var IC_DOCS   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 2.5A2.5 2.5 0 014.5 0h7A2.5 2.5 0 0114 2.5v11a2.5 2.5 0 01-2.5 2.5h-7A2.5 2.5 0 012 13.5V2.5zm2.5-1A1.5 1.5 0 003 2.5v11A1.5 1.5 0 004.5 15h7a1.5 1.5 0 001.5-1.5v-11A1.5 1.5 0 0011.5 1.5h-7zM4.75 8a.75.75 0 01.75-.75h5a.75.75 0 010 1.5h-5A.75.75 0 014.75 8zm0 2.5a.75.75 0 01.75-.75h5a.75.75 0 010 1.5h-5a.75.75 0 01-.75-.75zM5.5 4a.75.75 0 000 1.5h2a.75.75 0 000-1.5h-2z" fill="currentColor"/></svg>';
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -1211,7 +1266,9 @@ function promptDelete(id,srNo,proj){
 }
 function closeConfirm(){pendingDeleteId=null;document.getElementById('confirm-modal').style.display='none';}
 function confirmDelete(){
-  if(pendingActivityDeleteId){ confirmDeleteActivityNote(); return; }
+  if(pendingQuoteDeleteId)    { confirmDeleteQuote(); return; }
+  if(pendingBidderDeleteId)   { confirmDeleteBidder(); return; }
+  if(pendingActivityDeleteId) { confirmDeleteActivityNote(); return; }
   if(!pendingDeleteId) return;
   var id=pendingDeleteId; pendingDeleteId=null;
   closeConfirm(); deleteRecord(id);
@@ -1450,6 +1507,11 @@ function showModal(){
   ['f-proj','f-mc','f-client','f-rtu','f-prop'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('f-deadline').value='';
   document.getElementById('modal').style.display='flex';
+  if(ctrRecords.length === 0) {
+    loadContractors().then(function(){ populateMainContractorDropdown('f-mc',''); });
+  } else {
+    populateMainContractorDropdown('f-mc','');
+  }
   setTimeout(function(){document.getElementById('f-proj').focus();},50);
 }
 function closeModal(){document.getElementById('modal').style.display='none';}
@@ -1492,7 +1554,11 @@ function openEditModal(id) {
   document.getElementById('ef-date').value     = item.date;
   document.getElementById('ef-proj').value     = item.project;
   document.getElementById('ef-cont').value     = item.contractor;
-  document.getElementById('ef-mc').value       = item.main_cont;
+  if(ctrRecords.length === 0) {
+    loadContractors().then(function(){ populateMainContractorDropdown('ef-mc', item.main_cont); });
+  } else {
+    populateMainContractorDropdown('ef-mc', item.main_cont);
+  }
   document.getElementById('ef-client').value   = item.client;
   document.getElementById('ef-rtu').value      = item.rtu === '--' ? '' : item.rtu;
   document.getElementById('ef-status').value   = item.status;
@@ -1530,7 +1596,7 @@ async function saveEditModal() {
     item.contractor=fields[F.CONTRACTOR]; item.main_cont=fields[F.MAIN_CONT];
     item.client=fields[F.CLIENT]; item.rtu=fields[F.RTU]||'--';
     item.status=normStatus(fields[F.STATUS]); item.proposal=fields[F.PROPOSAL];
-    item.last_update=fields[F.LAST_UPDATE];
+    // Preserve last_update (driven by activity log, not edited directly)
     if(docsVal) item.docs=docsVal;
     item.deadline = dlVal || '';
     var rec=allRecords.find(function(r){return r.id===id;});
@@ -1780,6 +1846,30 @@ function setActivePage(screen) {
     'contractors':  'Contractors',
     'suppliers':    'Suppliers',
   };
+}
+
+function populateMainContractorDropdown(selectId, selectedValue) {
+  var sel = document.getElementById(selectId);
+  if(!sel) return;
+  // Build sorted list of unique company names
+  var names = ctrRecords
+    .map(function(r){ return r.fields['Company Name']||''; })
+    .filter(Boolean)
+    .sort(function(a,b){ return a.localeCompare(b); });
+  // Remove dupes
+  names = names.filter(function(v,i,a){ return a.indexOf(v)===i; });
+  sel.innerHTML = '<option value="">— Select Contractor —</option>' +
+    names.map(function(n){
+      return '<option value="'+e(n)+'"'+(n===selectedValue?' selected':'')+'>'+e(n)+'</option>';
+    }).join('');
+  // Allow freetext if the existing value isn't in the list
+  if(selectedValue && names.indexOf(selectedValue) === -1 && selectedValue !== '') {
+    var opt = document.createElement('option');
+    opt.value = selectedValue;
+    opt.textContent = selectedValue + ' (existing)';
+    opt.selected = true;
+    sel.insertBefore(opt, sel.children[1]);
+  }
 }
 
 function populateSupplierDropdown(selectedId) {
@@ -2807,15 +2897,17 @@ var noteAuthorCache = localStorage.getItem('mbb_author') || '';
 
 function switchTab(tabId) {
   activeTabId = tabId;
+  // Tab buttons: details=0, quotes=1, bidders=2, activity=3
+  var order = ['tab-details','tab-quotes','tab-bidders','tab-activity'];
   document.querySelectorAll('.modal-tab').forEach(function(t, i) {
-    t.classList.toggle('active', (i===0 && tabId==='tab-details') || (i===1 && tabId==='tab-activity'));
+    t.classList.toggle('active', order[i] === tabId);
   });
   document.querySelectorAll('.tab-pane').forEach(function(p) {
     p.classList.toggle('active', p.id === tabId);
   });
-  if(tabId === 'tab-activity' && currentEditId) {
-    loadActivityForOpportunity(currentEditId);
-  }
+  if(tabId === 'tab-activity' && currentEditId) loadActivityForOpportunity(currentEditId);
+  if(tabId === 'tab-bidders'  && currentEditId) loadBidders(currentEditId);
+  if(tabId === 'tab-quotes'   && currentEditId) loadQuotes(currentEditId);
 }
 
 function typeIcon(type) {
@@ -3082,9 +3174,13 @@ openEditModal = function(id) {
   // Load activity count in background
   var badge = document.getElementById('activity-count-badge');
   if(badge) badge.textContent = '';
-  loadActivityForOpportunity(id).then(function(){
-    // update badge only, don't switch tabs
-  });
+  var bidgeBadge = document.getElementById('bidders-count-badge');
+  if(bidgeBadge) bidgeBadge.textContent = '';
+  var quoteBadge = document.getElementById('quotes-count-badge');
+  if(quoteBadge) quoteBadge.textContent = '';
+  loadActivityForOpportunity(id).then(function(){});
+  loadBidders(id);
+  loadQuotes(id);
 };
 
 // Also patch closeEditModal to reset currentEditId
@@ -3094,8 +3190,9 @@ closeEditModal = function() {
   _origCloseEditModal();
 };
 
-// Global activity list delegation (on stable modal element, not re-rendered list)
+// Global delegation on stable modal element (handles both activity and bidders)
 document.getElementById('edit-modal').addEventListener('click', function(ev) {
+  // Activity
   var editBtn = ev.target.closest('[data-act-edit]');
   if(editBtn) { toggleActivityEdit(editBtn.dataset.actEdit, true); return; }
   var saveBtn = ev.target.closest('[data-act-save]');
@@ -3104,6 +3201,16 @@ document.getElementById('edit-modal').addEventListener('click', function(ev) {
   if(cancelBtn) { toggleActivityEdit(cancelBtn.dataset.actCancel, false); return; }
   var delBtn = ev.target.closest('[data-act-del]');
   if(delBtn) { deleteActivityNote(delBtn.dataset.actDel); return; }
+  // Bidders
+  var bidEdit = ev.target.closest('[data-bid-edit]');
+  if(bidEdit) { openEditBidder(bidEdit.dataset.bidEdit); return; }
+  var bidDel  = ev.target.closest('[data-bid-del]');
+  if(bidDel)  { deleteBidder(bidDel.dataset.bidDel); return; }
+  // Quotes
+  var qteEdit = ev.target.closest('[data-qte-edit]');
+  if(qteEdit) { openEditQuote(qteEdit.dataset.qteEdit); return; }
+  var qteDel  = ev.target.closest('[data-qte-del]');
+  if(qteDel)  { deleteQuote(qteDel.dataset.qteDel); return; }
 });
 
 // ── Contractors Export ────────────────────────────────────────────
@@ -3183,6 +3290,432 @@ function exportSuppliers() {
     }).join('')+
     '</tbody></table></body></html>';
   var w=window.open('','_blank'); w.document.write(html); w.document.close();
+}
+
+// ================================================================
+// BIDDERS
+// ================================================================
+var bidderRecords  = {};  // keyed by opportunity ID
+var bidderEditId   = null;
+
+function showAddBidderForm() {
+  bidderEditId = null;
+  document.getElementById('add-bidder-form').style.display = 'block';
+  document.getElementById('bidder-comments').value = '';
+  document.getElementById('bidder-status-sel').value = 'Bidding';
+  if(ctrRecords.length === 0) {
+    loadContractors().then(function(){ populateBidderContractorDropdown(null); });
+  } else {
+    populateBidderContractorDropdown(null);
+  }
+}
+
+function populateBidderContractorDropdown(selectedId) {
+  // Populate contractor dropdown
+  var sel = document.getElementById('bidder-contractor-sel');
+  var names = ctrRecords
+    .map(function(r){ return {id: r.id, name: r.fields['Company Name']||''}; })
+    .filter(function(c){ return c.name; })
+    .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  sel.innerHTML = '<option value="">— Select Contractor —</option>' +
+    names.map(function(c){
+      return '<option value="'+c.id+'"'+(c.id===selectedId?' selected':'')+'>'+e(c.name)+'</option>';
+    }).join('');
+}
+
+function hideAddBidderForm() {
+  document.getElementById('add-bidder-form').style.display = 'none';
+  bidderEditId = null;
+}
+
+async function loadBidders(opportunityId) {
+  var list = document.getElementById('bidders-list');
+  if(!list) return;
+
+  try {
+    var url = WORKER_URL + '/bidders?pageSize=100';
+    var res = await fetch(url, {headers: getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var all = data.records || [];
+    // Filter client-side by opportunity
+    var records = all.filter(function(r){
+      return (r.fields['Opportunity']||[]).indexOf(opportunityId) !== -1;
+    });
+    bidderRecords[opportunityId] = records;
+
+    // Update badge
+    var badge = document.getElementById('bidders-count-badge');
+    if(badge) badge.textContent = records.length > 0 ? records.length : '';
+
+    renderBiddersList(opportunityId);
+  } catch(err) {
+    if(list) list.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px 0">Failed to load bidders: '+err.message+'</div>';
+  }
+}
+
+function statusBadgeStyle(status) {
+  var map = {
+    'Bidding':   'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
+    'Won':       'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
+    'Lost':      'background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)',
+    'Withdrawn': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
+  };
+  return map[status] || map['Bidding'];
+}
+
+function renderBiddersList(opportunityId) {
+  var list = document.getElementById('bidders-list');
+  if(!list) return;
+  var records = bidderRecords[opportunityId] || [];
+
+  if(records.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No bidders added yet.<br>Use the button above to add one.</div>';
+    return;
+  }
+
+  var TH = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap';
+  list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'+
+    '<colgroup>'+
+      '<col style="width:130px">'+
+      '<col style="width:76px">'+
+      '<col style="">'+
+      '<col style="width:56px">'+
+    '</colgroup>'+
+    '<thead><tr>'+
+      '<th style="'+TH+'">Contractor</th>'+
+      '<th style="'+TH+'">Status</th>'+
+      '<th style="'+TH+'">Comments</th>'+
+      '<th style="border-bottom:2px solid var(--bdr2)"></th>'+
+    '</tr></thead><tbody>'+
+    records.map(function(r){
+      var f = r.fields;
+      // Contractor name comes from lookup field
+      // Look up contractor name from local ctrRecords by linked ID
+      var ctrId  = (f['Contractor']||[])[0] || null;
+      var ctrRec = ctrId ? ctrRecords.find(function(r){ return r.id===ctrId; }) : null;
+      var cName  = ctrRec ? (ctrRec.fields['Company Name']||'Unknown') : (f['Contractor']||'—');
+      var status = f['Status']||'Bidding';
+      return '<tr data-bid-id="'+r.id+'">'+
+        '<td style="padding:10px;font-weight:500;color:var(--txt);border-bottom:1px solid var(--bdr)">'+e(cName)+'</td>'+
+        '<td style="padding:10px;border-bottom:1px solid var(--bdr)">'+
+          '<span style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;font-weight:600;'+statusBadgeStyle(status)+'">'+status+'</span>'+
+        '</td>'+
+        '<td style="padding:10px;color:var(--txt2);border-bottom:1px solid var(--bdr)">'+e(f['Comments']||'')+'</td>'+
+        '<td style="padding:10px;border-bottom:1px solid var(--bdr);white-space:nowrap;text-align:right">'+
+          '<button class="icon-btn edit" data-bid-edit="'+r.id+'" title="Edit" style="opacity:1">'+IC_PENCIL+'</button>'+
+          '<button class="icon-btn del" data-bid-del="'+r.id+'" title="Delete" style="opacity:1">'+IC_TRASH+'</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table>';
+
+  // Delegation handled by global edit-modal listener below
+}
+
+function openEditBidder(recordId) {
+  var opp = currentEditId;
+  var rec = (bidderRecords[opp]||[]).find(function(r){ return r.id===recordId; });
+  if(!rec) return;
+  bidderEditId = recordId;
+  var f = rec.fields;
+  var cName = (f['Company Name (from Contractor)']||[])[0] || '';
+  // Show form
+  document.getElementById('add-bidder-form').style.display = 'block';
+  document.getElementById('bidder-status-sel').value = f['Status']||'Bidding';
+  document.getElementById('bidder-comments').value  = f['Comments']||'';
+  // Populate and select contractor
+  var sel = document.getElementById('bidder-contractor-sel');
+  var linkedId = (f['Contractor']||[])[0] || '';
+  populateBidderContractorDropdown(linkedId);
+}
+
+async function saveBidder() {
+  var sel      = document.getElementById('bidder-contractor-sel');
+  var ctrId    = sel.value;
+  var status   = document.getElementById('bidder-status-sel').value;
+  var comments = document.getElementById('bidder-comments').value.trim();
+
+  if(!ctrId) { sel.focus(); return; }
+
+  var savedEditId = bidderEditId;
+  hideAddBidderForm();
+
+  var fields = {
+    'Opportunity': [currentEditId],
+    'Contractor':  [ctrId],
+    'Status':      status,
+  };
+  if(comments) fields['Comments'] = comments;
+
+  try {
+    var url    = savedEditId ? WORKER_URL+'/bidders/'+savedEditId : WORKER_URL+'/bidders';
+    var method = savedEditId ? 'PATCH' : 'POST';
+    var res    = await fetch(url, {method:method, headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    await loadBidders(currentEditId);
+    toast((savedEditId?'Bidder updated':'Bidder added'),'ok');
+  } catch(err) {
+    toast('Failed: '+err.message,'err');
+  }
+}
+
+var pendingBidderDeleteId = null;
+
+function deleteBidder(recordId) {
+  pendingBidderDeleteId = recordId;
+  document.getElementById('confirm-title').textContent = 'Remove bidder?';
+  document.getElementById('confirm-body').innerHTML = 'This will remove this contractor from the bidders list.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeleteBidder() {
+  if(!pendingBidderDeleteId) return;
+  var recordId = pendingBidderDeleteId;
+  pendingBidderDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/bidders/'+recordId, {method:'DELETE', headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadBidders(currentEditId);
+    toast('Bidder removed','ok');
+  } catch(err) {
+    toast('Failed: '+err.message,'err');
+  }
+}
+
+// ================================================================
+// QUOTE TRACKER
+// ================================================================
+var quoteRecords = {};  // keyed by opportunity ID
+var quoteEditId  = null;
+
+function showAddQuoteForm() {
+  quoteEditId = null;
+  ['qf-desc','qf-notes'].forEach(function(id){ document.getElementById(id).value=''; });
+  ['qf-quote','qf-awarded'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('qf-date').value   = new Date().toISOString().substring(0,10);
+  document.getElementById('qf-status').value = 'Submitted';
+  document.getElementById('add-quote-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('qf-desc').focus(); }, 50);
+}
+
+function hideAddQuoteForm() {
+  document.getElementById('add-quote-form').style.display = 'none';
+  quoteEditId = null;
+}
+
+async function loadQuotes(opportunityId) {
+  var list = document.getElementById('quotes-list');
+  if(!list) return;
+  try {
+    var url = WORKER_URL+'/quotes?pageSize=100';
+    var res = await fetch(url, {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var all  = data.records||[];
+    var recs = all.filter(function(r){
+      return (r.fields['Opportunity']||[]).indexOf(opportunityId) !== -1;
+    });
+    quoteRecords[opportunityId] = recs;
+    var badge = document.getElementById('quotes-count-badge');
+    if(badge) badge.textContent = recs.length > 0 ? recs.length : '';
+    renderQuotesList(opportunityId);
+  } catch(err) {
+    if(list) list.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px 0">Failed to load quotes: '+err.message+'</div>';
+  }
+}
+
+function fmtAED(val) {
+  if(!val && val!==0) return '—';
+  var n = parseFloat(val);
+  if(isNaN(n)) return '—';
+  return 'AED '+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function quoteStatusStyle(s) {
+  var map = {
+    'Submitted':'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
+    'Awarded':  'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
+    'Lost':     'background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)',
+    'Pending':  'background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)',
+  };
+  return map[s]||map['Pending'];
+}
+
+function renderQuotesList(opportunityId) {
+  var list = document.getElementById('quotes-list');
+  var sumEl = document.getElementById('quotes-summary');
+  if(!list) return;
+  var recs = quoteRecords[opportunityId]||[];
+
+  // Summary bar
+  if(recs.length > 0 && sumEl) {
+    var totalQ = recs.reduce(function(t,r){ return t+(parseFloat(r.fields['Quote Amount'])||0); },0);
+    var totalA = recs.reduce(function(t,r){ return t+(parseFloat(r.fields['Awarded Amount'])||0); },0);
+    var awarded = recs.filter(function(r){ return r.fields['Status']==='Awarded'; }).length;
+    sumEl.style.display = 'flex';
+    sumEl.innerHTML = [
+      {label:'Total Quoted',   val:fmtAED(totalQ), cls:'color:var(--txt)'},
+      {label:'Total Awarded',  val:fmtAED(totalA), cls:'color:var(--green);font-weight:600'},
+      {label:'Awarded',        val:awarded+' / '+recs.length, cls:'color:var(--txt2)'},
+    ].map(function(k){
+      return '<div style="display:flex;flex-direction:column;gap:2px">'+
+        '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">'+k.label+'</div>'+
+        '<div style="font-size:15px;'+k.cls+'">'+k.val+'</div>'+
+      '</div>';
+    }).join('');
+  } else if(sumEl) {
+    sumEl.style.display = 'none';
+  }
+
+  if(recs.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No quotes yet. Use the button above to add one.</div>';
+    return;
+  }
+
+  var TH = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap';
+  list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'+
+    '<colgroup><col style="width:auto"><col style="width:100px"><col style="width:110px"><col style="width:90px"><col style="width:76px"><col style="width:56px"></colgroup>'+
+    '<thead><tr>'+
+      '<th style="'+TH+'">Description</th>'+
+      '<th style="'+TH+';text-align:right">Quoted</th>'+
+      '<th style="'+TH+';text-align:right">Awarded</th>'+
+      '<th style="'+TH+'">Submitted</th>'+
+      '<th style="'+TH+'">Status</th>'+
+      '<th style="border-bottom:2px solid var(--bdr2)"></th>'+
+    '</tr></thead><tbody>'+
+    recs.map(function(r){
+      var f = r.fields;
+      var status = f['Status']||'Pending';
+      var submitted = f['Date Submitted'] ? new Date(f['Date Submitted']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+      return '<tr data-qte-id="'+r.id+'">'+
+        '<td style="padding:6px 8px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px solid var(--bdr)" title="'+e(f['Description']||'')+'">'+
+          '<div style="font-weight:500">'+e(f['Description']||'—')+'</div>'+
+          (f['Notes']?'<div style="font-size:10px;color:var(--txt3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(f['Notes'])+'</div>':'')+'</td>'+
+        '<td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:11px;color:var(--txt2);border-bottom:1px solid var(--bdr);white-space:nowrap">'+fmtAED(f['Quote Amount'])+'</td>'+
+        '<td style="padding:6px 8px;text-align:right;font-family:monospace;font-size:11px;color:var(--green);font-weight:600;border-bottom:1px solid var(--bdr);white-space:nowrap">'+fmtAED(f['Awarded Amount'])+'</td>'+
+        '<td style="padding:6px 8px;color:var(--txt3);font-family:monospace;font-size:10px;border-bottom:1px solid var(--bdr);white-space:nowrap">'+submitted+'</td>'+
+        '<td style="padding:6px 8px;border-bottom:1px solid var(--bdr);white-space:nowrap">'+
+          '<span style="font-size:10px;font-family:monospace;padding:2px 6px;border-radius:20px;font-weight:600;'+quoteStatusStyle(status)+'">'+status+'</span>'+
+        '</td>'+
+        '<td style="padding:6px 4px;border-bottom:1px solid var(--bdr);white-space:nowrap;text-align:right">'+
+          '<button class="icon-btn edit" data-qte-edit="'+r.id+'" title="Edit" style="opacity:1">'+IC_PENCIL+'</button>'+
+          '<button class="icon-btn del" data-qte-del="'+r.id+'" title="Delete" style="opacity:1">'+IC_TRASH+'</button>'+
+        '</td>'+
+      '</tr>';
+    }).join('')+
+    '</tbody></table>';
+}
+
+function openEditQuote(recordId) {
+  var rec = (quoteRecords[currentEditId]||[]).find(function(r){ return r.id===recordId; });
+  if(!rec) return;
+  quoteEditId = recordId;
+  var f = rec.fields;
+  document.getElementById('qf-desc').value    = f['Description']||'';
+  document.getElementById('qf-quote').value   = f['Quote Amount']||'';
+  document.getElementById('qf-awarded').value = f['Awarded Amount']||'';
+  document.getElementById('qf-date').value    = (f['Date Submitted']||'').substring(0,10);
+  document.getElementById('qf-status').value  = f['Status']||'Pending';
+  document.getElementById('qf-notes').value   = f['Notes']||'';
+  document.getElementById('add-quote-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('qf-desc').focus(); }, 50);
+}
+
+async function saveQuote() {
+  var desc = document.getElementById('qf-desc').value.trim();
+  if(!desc) { document.getElementById('qf-desc').focus(); return; }
+  var savedId = quoteEditId;
+  hideAddQuoteForm();
+  var fields = {
+    'Opportunity':    [currentEditId],
+    'Description':    desc,
+    'Status':         document.getElementById('qf-status').value,
+  };
+  var q = parseFloat(document.getElementById('qf-quote').value);
+  var a = parseFloat(document.getElementById('qf-awarded').value);
+  var d = document.getElementById('qf-date').value;
+  var n = document.getElementById('qf-notes').value.trim();
+  if(!isNaN(q) && q>0) fields['Quote Amount']    = q;
+  if(!isNaN(a) && a>0) fields['Awarded Amount']  = a;
+  if(d)                fields['Date Submitted']   = d;
+  if(n)                fields['Notes']            = n;
+  try {
+    var url    = savedId ? WORKER_URL+'/quotes/'+savedId : WORKER_URL+'/quotes';
+    var method = savedId ? 'PATCH' : 'POST';
+    var res    = await fetch(url, {method:method, headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    await loadQuotes(currentEditId);
+    toast((savedId?'Quote updated':'Quote added'),'ok');
+  } catch(err) {
+    toast('Failed: '+err.message,'err');
+  }
+}
+
+var pendingQuoteDeleteId = null;
+
+function deleteQuote(recordId) {
+  pendingQuoteDeleteId = recordId;
+  document.getElementById('confirm-title').textContent = 'Delete quote?';
+  document.getElementById('confirm-body').innerHTML    = 'This will permanently delete this quote record.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeleteQuote() {
+  if(!pendingQuoteDeleteId) return;
+  var id = pendingQuoteDeleteId; pendingQuoteDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/quotes/'+id, {method:'DELETE', headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadQuotes(currentEditId);
+    toast('Quote deleted','ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+// ================================================================
+// DUPLICATE OPPORTUNITY
+// ================================================================
+async function duplicateOpportunity(id) {
+  var item = items.find(function(i){ return i._id===id; });
+  if(!item) return;
+  var rec  = allRecords.find(function(r){ return r.id===id; });
+  if(!rec) return;
+  var f    = rec.fields;
+  // Build next SR number
+  var maxSr = Math.max.apply(null, items.map(function(i){ return parseInt(i.sr_no)||0; }).concat([17062]));
+  var fields = {};
+  fields[F.SR_NO]     = String(maxSr+1);
+  fields[F.DATE]      = new Date().toLocaleDateString('en-GB').split('/').join('.');
+  fields[F.PROJECT]   = 'COPY - '+(f[F.PROJECT]||'');
+  fields[F.CONTRACTOR]= f[F.CONTRACTOR]||'';
+  fields[F.MAIN_CONT] = f[F.MAIN_CONT]||'';
+  fields[F.CLIENT]    = f[F.CLIENT]||'';
+  fields[F.RTU]       = f[F.RTU]||'--';
+  fields[F.STATUS]    = 'PIPELINE';
+  fields[F.PROPOSAL]  = '--';
+  fields[F.QUOTATION] = '';
+  fields[F.TECH_PROP] = '';
+  fields[F.LPO_CLIENT]= '';
+  fields[F.LPO_SUPPLIER]='';
+  try {
+    setSave('saving');
+    var res  = await fetch(WORKER_URL, {method:'POST', headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    var data = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    allRecords.push(data); parseItems();
+    setSave('saved');
+    renderKPIs(); applyFilters();
+    toast('Opportunity duplicated — SR-'+fields[F.SR_NO],'ok');
+    // Open the new record in edit mode
+    setTimeout(function(){ openEditModal(data.id); }, 300);
+  } catch(err) {
+    setSave('err');
+    toast('Duplicate failed: '+err.message,'err');
+  }
 }
 
 // ── Export Report ─────────────────────────────────────────────────
