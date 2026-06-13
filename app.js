@@ -31,7 +31,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.2  ·  2026-06-13';
+var APP_VERSION = 'v1.4  ·  2026-06-13';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -5106,19 +5106,27 @@ var PC_MONTHS = ['January','February','March','April','May','June',
                  'July','August','September','October','November','December'];
 
 // ── Diagnostics ───────────────────────────────────────────────────
+// Single source of truth — add a new entry here whenever a Worker route is added.
 var DIAG_TABLES = [
   {name:'Power Solution Opportunities', url:'/'},
-  {name:'Quotes',                       url:'/quotes'},
-  {name:'Invoices',                     url:'/invoices'},
-  {name:'Activity Log',                 url:'/activity'},
-  {name:'Bidders',                      url:'/bidders'},
-  {name:'Suppliers',                    url:'/suppliers'},
-  {name:'Contractors',                  url:'/contractors'},
-  {name:'Renewals',                     url:'/renewals'},
-  {name:'Employees',                    url:'/employees'},
-  {name:'Company Docs',                 url:'/company-docs'},
-  {name:'Petty Cash',                   url:'/petty-cash'},
-  {name:'Quality Objectives',           url:'/quality-objectives'},
+  {name:'Quotes',                        url:'/quotes'},
+  {name:'Invoices',                      url:'/invoices'},
+  {name:'Activity Log',                  url:'/activity'},
+  {name:'Bidders',                       url:'/bidders'},
+  {name:'Suppliers',                     url:'/suppliers'},
+  {name:'Contractors',                   url:'/contractors'},
+  {name:'Renewals',                      url:'/renewals'},
+  {name:'Employees',                     url:'/employees'},
+  {name:'Company Docs',                  url:'/company-docs'},
+  {name:'Petty Cash',                    url:'/petty-cash'},
+  {name:'Quality Objectives',            url:'/quality-objectives'},
+  {name:'Objective Steps',               url:'/objective-steps'},
+  {name:'Vendor Equipment Pricing',      url:'/vendor'},
+  {name:'Passwords',                     url:'/passwords'},
+  {name:'Leave Records',                 url:'/leave-records'},
+  {name:'Annual Tickets',                url:'/annual-tickets'},
+  {name:'Bank Holidays',                 url:'/bank-holidays'},
+  {name:'Annual Entitlements',           url:'/annual-entitlements'},
 ];
 
 function showDiagnostics() {
@@ -5154,28 +5162,11 @@ async function loadDiagnostics() {
   if(bar) { bar.style.width='0%'; bar.style.background='var(--green)'; }
   if(tot) tot.textContent='';
 
-  var tables = [
-    {n:'Power Solution Opportunities', u:WORKER_URL+'?pageSize=100'},
-    {n:'Quotes',                       u:WORKER_URL+'/quotes?pageSize=100'},
-    {n:'Invoices',                     u:WORKER_URL+'/invoices?pageSize=100'},
-    {n:'Activity Log',                 u:WORKER_URL+'/activity?pageSize=100'},
-    {n:'Bidders',                      u:WORKER_URL+'/bidders?pageSize=100'},
-    {n:'Suppliers',                    u:WORKER_URL+'/suppliers?pageSize=100'},
-    {n:'Contractors',                  u:WORKER_URL+'/contractors?pageSize=100'},
-    {n:'Renewals',                     u:WORKER_URL+'/renewals?pageSize=100'},
-    {n:'Employees',                    u:WORKER_URL+'/employees?pageSize=100'},
-    {n:'Company Docs',                 u:WORKER_URL+'/company-docs?pageSize=100'},
-    {n:'Petty Cash',                   u:WORKER_URL+'/petty-cash?pageSize=100'},
-    {n:'Quality Objectives',           u:WORKER_URL+'/quality-objectives?pageSize=100'},
-    {n:'Vendor Equipment Pricing',      u:WORKER_URL+'/vendor?pageSize=100'},
-    {n:'Passwords',                        u:WORKER_URL+'/passwords?pageSize=100'},
-    {n:'Leave Records',                    u:WORKER_URL+'/leave-records?pageSize=100'},
-    {n:'Annual Tickets',                   u:WORKER_URL+'/annual-tickets?pageSize=100'},
-    {n:'Bank Holidays',                    u:WORKER_URL+'/bank-holidays?pageSize=100'},
-    {n:'Leave Records',                    u:WORKER_URL+'/leave-records?pageSize=100'},
-    {n:'Annual Tickets',                   u:WORKER_URL+'/annual-tickets?pageSize=100'},
-    {n:'Bank Holidays',                    u:WORKER_URL+'/bank-holidays?pageSize=100'},
-  ];
+  // Derived automatically from DIAG_TABLES — add entries there, not here.
+  var tables = DIAG_TABLES.map(function(t){
+    var base = t.url === '/' ? WORKER_URL : WORKER_URL + t.url;
+    return {n: t.name, u: base + '?pageSize=100'};
+  });
 
   async function countTable(url) {
     var total=0, offset=null;
@@ -5608,7 +5599,7 @@ async function deletePassword(id){
 
 
 // ── EMPLOYEE LEAVE MODULE ─────────────────────────────────────────
-var elRecords = [], elTickets = [], elHolidays = [], elLoaded = false;
+var elRecords = [], elTickets = [], elHolidays = [], elEntitlements = [], elLoaded = false;
 var elCurrentEmpId = null, elCurrentEditId = null, elHolEditId = null, elActiveTab = 'all';
 var elPeriodOffset = 0;  // 0 = current period, -1 = previous
 
@@ -5630,23 +5621,25 @@ async function loadLeaveData() {
     var yr = new Date().getFullYear();
     document.getElementById('el-period-label').textContent = yr + ' Leave Year';
     // Load all 4 sources in parallel
-    var [lRes, tRes, hRes, eRes] = await Promise.all([
-      fetch(WORKER_URL+'/leave-records?pageSize=100', {headers:getHeaders()}),
-      fetch(WORKER_URL+'/annual-tickets?pageSize=100', {headers:getHeaders()}),
-      fetch(WORKER_URL+'/bank-holidays?pageSize=100', {headers:getHeaders()}),
-      fetch(WORKER_URL+'/employees?pageSize=100',    {headers:getHeaders()})
+    var [lRes, tRes, hRes, eRes, entRes] = await Promise.all([
+      fetch(WORKER_URL+'/leave-records?pageSize=100',        {headers:getHeaders()}),
+      fetch(WORKER_URL+'/annual-tickets?pageSize=100',       {headers:getHeaders()}),
+      fetch(WORKER_URL+'/bank-holidays?pageSize=100',        {headers:getHeaders()}),
+      fetch(WORKER_URL+'/employees?pageSize=100',            {headers:getHeaders()}),
+      fetch(WORKER_URL+'/annual-entitlements?pageSize=100',  {headers:getHeaders()})
     ]);
-    var lData = await lRes.json();
-    var tData = await tRes.json();
-    var hData = await hRes.json();
-    var eData = await eRes.json();
-    // Expose any errors from Airtable
-    if(!lRes.ok) throw new Error('/leave-records: HTTP '+lRes.status+' '+JSON.stringify(lData));
-    if(!tRes.ok) throw new Error('/annual-tickets: HTTP '+tRes.status+' '+JSON.stringify(tData));
-    if(!hRes.ok) throw new Error('/bank-holidays: HTTP '+hRes.status+' '+JSON.stringify(hData));
-    elRecords  = lData.records || [];
-    elTickets  = tData.records || [];
-    elHolidays = hData.records || [];
+    var lData   = await lRes.json();
+    var tData   = await tRes.json();
+    var hData   = await hRes.json();
+    var eData   = await eRes.json();
+    var entData = await entRes.json();
+    if(!lRes.ok)   throw new Error('/leave-records: HTTP '+lRes.status+' '+JSON.stringify(lData));
+    if(!tRes.ok)   throw new Error('/annual-tickets: HTTP '+tRes.status+' '+JSON.stringify(tData));
+    if(!hRes.ok)   throw new Error('/bank-holidays: HTTP '+hRes.status+' '+JSON.stringify(hData));
+    elRecords      = lData.records   || [];
+    elTickets      = tData.records   || [];
+    elHolidays     = hData.records   || [];
+    elEntitlements = entData.records || [];
     if(eData.records && eData.records.length) empRecords = eData.records;
     elLoaded = true;
     renderHolidaysBar();
@@ -5705,6 +5698,25 @@ function elEmpId(fieldVal) {
   }
   return String(fieldVal);
 }
+function getEmpEntitlements(empId) {
+  return elEntitlements
+    .filter(function(r){ return elEmpId(r.fields['Employee'])===empId; })
+    .sort(function(a,b){ return new Date(b.fields['Period_Start'])-new Date(a.fields['Period_Start']); });
+}
+function getActiveEntitlement(empId) {
+  var today=new Date(); today.setHours(0,0,0,0);
+  return getEmpEntitlements(empId).find(function(r){
+    var s=r.fields['Period_Start'], en=r.fields['Period_End'];
+    if(!s||!en) return false;
+    var from=new Date(s+'T00:00:00'), to=new Date(en+'T00:00:00');
+    return today>=from && today<=to;
+  })||null;
+}
+function entPeriod(r) {
+  if(!r) return null;
+  return {from:new Date(r.fields['Period_Start']+'T00:00:00'), to:new Date(r.fields['Period_End']+'T00:00:00')};
+}
+
 function elLeaveUsed(empId, type, from, to) {
   var total = 0;
   elRecords.forEach(function(r){
@@ -5754,10 +5766,10 @@ function renderLeaveTable() {
 
   tbody.innerHTML = active.map(function(emp, i){
     var f = emp.fields;
-    var startDate = f['Start Date'];
-    var period = getAnnualPeriod(startDate);
-    var annualEnt = parseFloat(f['Annual Leave Days']) || 0;
-    var sickEnt   = parseFloat(f['Sick Leave Days'])   || 0;
+    var activeEnt  = getActiveEntitlement(emp.id);
+    var period     = entPeriod(activeEnt);
+    var annualEnt  = activeEnt ? (parseFloat(activeEnt.fields['Days'])||0) : 0;
+    var sickEnt    = parseFloat(f['Sick Leave Days']) || 0;
     var annualUsed=0, sickUsed=0, wfhUsed=0, unpaidUsed=0;
     if(period) {
       annualUsed = elLeaveUsed(emp.id, 'Annual', period ? period.from : null, period ? period.to : null);
@@ -5797,12 +5809,13 @@ function openEmpDetail(empId) {
   elCurrentEmpId = empId;
   var f = emp.fields;
   var startDate = f['Start Date'];
-  var period = getAnnualPeriod(startDate);
+  var activeEnt = getActiveEntitlement(empId);
+  var period    = entPeriod(activeEnt);
   document.getElementById('el-emp-name').textContent = f['Name']||f['Employee Name']||'Employee';
   document.getElementById('el-emp-meta').textContent =
     'Start date: '+elFmtDate(startDate) +
-    (period ? ' · Current annual period: '+elFmtPeriod(period.from, period.to) : '') +
-    ' · Annual entitlement: '+(f['Annual Leave Days']||'?')+' days'+
+    (period ? ' · Current annual period: '+elFmtPeriod(period.from, period.to) : ' · No active annual period') +
+    (activeEnt ? ' · Annual entitlement: '+activeEnt.fields['Days']+' days' : '') +
     ' · Sick entitlement: '+(f['Sick Leave Days']||'?')+' days';
   elShowTab('all');
   document.getElementById('el-emp-modal').style.display='flex';
@@ -5862,8 +5875,10 @@ function renderTabContent(tab) {
 
   var typeMap = {annual:'Annual', sick:'Sick', wfh:'WFH'};
   var leaveType = typeMap[tab];
-  var period = tab==='annual' ? getAnnualPeriod(f['Start Date'], elPeriodOffset) : {from:new Date(yrNow,0,1), to:new Date(yrNow,11,31)};
-  var ent = tab==='annual' ? (parseFloat(f['Annual Leave Days'])||0) : (tab==='sick'?(parseFloat(f['Sick Leave Days'])||0):null);
+  var ents = getEmpEntitlements(elCurrentEmpId);
+  var entRec = tab==='annual' ? (ents[elPeriodOffset]||ents[0]||null) : null;
+  var period = tab==='annual' ? entPeriod(entRec) : {from:new Date(yrNow,0,1), to:new Date(yrNow,11,31)};
+  var ent = tab==='annual' ? (entRec ? (parseFloat(entRec.fields['Days'])||0) : 0) : (tab==='sick'?(parseFloat(f['Sick Leave Days'])||0):null);
   var used = period ? elLeaveUsed(elCurrentEmpId, leaveType, period ? period.from : null, period ? period.to : null) : 0;
   var entries = elRecords.filter(function(r){
     if(elEmpId(r.fields['Employee']) !== elCurrentEmpId) return false;
@@ -5877,28 +5892,28 @@ function renderTabContent(tab) {
 
   // Period navigation (annual tab only)
   var periodNavHtml = '';
-  if(tab==='annual' && period) {
-    var prevPeriod = getAnnualPeriod(f['Start Date'], -1);
-    var prevLabel  = prevPeriod ? elFmtPeriodLabel(prevPeriod.from, prevPeriod.to) : '';
-    var currPeriod = getAnnualPeriod(f['Start Date'], 0);
-    var currLabel  = currPeriod ? elFmtPeriodLabel(currPeriod.from, currPeriod.to) : '';
-    var isOnCurr   = (elPeriodOffset === 0);
-    periodNavHtml  = '<div style="display:flex;align-items:center;justify-content:space-between;'
-                    +'background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;'
-                    +'padding:8px 12px;margin-bottom:12px">'
-      + '<button onclick="elChangePeriod(-1)" style="background:none;border:none;cursor:pointer;'
-        +'font-size:16px;color:'+(isOnCurr?'var(--txt)':'var(--txt3)')+';padding:0 6px" '
-        +(isOnCurr?'':'disabled ')+'title="'+prevLabel+'">&#8592;</button>'
-      + '<div style="text-align:center">'
-          + '<div style="font-size:13px;font-weight:700;color:var(--txt)">'
-            + elFmtPeriodLabel(period.from, period.to) + '</div>'
-          + '<div style="font-size:10px;color:var(--txt3);margin-top:1px">'
-            + (isOnCurr ? 'Current period' : 'Previous period') + '</div>'
-        + '</div>'
-      + '<button onclick="elChangePeriod(0)" style="background:none;border:none;cursor:pointer;'
-        +'font-size:16px;color:'+(!isOnCurr?'var(--txt)':'var(--txt3)')+';padding:0 6px" '
-        +(!isOnCurr?'':'disabled ')+'title="'+currLabel+'">&#8594;</button>'
-    + '</div>';
+  if(tab==='annual') {
+    if(!ents.length) {
+      periodNavHtml = '<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--amber)">'
+        +'No annual entitlement periods set up yet. Click <strong>&#9998; Entitlement</strong> above to add one.</div>';
+    } else {
+      var canPrev = elPeriodOffset < ents.length-1;
+      var canNext = elPeriodOffset > 0;
+      var isActive= entRec && (function(){
+        var today=new Date(); today.setHours(0,0,0,0);
+        var p=entPeriod(entRec);
+        return p && today>=p.from && today<=p.to;
+      })();
+      periodNavHtml = '<div style="display:flex;align-items:center;justify-content:space-between;'
+        +'background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:8px 12px;margin-bottom:12px">'
+        +'<button onclick="elChangePeriod('+(elPeriodOffset+1)+')" style="background:none;border:none;cursor:'+(canPrev?'pointer':'default')+';font-size:16px;color:'+(canPrev?'var(--txt)':'var(--bdr2)')+';padding:0 6px" '+(canPrev?'':'disabled')+'>&#8592;</button>'
+        +'<div style="text-align:center">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--txt)">'+(period?elFmtPeriodLabel(period.from,period.to):'—')+'</div>'
+          +'<div style="font-size:10px;color:'+(isActive?'var(--green)':'var(--txt3)')+';margin-top:1px">'+(isActive?'Current period':'Past period')+'</div>'
+        +'</div>'
+        +'<button onclick="elChangePeriod('+(elPeriodOffset-1)+')" style="background:none;border:none;cursor:'+(canNext?'pointer':'default')+';font-size:16px;color:'+(canNext?'var(--txt)':'var(--bdr2)')+';padding:0 6px" '+(canNext?'':'disabled')+'>&#8594;</button>'
+      +'</div>';
+    }
   }
 
   var summaryHtml = '';
@@ -6293,34 +6308,138 @@ async function deleteBankHoliday() {
   } catch(err){ toast('Delete failed: '+err.message,'err'); }
 }
 
+var elEntEditId = null; // null = add mode, string = edit mode
+
 function openEntitlementModal() {
   var emp = empRecords.find(function(e){ return e.id===elCurrentEmpId; });
   if(!emp) return;
-  document.getElementById('el-ent-annual').value = emp.fields['Annual Leave Days']||'';
-  document.getElementById('el-ent-sick').value   = emp.fields['Sick Leave Days']||'';
+  renderEntitlementList(emp);
   document.getElementById('el-ent-modal').style.display='flex';
 }
 
-async function saveEntitlement() {
-  var annual = parseFloat(document.getElementById('el-ent-annual').value);
-  var sick   = parseFloat(document.getElementById('el-ent-sick').value);
-  if(isNaN(annual)||isNaN(sick)){ toast('Please enter valid numbers','err'); return; }
+function renderEntitlementList(emp) {
+  var f    = emp ? emp.fields : {};
+  var ents = getEmpEntitlements(emp.id);
+  var today= new Date(); today.setHours(0,0,0,0);
+  var rows = ents.map(function(r){
+    var p    = entPeriod(r);
+    var isAct= p && today>=p.from && today<=p.to;
+    var bg   = isAct ? 'background:var(--bg2)' : '';
+    return '<tr style="border-bottom:1px solid var(--bdr);'+bg+'">'
+      +'<td style="padding:7px 10px;font-size:12px;white-space:nowrap">'
+        +(p ? elFmtDate(r.fields['Period_Start'])+' → '+elFmtDate(r.fields['Period_End']) : '—')
+        +(isAct ? ' <span style="font-size:10px;color:var(--green);font-weight:600">▶ active</span>' : '')
+      +'</td>'
+      +'<td style="padding:7px 10px;text-align:center;font-family:monospace;font-weight:600;font-size:12px">'+(r.fields['Days']||'—')+'</td>'
+      +'<td style="padding:7px 10px;font-size:11px;color:var(--txt3)">'+e(r.fields['Notes']||'')+'</td>'
+      +'<td style="padding:7px 10px;white-space:nowrap">'
+        +'<button onclick="openEntitlementForm(\''+r.id+'\')" style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;margin-right:4px">Edit</button>'
+        +'<button onclick="deleteEntitlementPeriod(\''+r.id+'\')" style="background:none;border:1px solid #f8514933;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;color:var(--red)">&#128465;</button>'
+      +'</td>'
+    +'</tr>';
+  }).join('');
+
+  document.getElementById('el-ent-modal').querySelector('.modal').innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'
+      +'<div class="modal-title" style="margin:0">Annual Entitlements</div>'
+      +'<button onclick="document.getElementById(\'el-ent-modal\').style.display=\'none\'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt3)">&#10005;</button>'
+    +'</div>'
+    +'<div style="border:1px solid var(--bdr2);border-radius:6px;overflow:hidden;margin-bottom:14px">'
+      +(rows ? '<table style="border-collapse:collapse;font-size:13px;display:inline-table;min-width:100%">'
+        +'<thead><tr style="background:var(--bg2)">'
+          +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--txt2)">Period</th>'
+          +'<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--txt2)">Days</th>'
+          +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--txt2)">Notes</th>'
+          +'<th></th>'
+        +'</tr></thead><tbody>'+rows+'</tbody></table>'
+      : '<div style="padding:14px;text-align:center;font-size:13px;color:var(--txt3)">No entitlement periods yet.</div>')
+    +'</div>'
+    +'<button class="btn-pri" onclick="openEntitlementForm(null)" style="width:100%;margin-bottom:16px">+ Add Period</button>'
+    +'<div style="border-top:1px solid var(--bdr);padding-top:14px">'
+      +'<div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:8px">Sick Leave Entitlement</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<input type="number" id="el-ent-sick" step="0.5" min="0" value="'+(f['Sick Leave Days']||'')+'" style="width:80px;padding:6px 8px;border:1px solid var(--bdr2);border-radius:6px;font-size:13px" placeholder="days">'
+        +'<span style="font-size:13px;color:var(--txt2)">days per year</span>'
+        +'<button class="btn-pri" onclick="saveSickLeave()" style="margin-left:auto;font-size:12px">Save</button>'
+      +'</div>'
+    +'</div>';
+}
+
+function openEntitlementForm(id) {
+  elEntEditId = id;
+  var r = id ? elEntitlements.find(function(x){ return x.id===id; }) : null;
+  var f = r ? r.fields : {};
+  document.getElementById('el-ent-modal').querySelector('.modal').innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
+      +'<button onclick="openEntitlementModal()" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt3)">&#8592;</button>'
+      +'<div class="modal-title" style="margin:0">'+(id?'Edit':'Add')+' Annual Period</div>'
+    +'</div>'
+    +'<div class="form-grid">'
+      +'<div class="field full"><label>Period Start</label>'
+        +'<input type="date" id="el-ent-start" value="'+(f['Period_Start']||'')+'" style="padding:8px;border:1px solid var(--bdr2);border-radius:6px;font-size:13px;width:100%;box-sizing:border-box"></div>'
+      +'<div class="field full"><label>Period End</label>'
+        +'<input type="date" id="el-ent-end" value="'+(f['Period_End']||'')+'" style="padding:8px;border:1px solid var(--bdr2);border-radius:6px;font-size:13px;width:100%;box-sizing:border-box"></div>'
+      +'<div class="field full"><label>Days Entitlement</label>'
+        +'<input type="number" id="el-ent-days" step="0.5" min="0" value="'+(f['Days']||'')+'" placeholder="e.g. 22" style="padding:8px;border:1px solid var(--bdr2);border-radius:6px;font-size:13px;width:100%;box-sizing:border-box"></div>'
+      +'<div class="field full"><label>Notes <span style="font-weight:400;color:var(--txt3)">(optional)</span></label>'
+        +'<input type="text" id="el-ent-notes" value="'+e(f['Notes']||'')+'" placeholder="e.g. Increased from 22 days" style="padding:8px;border:1px solid var(--bdr2);border-radius:6px;font-size:13px;width:100%;box-sizing:border-box"></div>'
+    +'</div>'
+    +'<div class="modal-actions">'
+      +'<button class="btn-cancel" onclick="openEntitlementModal()">Cancel</button>'
+      +'<button class="btn-pri" onclick="saveEntitlementPeriod()">Save</button>'
+    +'</div>';
+}
+
+async function saveEntitlementPeriod() {
+  var start = document.getElementById('el-ent-start').value;
+  var end   = document.getElementById('el-ent-end').value;
+  var days  = parseFloat(document.getElementById('el-ent-days').value);
+  var notes = document.getElementById('el-ent-notes').value.trim();
+  if(!start||!end){ toast('Please set both start and end dates','err'); return; }
+  if(isNaN(days)||days<=0){ toast('Please enter a valid number of days','err'); return; }
+  if(new Date(start)>=new Date(end)){ toast('End date must be after start date','err'); return; }
+  var fields = {'Employee':[elCurrentEmpId], 'Period_Start':start, 'Period_End':end, 'Days':days};
+  if(notes) fields['Notes'] = notes;
+  try {
+    var res = elEntEditId
+      ? await fetch(WORKER_URL+'/annual-entitlements/'+elEntEditId, {method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:fields})})
+      : await fetch(WORKER_URL+'/annual-entitlements',              {method:'POST', headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    toast(elEntEditId?'Period updated':'Period added','ok');
+    await loadLeaveData();
+    var emp = empRecords.find(function(e){ return e.id===elCurrentEmpId; });
+    renderEntitlementList(emp);
+    openEmpDetail(elCurrentEmpId);
+  } catch(err){ toast('Save failed: '+err.message,'err'); }
+}
+
+async function deleteEntitlementPeriod(id) {
+  if(!confirm('Delete this entitlement period?')) return;
+  try {
+    var res = await fetch(WORKER_URL+'/annual-entitlements/'+id, {method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    elEntitlements = elEntitlements.filter(function(r){ return r.id!==id; });
+    toast('Period deleted','ok');
+    var emp = empRecords.find(function(e){ return e.id===elCurrentEmpId; });
+    renderEntitlementList(emp);
+    openEmpDetail(elCurrentEmpId);
+  } catch(err){ toast('Delete failed: '+err.message,'err'); }
+}
+
+async function saveSickLeave() {
+  var sick = parseFloat(document.getElementById('el-ent-sick').value);
+  if(isNaN(sick)){ toast('Please enter a valid number','err'); return; }
   try {
     var res = await fetch(WORKER_URL+'/employees/'+elCurrentEmpId, {
       method:'PATCH', headers:getHeaders(),
-      body:JSON.stringify({fields:{'Annual Leave Days':annual,'Sick Leave Days':sick}})
+      body:JSON.stringify({fields:{'Sick Leave Days':sick}})
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
-    // Update local empRecords
     empRecords = empRecords.map(function(e){
       if(e.id!==elCurrentEmpId) return e;
-      e.fields['Annual Leave Days'] = annual;
-      e.fields['Sick Leave Days']   = sick;
-      return e;
+      e.fields['Sick Leave Days'] = sick; return e;
     });
-    document.getElementById('el-ent-modal').style.display='none';
-    toast('Entitlement updated','ok');
-    await loadLeaveData();
+    toast('Sick leave entitlement saved','ok');
     openEmpDetail(elCurrentEmpId);
   } catch(err){ toast('Save failed: '+err.message,'err'); }
 }
