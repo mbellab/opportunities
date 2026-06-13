@@ -43,6 +43,7 @@
     </div>
     <button class="lbtn" onclick="attemptLogin()">Sign in</button>
     <div class="lerr" id="login-error"></div>
+    <div id="app-version" style="text-align:center;font-size:11px;color:var(--txt3);margin-top:16px;font-family:monospace;letter-spacing:.5px"></div>
     <div style="text-align:center;margin-top:12px"><button onclick="document.getElementById('forgot-modal').style.display='flex'" style="background:none;border:none;font-size:12px;color:var(--txt3);cursor:pointer;text-decoration:underline">Forgot password?</button></div>
   </div>
 </div>
@@ -1991,13 +1992,8 @@
           </div>
         </div>
       </div>
-      <!-- Single date field (edit mode) -->
-      <div id="el-single-field" style="display:none" class="field">
-        <label>Date *</label>
-        <input id="el-entry-date" type="date">
-      </div>
       <div class="field">
-        <label>Days per day</label>
+        <label>Per working day</label>
         <select id="el-entry-days" class="sel" onchange="elUpdatePreview()">
           <option value="1">1 full day</option>
           <option value="0.5">0.5 half day</option>
@@ -2077,6 +2073,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
+var APP_VERSION = 'v1.2  ·  2026-06-13';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -7751,21 +7748,15 @@ function elEmpId(fieldVal) {
   return String(fieldVal);
 }
 function elLeaveUsed(empId, type, from, to) {
-  var confirmedDates = {};
-  elHolidays.forEach(function(h){
-    if(h.fields['Confirmed']) confirmedDates[h.fields['Date']] = true;
-  });
   var total = 0;
   elRecords.forEach(function(r){
     if(elEmpId(r.fields['Employee']) !== empId) return;
     if(r.fields['Type'] !== type) return;
-    var d = r.fields['Date'];
+    var d = r.fields['Start_Date'] || r.fields['Date'];
     if(!d) return;
     var dt = new Date(d); dt.setHours(0,0,0,0);
     if(from && dt < from) return;
     if(to   && dt > to)   return;
-    // Don't count confirmed bank holidays against annual leave
-    if(type === 'Annual' && confirmedDates[d]) return;
     total += parseFloat(r.fields['Days']) || 0;
   });
   return total;
@@ -7861,7 +7852,7 @@ function openEmpDetail(empId) {
 
 function elShowTab(tab) {
   elActiveTab = tab;
-  ['annual','sick','wfh','ticket'].forEach(function(t){
+  ['all','annual','sick','wfh','ticket'].forEach(function(t){
     document.getElementById('el-tab-'+t).className = 'el-tab'+(t===tab?' el-tab-active':'');
     document.getElementById('el-tab-content-'+t).style.display = t===tab ? '' : 'none';
   });
@@ -7871,25 +7862,32 @@ function elShowTab(tab) {
 function renderTabContent(tab) {
   if(!elCurrentEmpId) return;
   if(tab==='all'){
+    var elAll=document.getElementById('el-tab-content-all');
     var allE=elRecords.filter(function(r){return elEmpId(r.fields['Employee'])===elCurrentEmpId;})
-      .sort(function(a,b){return new Date(b.fields['Date'])-new Date(a.fields['Date']);});
+      .sort(function(a,b){return new Date(b.fields['Start_Date']||b.fields['Date'])-new Date(a.fields['Start_Date']||a.fields['Date']);});
     var tc={Annual:'var(--amber)',Sick:'var(--red)',Unpaid:'var(--red)',WFH:'var(--txt2)',Early:'var(--txt3)',Late:'var(--txt3)'};
     var rows=allE.map(function(r){var t=r.fields['Type']||'—';
+      var sD=r.fields['Start_Date']||r.fields['Date'], eD=r.fields['End_Date'];
+      var period=eD&&eD!==sD?elFmtDate(sD)+' → '+elFmtDate(eD):elFmtDate(sD);
       return '<tr style="border-bottom:1px solid var(--bdr)">'
-        +'<td style="padding:8px 12px;font-size:12px">'+elFmtDate(r.fields['Date'])+'</td>'
-        +'<td style="padding:8px 12px;font-weight:600;color:'+(tc[t]||'var(--txt)')+'">'+e(t)+'</td>'
-        +'<td style="padding:8px 12px;text-align:center;font-family:monospace">'+r.fields['Days']+'</td>'
-        +'<td style="padding:8px 12px;color:var(--txt2);font-size:12px">'+e(r.fields['Notes']||'')+'</td>'
-        +'<td><button onclick="openEditEntry(\''+r.id+'\')" style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px">Edit</button></td>'
+        +'<td style="padding:6px 10px;font-size:12px;white-space:nowrap">'+period+'</td>'
+        +'<td style="padding:6px 10px;font-weight:600;font-size:12px;white-space:nowrap;color:'+(tc[t]||'var(--txt)')+'">'+e(t)+'</td>'
+        +'<td style="padding:6px 10px;text-align:center;font-family:monospace;font-size:12px">'+r.fields['Days']+'</td>'
+        +'<td style="padding:6px 10px;text-align:right"><button onclick="openEditEntry(\''+r.id+'\')" style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px">Edit</button></td>'
       +'</tr>';}).join('');
-    el.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'
+    elAll.innerHTML='<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'
       +'<button class="btn-pri" onclick="openAddEntry(\'Annual\')" style="font-size:12px">+ Add Entry</button></div>'
       +'<div style="border:1px solid var(--bdr2);border-radius:6px;overflow:hidden">'
-      +(rows?'<table style="width:100%;border-collapse:collapse;font-size:13px">'
-        +'<thead><tr style="background:var(--bg2)"><th style="padding:8px 12px;text-align:left">Date</th>'
-        +'<th style="padding:8px 12px;text-align:left">Type</th><th style="padding:8px 12px;text-align:center">Days</th>'
-        +'<th style="padding:8px 12px;text-align:left">Notes</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+      +'<div style="overflow-x:auto">'
+      +(rows?'<table style="border-collapse:collapse;font-size:13px;display:inline-table;min-width:100%">'
+        +'<thead><tr style="background:var(--bg2)">'
+        +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--txt2)">Period</th>'
+        +'<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--txt2);white-space:nowrap">Type</th>'
+        +'<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--txt2)">Days</th>'
+        +'<th></th>'
+        +'</tr></thead><tbody>'+rows+'</tbody></table>'
       :'<div style="padding:16px;text-align:center;color:var(--txt3)">No leave entries yet</div>')
+      +'</div>'
       +'</div>';
     return;
   }
@@ -7912,12 +7910,12 @@ function renderTabContent(tab) {
   var entries = elRecords.filter(function(r){
     if(elEmpId(r.fields['Employee']) !== elCurrentEmpId) return false;
     if(r.fields['Type']!==leaveType) return false;
-    var d = r.fields['Date']; if(!d) return false;
+    var d = r.fields['Start_Date']||r.fields['Date']; if(!d) return false;
     var dt=new Date(d); dt.setHours(0,0,0,0);
     if(period && dt<period.from) return false;
     if(period && dt>period.to)   return false;
     return true;
-  }).sort(function(a,b){ return new Date(a.fields['Date'])-new Date(b.fields['Date']); });
+  }).sort(function(a,b){ return new Date(a.fields['Start_Date']||a.fields['Date'])-new Date(b.fields['Start_Date']||b.fields['Date']); });
 
   // Period navigation (annual tab only)
   var periodNavHtml = '';
@@ -7969,7 +7967,7 @@ function renderTabContent(tab) {
       bholNote = '<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:8px 12px;font-size:12px;margin-bottom:12px;color:var(--amber)">'+
         '&#127482;&#127462; '+confirmed.length+' confirmed bank holiday'+(confirmed.length!==1?'s':'')+
         (bhInPeriod.length>confirmed.length?' (+'+(bhInPeriod.length-confirmed.length)+' unconfirmed)':'')+
-        ' fall within this period — these are excluded from used days.</div>';
+        ' fall within this period — these are excluded from working day counts.</div>';
     }
   }
 
@@ -7977,21 +7975,19 @@ function renderTabContent(tab) {
   if(!entries.length) {
     listHtml = '<div style="padding:16px;text-align:center;color:var(--txt3);font-size:13px">No entries yet</div>';
   } else {
-    listHtml = '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+    listHtml = '<table style="border-collapse:collapse;font-size:13px;display:inline-table;min-width:100%">'+
       '<thead><tr style="background:var(--bg2)">'+
-      '<th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--txt2)">Date</th>'+
-      '<th style="padding:8px 12px;text-align:center;font-weight:600;color:var(--txt2)">Days</th>'+
-      '<th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--txt2)">Notes</th>'+
-      '<th style="padding:8px 12px"></th>'+
+      '<th style="padding:6px 10px;text-align:left;font-size:11px;color:var(--txt2)">Period</th>'+
+      '<th style="padding:6px 10px;text-align:center;font-size:11px;color:var(--txt2)">Days</th>'+
+      '<th></th>'+
       '</tr></thead><tbody>'+
       entries.map(function(r){
-        var isBH = tab==='annual' && elHolidays.some(function(h){ return h.fields['Confirmed']&&h.fields['Date']===r.fields['Date']; });
-        var style = isBH ? 'color:var(--txt3);font-style:italic' : '';
+        var sD=r.fields['Start_Date']||r.fields['Date'], eD=r.fields['End_Date'];
+        var period=eD&&eD!==sD?elFmtDate(sD)+' → '+elFmtDate(eD):elFmtDate(sD);
         return '<tr style="border-bottom:1px solid var(--bdr)">'+
-          '<td style="padding:8px 12px;'+style+'">'+elFmtDate(r.fields['Date'])+(isBH?' 🏖️':'')+'</td>'+
-          '<td style="padding:8px 12px;text-align:center;font-family:monospace;font-weight:600;'+style+'">'+r.fields['Days']+'</td>'+
-          '<td style="padding:8px 12px;color:var(--txt2);'+style+'">'+e(r.fields['Notes']||'')+'</td>'+
-          '<td style="padding:8px 12px"><button onclick="openEditEntry(\''+r.id+'\')" style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px">Edit</button></td>'+
+          '<td style="padding:6px 10px;font-size:12px;white-space:nowrap">'+period+'</td>'+
+          '<td style="padding:6px 10px;text-align:center;font-family:monospace;font-weight:600;font-size:12px">'+r.fields['Days']+'</td>'+
+          '<td style="padding:6px 10px;text-align:right"><button onclick="openEditEntry(\''+r.id+'\')" style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px">Edit</button></td>'+
         '</tr>';
       }).join('')+
       '</tbody></table>';
@@ -8000,7 +7996,7 @@ function renderTabContent(tab) {
   el.innerHTML = periodNavHtml + summaryHtml + bholNote +
     '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'+
     '<button class="btn-pri" onclick="openAddEntry(\''+leaveType+'\')" style="font-size:12px">+ Add Entry</button></div>'+
-    '<div style="border:1px solid var(--bdr2);border-radius:6px;overflow:hidden">'+listHtml+'</div>';
+    '<div style="border:1px solid var(--bdr2);border-radius:6px;overflow:hidden"><div style="overflow-x:auto">'+listHtml+'</div></div>';
 }
 
 function renderTicketTab(emp) {
@@ -8117,16 +8113,11 @@ function elUpdatePreview() {
   if(bhSkipped>0) msg += ' · '+bhSkipped+' bank holiday'+(bhSkipped!==1?'s':'')+' excluded';
   txt.textContent = msg;
   prev.style.display = '';
-  if(btn) btn.textContent = days.length>1 ? 'Save ('+days.length+' entries)' : 'Save';
+  if(btn) btn.textContent = 'Save';
 }
 function openAddEntry(type) {
   elCurrentEditId = null;
   document.getElementById('el-entry-title').textContent = 'Add Leave Entry';
-  // Switch to range mode for adding
-  var rangeF  = document.getElementById('el-range-fields');
-  var singleF = document.getElementById('el-single-field');
-  if(rangeF)  rangeF.style.display  = 'contents';
-  if(singleF) singleF.style.display = 'none';
   document.getElementById('el-entry-type').value = type||'Annual';
   document.getElementById('el-entry-days').value = '1';
   document.getElementById('el-entry-notes').value = '';
@@ -8136,29 +8127,28 @@ function openAddEntry(type) {
   document.getElementById('el-entry-end').value   = today;
   elUpdatePreview();
   document.getElementById('el-entry-del').style.display = 'none';
-  var saveBtn = document.getElementById('el-entry-save');
-  if(saveBtn) saveBtn.textContent = 'Save';
   document.getElementById('el-entry-modal').style.display = 'flex';
 }
 
 function openEditEntry(id) {
   var r = elRecords.find(function(x){ return x.id===id; });
-  elCurrentEditId = id;  // set regardless so delete works even if record not in cache
+  elCurrentEditId = id;
   var f = r ? r.fields : {};
   document.getElementById('el-entry-title').textContent = 'Edit Leave Entry';
-  // Switch to single-date mode
-  var rangeF  = document.getElementById('el-range-fields');
-  var singleF = document.getElementById('el-single-field');
-  if(rangeF)  rangeF.style.display  = 'none';
-  if(singleF) singleF.style.display = 'block';
   document.getElementById('el-entry-type').value  = f['Type']||'Annual';
-  document.getElementById('el-entry-date').value  = (f['Date']||'').substring(0,10);
-  document.getElementById('el-entry-days').value  = String(f['Days']||'1');
+  var startD = (f['Start_Date']||f['Date']||'').substring(0,10);
+  var endD   = (f['End_Date']  ||startD).substring(0,10);
+  document.getElementById('el-entry-start').value = startD;
+  document.getElementById('el-entry-end').value   = endD;
+  // Derive per-day multiplier from stored total ÷ working days count
+  var storedDays = parseFloat(f['Days'])||1;
+  var wdCount = startD ? elWorkingDays(startD, endD).length : 1;
+  var mult = wdCount > 0 ? Math.round((storedDays / wdCount) * 2) / 2 : 1;
+  document.getElementById('el-entry-days').value  = (mult === 0.5) ? '0.5' : '1';
   document.getElementById('el-entry-notes').value = f['Notes']||'';
+  elUpdatePreview();
   var delBtn = document.getElementById('el-entry-del');
   if(delBtn){ delBtn.style.display = 'inline-block'; delBtn.style.visibility = 'visible'; }
-  var saveBtn = document.getElementById('el-entry-save');
-  if(saveBtn) saveBtn.textContent = 'Save';
   document.getElementById('el-entry-modal').style.display = 'flex';
 }
 
@@ -8207,11 +8197,15 @@ async function saveLeaveEntry() {
   var notes = document.getElementById('el-entry-notes').value.trim();
 
   if(elCurrentEditId) {
-    // EDIT MODE — single record update
-    var date = document.getElementById('el-entry-date').value;
-    if(!date){ toast('Date required','err'); return; }
-    var fields = {'Employee':[elCurrentEmpId],'Type':type,'Date':date,'Days':days};
-    if(notes) fields['Notes']=notes;
+    // EDIT MODE — update date range, recompute days
+    var start = document.getElementById('el-entry-start').value;
+    var end   = document.getElementById('el-entry-end').value;
+    if(!start||!end){ toast('Start and end date required','err'); return; }
+    if(new Date(end)<new Date(start)){ toast('End date must be after start date','err'); return; }
+    var workDays = elWorkingDays(start, end);
+    var computedDays = workDays.length * days;
+    var fields = {'Employee':[elCurrentEmpId],'Type':type,'Start_Date':start,'End_Date':end,'Days':computedDays};
+    if(notes) fields['Notes']=notes; else fields['Notes']=null;
     try {
       var res = await fetch(WORKER_URL+'/leave-records/'+elCurrentEditId,
         {method:'PATCH', headers:getHeaders(), body:JSON.stringify({fields:fields})});
@@ -8226,7 +8220,7 @@ async function saveLeaveEntry() {
     return;
   }
 
-  // ADD MODE — date range, create one record per working day
+  // ADD MODE — single record with start/end dates
   var start = document.getElementById('el-entry-start').value;
   var end   = document.getElementById('el-entry-end').value;
   if(!start||!end){ toast('Start and end date required','err'); return; }
@@ -8235,26 +8229,20 @@ async function saveLeaveEntry() {
   var workDays = elWorkingDays(start, end);
   if(!workDays.length){ toast('No working days in selected range','err'); return; }
 
+  var computedDays = workDays.length * days;
   var saveBtn = document.getElementById('el-entry-save');
   if(saveBtn){ saveBtn.textContent='Saving…'; saveBtn.disabled=true; }
 
   try {
-    // Batch create — Airtable max 10 per request
-    var allRecords = workDays.map(function(date){
-      var f = {'Employee':[elCurrentEmpId],'Type':type,'Date':date,'Days':days};
-      if(notes) f['Notes']=notes;
-      return {fields:f};
-    });
-    for(var i=0; i<allRecords.length; i+=10) {
-      var chunk = allRecords.slice(i, i+10);
-      var res = await fetch(WORKER_URL+'/leave-records',
-        {method:'POST', headers:getHeaders(), body:JSON.stringify({records:chunk})});
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      var data = await res.json();
-      (data.records||[]).forEach(function(r){ elRecords.push(r); });
-    }
+    var f = {'Employee':[elCurrentEmpId],'Type':type,'Start_Date':start,'End_Date':end,'Days':computedDays};
+    if(notes) f['Notes']=notes;
+    var res = await fetch(WORKER_URL+'/leave-records',
+      {method:'POST', headers:getHeaders(), body:JSON.stringify({records:[{fields:f}]})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    (data.records||[]).forEach(function(r){ elRecords.push(r); });
     document.getElementById('el-entry-modal').style.display='none';
-    toast(workDays.length+' entr'+(workDays.length===1?'y':'ies')+' added','ok');
+    toast('Leave entry added ('+computedDays+' day'+(computedDays!==1?'s':'')+')', 'ok');
     await loadLeaveData();
     if(elCurrentEmpId) openEmpDetail(elCurrentEmpId);
   } catch(err){
@@ -8386,6 +8374,14 @@ document.addEventListener("DOMContentLoaded",function(){
   ["login-user","login-pwd"].forEach(function(id){
     var el=document.getElementById(id);
     if(el)el.addEventListener("keydown",function(ev){if(ev.key==="Enter")document.querySelector(".lbtn").click();});
+  });
+  var vEl=document.getElementById('app-version');
+  if(vEl) vEl.textContent=APP_VERSION;
+  document.querySelectorAll('.top-bar .app-nav-wrap').forEach(function(navWrap){
+    var ver=document.createElement('span');
+    ver.style.cssText='font-size:10px;color:var(--txt3);font-family:monospace;letter-spacing:.4px;margin-right:8px;align-self:center;white-space:nowrap';
+    ver.textContent=APP_VERSION;
+    navWrap.parentNode.insertBefore(ver,navWrap);
   });
 });
 
