@@ -335,14 +335,19 @@
             <span class="hs-group-lbl">Employees</span>
             <div class="hs-group-line"></div>
           </div>
-          <div class="hs-row" style="grid-template-columns:1fr 1fr">
+          <div class="hs-row" style="grid-template-columns:1fr 1fr 1fr">
             <div class="hs-tile hs-tile-employees" onclick="showEmployees()">
               <span class="hs-tile-icon">&#128100;</span>
               <span class="hs-tile-name">Employees</span>
             </div>
-            <div class="hs-tile" onclick="showEmployeeLeave()">
+            <div class="hs-tile hs-tile-emp-leave" onclick="showEmployeeLeave()">
               <span class="hs-tile-icon">&#127958;</span>
               <span class="hs-tile-name">Employee Leave</span>
+            </div>
+            <div class="hs-tile" onclick="showLeaveRequests()" style="position:relative">
+              <span class="hs-tile-icon">&#128203;</span>
+              <span class="hs-tile-name">Leave Requests</span>
+              <span id="lr-pending-badge" style="display:none;position:absolute;top:8px;right:8px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center"></span>
             </div>
           </div>
         </div>
@@ -1900,6 +1905,7 @@
     <!-- Bank Holidays bar -->
     <div id="el-holidays-bar" style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:10px 16px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <span style="font-size:11px;font-weight:700;color:var(--txt3);text-transform:uppercase;letter-spacing:.7px;font-family:monospace;flex-shrink:0">&#127482;&#127462; Bank Holidays</span>
+      <div id="el-hol-year-nav" style="display:flex;align-items:center;flex-shrink:0"></div>
       <div id="el-holidays-list" style="display:flex;gap:8px;flex-wrap:wrap;flex:1"></div>
       <button class="btn-ghost" onclick="openAddHoliday()" style="font-size:12px;flex-shrink:0">+ Add Holiday</button>
     </div>
@@ -1922,7 +1928,6 @@
               
               <th style="padding:10px 14px;font-weight:600;color:var(--txt2);border-bottom:1px solid var(--bdr2);text-align:center">WFH</th>
               <th style="padding:10px 14px;font-weight:600;color:var(--txt2);border-bottom:1px solid var(--bdr2);text-align:center">Unpaid</th>
-              <th style="padding:10px 14px;font-weight:600;color:var(--txt2);border-bottom:1px solid var(--bdr2);text-align:center">Unpaid</th>
               <th style="padding:10px 14px;font-weight:600;color:var(--txt2);border-bottom:1px solid var(--bdr2);text-align:center">Ticket</th>
               <th style="padding:10px 14px;border-bottom:1px solid var(--bdr2)"></th>
             </tr>
@@ -1941,7 +1946,10 @@
       <div class="modal-title" id="el-emp-name" style="margin-bottom:0"></div>
       <button onclick="document.getElementById('el-emp-modal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt3)">&#10005;</button>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div id="el-emp-meta" style="font-size:12px;color:var(--txt3)"></div><button class="btn-ghost" onclick="openEntitlementModal()" style="font-size:12px;white-space:nowrap;margin-left:12px">&#9998; Entitlement</button></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div id="el-emp-meta" style="font-size:12px;color:var(--txt3)"></div><div style="display:flex;gap:8px"><button class="btn-ghost" onclick="openLeaveRequestForm(elCurrentEmpId)" style="font-size:12px;white-space:nowrap">+ Request Leave</button><button class="btn-ghost" onclick="openEntitlementModal()" style="font-size:12px;white-space:nowrap">&#9998; Entitlement</button></div></div>
+
+    <!-- Period navigator (shared across all tabs) -->
+    <div id="el-period-nav" style="margin-bottom:12px"></div>
 
     <!-- Tabs -->
     <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--bdr2);padding-bottom:0">
@@ -1949,6 +1957,7 @@
       <button id="el-tab-annual" onclick="elShowTab('annual')" class="el-tab">Annual</button>
       <button id="el-tab-sick"   onclick="elShowTab('sick')"   class="el-tab">Sick Leave</button>
       <button id="el-tab-wfh"    onclick="elShowTab('wfh')"    class="el-tab">WFH</button>
+      <button id="el-tab-unpaid" onclick="elShowTab('unpaid')" class="el-tab">Unpaid</button>
       <button id="el-tab-ticket" onclick="elShowTab('ticket')" class="el-tab">Annual Ticket</button>
     </div>
 
@@ -1956,6 +1965,7 @@
     <div id="el-tab-content-annual" style="display:none"></div>
     <div id="el-tab-content-sick"   style="display:none"></div>
     <div id="el-tab-content-wfh"    style="display:none"></div>
+    <div id="el-tab-content-unpaid" style="display:none"></div>
     <div id="el-tab-content-ticket" style="display:none"></div>
   </div>
 </div>
@@ -2073,7 +2083,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.5  ·  2026-06-13';
+var APP_VERSION = 'v1.6  ·  2026-06-13';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -2333,13 +2343,12 @@ function applyRoleRestrictions() {
     rules.push('#tab-invoices{display:none!important}');
     // Hide admin-only home sections
     rules.push('.hs-tile-employees{display:none!important}');
+    rules.push('.hs-tile-emp-leave{display:none!important}');
     rules.push('#upcoming-group{display:none!important}');
     rules.push('#passport-alert-group{display:none!important}');
     rules.push('#hs-quality-people{display:none!important}');
     rules.push('#tile-pettycash{display:none!important}');
     rules.push('#hs-compliance{display:none!important}');
-    rules.push('#hs-employees{display:none!important}');
-    rules.push('#hs-security{display:none!important}');
     rules.push('#hs-security{display:none!important}');
     rules.push('#hs-finance{display:none!important}');
   }
@@ -2934,7 +2943,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -7169,6 +7178,7 @@ var DIAG_TABLES = [
   {name:'Annual Tickets',                url:'/annual-tickets'},
   {name:'Bank Holidays',                 url:'/bank-holidays'},
   {name:'Annual Entitlements',           url:'/annual-entitlements'},
+  {name:'Leave Requests',                url:'/leave-requests'},
 ];
 
 function showDiagnostics() {
@@ -7331,7 +7341,7 @@ async function loadDiagnostics() {
         return today>=from && today<=to;
       })||null;
 
-      if(!activeEnt){ noEnt.push(emp.fields['Name']||emp.id); return; }
+      if(!activeEnt){ noEnt.push(emp.fields['Employee Name']||emp.id); return; }
 
       var from = new Date(activeEnt.fields['Period_Start']+'T00:00:00');
       var to   = new Date(activeEnt.fields['Period_End']+'T00:00:00');
@@ -7347,7 +7357,7 @@ async function loadDiagnostics() {
         used+=parseFloat(r.fields['Days'])||0;
       });
       var bal=annualDays-used;
-      if(bal<0) negBal.push({name:emp.fields['Name']||emp.id, bal:bal});
+      if(bal<0) negBal.push({name:emp.fields['Employee Name']||emp.id, bal:bal});
     });
 
     var lv='';
@@ -7835,7 +7845,9 @@ async function deletePassword(id){
 
 // ── EMPLOYEE LEAVE MODULE ─────────────────────────────────────────
 var elRecords = [], elTickets = [], elHolidays = [], elEntitlements = [], elLoaded = false;
+var leaveRequests = [], lrFilter = 'pending', lrRejectId = null;
 var elCurrentEmpId = null, elCurrentEditId = null, elHolEditId = null, elActiveTab = 'all';
+var elHolYear = new Date().getFullYear();
 var elPeriodOffset = 0;  // 0 = current period, -1 = previous
 
 function showEmployeeLeave() {
@@ -7844,11 +7856,253 @@ function showEmployeeLeave() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('employees-leave-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','employees-leave');
   if(!elLoaded) loadLeaveData();
+}
+
+// ── LEAVE REQUESTS ──────────────────────────────────────────────────────────────
+
+function showLeaveRequests() {
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen',
+   'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
+   'passwords-screen','employees-leave-screen','leave-requests-screen'
+  ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.getElementById('leave-requests-screen').style.display='flex';
+  sessionStorage.setItem('mbb_screen','leave-requests');
+  loadLeaveRequests();
+}
+
+async function loadLeaveRequests() {
+  var body = document.getElementById('lr-body');
+  if(body) body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--txt3)">Loading…</div>';
+  try {
+    var res = await fetch(WORKER_URL+'/leave-requests?pageSize=100&sort[0][field]=Submission_Date&sort[0][direction]=desc', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    leaveRequests = data.records||[];
+    while(data.offset){
+      var r2 = await fetch(WORKER_URL+'/leave-requests?pageSize=100&offset='+data.offset, {headers:getHeaders()});
+      data = await r2.json();
+      leaveRequests = leaveRequests.concat(data.records||[]);
+    }
+    renderLeaveRequests();
+    updateLRBadge();
+  } catch(err) {
+    if(body) body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red)">Error: '+e(err.message)+'</div>';
+  }
+}
+
+function updateLRBadge() {
+  var badge = document.getElementById('lr-pending-badge');
+  var n = leaveRequests.filter(function(r){ return (r.fields['Status']||'Pending')==='Pending'; }).length;
+  if(badge){ badge.textContent=n; badge.style.display=n>0?'':'none'; }
+}
+
+function setLRFilter(f) {
+  lrFilter = f;
+  ['all','pending','approved','rejected'].forEach(function(t){
+    var el=document.getElementById('lr-tab-'+t);
+    if(el) el.className='el-tab'+(t===f?' el-tab-active':'');
+  });
+  renderLeaveRequests();
+}
+
+function getEmpNameById(id) {
+  if(!id) return '—';
+  var emp = empRecords.find(function(emp2){ return emp2.id===id; });
+  return emp ? (emp.fields['Employee Name']||emp.fields['Name']||id) : id;
+}
+
+function renderLeaveRequests() {
+  var body = document.getElementById('lr-body');
+  if(!body) return;
+  var filtered = leaveRequests.filter(function(r){
+    if(lrFilter==='all') return true;
+    return (r.fields['Status']||'Pending').toLowerCase()===lrFilter;
+  });
+  if(!filtered.length){
+    body.innerHTML='<div style="padding:32px;text-align:center;color:var(--txt3)">No '+lrFilter+' requests</div>';
+    return;
+  }
+  var rowSt='display:grid;grid-template-columns:1fr 130px 190px 60px 90px auto;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--bdr)';
+  var html='<div style="'+rowSt.replace('padding:10px 16px','padding:7px 16px')+';background:var(--bg2)">'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Employee</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Type</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Dates</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;text-align:center">Days</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Status</span>'+
+    '<span></span></div>';
+  filtered.forEach(function(r){
+    var f=r.fields;
+    var status=f['Status']||'Pending';
+    var sc=status==='Approved'?'var(--green)':status==='Rejected'?'var(--red)':'var(--amber)';
+    var empName=getEmpNameById(elEmpId(f['Employee']));
+    var d1=f['Date_Out']?elFmtDate(f['Date_Out']):'?';
+    var d2=f['Date_In']&&f['Date_In']!==f['Date_Out']?' → '+elFmtDate(f['Date_In']):'';
+    html+='<div style="'+rowSt+'">'+
+      '<div><div style="font-size:13px;font-weight:500">'+e(empName)+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3)">'+elFmtDate(f['Submission_Date'])+'</div></div>'+
+      '<span style="font-size:13px">'+e(f['Leave_Type']||'—')+'</span>'+
+      '<span style="font-size:12px;white-space:nowrap">'+d1+d2+'</span>'+
+      '<span style="font-size:14px;font-weight:700;font-family:monospace;text-align:center">'+e(String(f['Days']||'—'))+'</span>'+
+      '<span style="font-size:12px;font-weight:600;color:'+sc+'">'+e(status)+'</span>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        (status==='Pending'?
+          '<button onclick="approveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--green);border-color:var(--green-bdr)">✓ Approve</button>'+
+          '<button onclick="openRejectModal(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">✗ Reject</button>':'')+
+        '<button onclick="printLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Print</button>'+
+      '</div></div>';
+  });
+  body.innerHTML=html;
+}
+
+async function approveRequest(id) {
+  var req=leaveRequests.find(function(r){ return r.id===id; });
+  if(!req) return;
+  var f=req.fields;
+  try {
+    // Create the leave record
+    var leaveFields={Employee:[elEmpId(f['Employee'])],Type:f['Leave_Type'],
+      Start_Date:f['Date_Out'],End_Date:f['Date_In'],Days:f['Days']};
+    if(f['Detail']) leaveFields.Notes=f['Detail'];
+    var lRes=await fetch(WORKER_URL+'/leave-records',{method:'POST',headers:getHeaders(),
+      body:JSON.stringify({records:[{fields:leaveFields}]})});
+    if(!lRes.ok) throw new Error('Failed to create leave record: HTTP '+lRes.status);
+    var lData=await lRes.json();
+    if(lData.records) elRecords=elRecords.concat(lData.records);
+    // Update request status
+    var today=new Date().toISOString().split('T')[0];
+    var pRes=await fetch(WORKER_URL+'/leave-requests/'+id,{method:'PATCH',headers:getHeaders(),
+      body:JSON.stringify({fields:{Status:'Approved',Approved_By:userName,Approval_Date:today}})});
+    if(!pRes.ok) throw new Error('Failed to update request: HTTP '+pRes.status);
+    var pData=await pRes.json();
+    leaveRequests=leaveRequests.map(function(r){ return r.id===id?pData:r; });
+    toast('Approved — leave record created','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){ toast('Error: '+err.message,'err'); }
+}
+
+function openRejectModal(id) {
+  lrRejectId=id;
+  document.getElementById('lr-reject-notes').value='';
+  document.getElementById('lr-reject-modal').style.display='flex';
+}
+
+async function rejectRequest() {
+  if(!lrRejectId) return;
+  var notes=document.getElementById('lr-reject-notes').value.trim();
+  try {
+    var res=await fetch(WORKER_URL+'/leave-requests/'+lrRejectId,{method:'PATCH',headers:getHeaders(),
+      body:JSON.stringify({fields:{Status:'Rejected',Rejection_Notes:notes}})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    leaveRequests=leaveRequests.map(function(r){ return r.id===lrRejectId?data:r; });
+    document.getElementById('lr-reject-modal').style.display='none';
+    toast('Request rejected','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){ toast('Error: '+err.message,'err'); }
+}
+
+function openLeaveRequestForm(empId) {
+  var empSel=document.getElementById('lr-form-employee');
+  if(empSel){
+    var active=empRecords.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
+    empSel.innerHTML='<option value="">— Select Employee —</option>'+
+      active.map(function(e2){
+        var n=e2.fields['Employee Name']||e2.fields['Name']||'Unknown';
+        return '<option value="'+e2.id+'"'+(e2.id===empId?' selected':'')+'>'+n+'</option>';
+      }).join('');
+  }
+  document.getElementById('lr-form-submitted').value=new Date().toISOString().split('T')[0];
+  document.getElementById('lr-form-type').value='Annual';
+  document.getElementById('lr-form-date-out').value='';
+  document.getElementById('lr-form-date-in').value='';
+  document.getElementById('lr-form-days').value='';
+  document.getElementById('lr-form-detail').value='';
+  document.getElementById('lr-form-coverage').value='';
+  document.getElementById('lr-form-modal').style.display='flex';
+}
+
+async function saveLeaveRequest() {
+  var empId=document.getElementById('lr-form-employee').value;
+  var type=document.getElementById('lr-form-type').value;
+  var dateOut=document.getElementById('lr-form-date-out').value;
+  var dateIn=document.getElementById('lr-form-date-in').value;
+  var days=parseFloat(document.getElementById('lr-form-days').value)||0;
+  var detail=document.getElementById('lr-form-detail').value.trim();
+  var coverage=document.getElementById('lr-form-coverage').value.trim();
+  var subDate=document.getElementById('lr-form-submitted').value;
+  if(!empId||!type||!dateOut||!days){ toast('Fill in all required fields','err'); return; }
+  var fields={Employee:[empId],Leave_Type:type,Date_Out:dateOut,Date_In:dateIn||dateOut,
+    Days:days,Status:'Pending',Submission_Date:subDate};
+  if(detail)   fields.Detail=detail;
+  if(coverage) fields.Coverage=coverage;
+  try {
+    var res=await fetch(WORKER_URL+'/leave-requests',{method:'POST',headers:getHeaders(),
+      body:JSON.stringify({records:[{fields:fields}]})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    leaveRequests=(data.records||[]).concat(leaveRequests);
+    document.getElementById('lr-form-modal').style.display='none';
+    toast('Leave request submitted','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){ toast('Error: '+err.message,'err'); }
+}
+
+function printLeaveRequest(id) {
+  var req=leaveRequests.find(function(r){ return r.id===id; });
+  if(!req) return;
+  var f=req.fields;
+  var empName=getEmpNameById(elEmpId(f['Employee']));
+  var emp=empRecords.find(function(e2){ return e2.id===elEmpId(f['Employee']); });
+  var position=emp?(emp.fields['Position']||emp.fields['Job Title']||''):'';
+  var statusSection='';
+  if(f['Status']==='Approved'){
+    statusSection='<tr><td colspan="2" class="sec">Approval</td></tr>'+
+      '<tr><th>Status</th><td style="color:green;font-weight:700">APPROVED</td></tr>'+
+      '<tr><th>Approved By</th><td>'+e(f['Approved_By']||'')+'</td></tr>'+
+      '<tr><th>Approval Date</th><td>'+elFmtDate(f['Approval_Date'])+'</td></tr>';
+  } else if(f['Status']==='Rejected'){
+    statusSection='<tr><td colspan="2" class="sec">Decision</td></tr>'+
+      '<tr><th>Status</th><td style="color:red;font-weight:700">REJECTED</td></tr>'+
+      '<tr><th>Notes</th><td>'+e(f['Rejection_Notes']||'')+'</td></tr>';
+  } else {
+    statusSection='<tr style="height:52px"><th>Approved by</th><td></td></tr>'+
+      '<tr style="height:52px"><th>Date</th><td></td></tr>';
+  }
+  var html='<!DOCTYPE html><html><head><title>Leave Request — '+e(empName)+'</title>'+
+    '<style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:48px;color:#222;font-size:13px}'+
+    'h1{font-size:17px;font-weight:700;text-align:center;margin:0 0 4px}'+
+    '.sub{text-align:center;color:#666;font-size:11px;margin-bottom:6px}'+
+    '.policy{font-size:11px;color:#555;margin-bottom:20px;line-height:1.5}'+
+    'table{width:100%;border-collapse:collapse;margin-bottom:24px}'+
+    'td,th{border:1px solid #bbb;padding:7px 12px;vertical-align:top}'+
+    'th{background:#f0f0f0;font-weight:600;width:200px;text-align:left}'+
+    '.sec{background:#ddd;font-weight:700;text-align:center}'+
+    '@media print{.noprint{display:none}}</style></head><body>'+
+    '<h1>LEAVE REQUEST FORM</h1>'+
+    '<div class="sub">mBELLAb P.S. &nbsp;&middot;&nbsp; mBB-FM-32 &nbsp;&middot;&nbsp; HR</div>'+
+    '<p class="policy">In line with the policies of mBELLAb relating to annual leave and other absences, please submit this form to the Administrative Assistant and/or your supervisor for authorization and approval. No plans should be made without first obtaining authorisation for leave.</p>'+
+    '<table>'+
+      '<tr><th>Employee Name</th><td>'+e(empName)+'</td></tr>'+
+      '<tr><th>Position</th><td>'+e(position)+'</td></tr>'+
+      '<tr><th>Submission Date</th><td>'+elFmtDate(f['Submission_Date'])+'</td></tr>'+
+      '<tr><th>Coverage Required</th><td>'+e(f['Coverage']||'')+'</td></tr>'+
+      '<tr><td colspan="2" class="sec">Leave Details</td></tr>'+
+      '<tr><th>Leave Type</th><td>'+e(f['Leave_Type']||'—')+'</td></tr>'+
+      '<tr><th>Date Out</th><td>'+elFmtDate(f['Date_Out'])+'</td></tr>'+
+      '<tr><th>Date In</th><td>'+elFmtDate(f['Date_In'])+'</td></tr>'+
+      '<tr><th>Number of Days</th><td>'+e(String(f['Days']||'—'))+'</td></tr>'+
+      '<tr><th>Detail / Reason</th><td>'+e(f['Detail']||'')+'</td></tr>'+
+      statusSection+
+    '</table>'+
+    '<div class="noprint" style="text-align:center"><button onclick="window.print()" style="padding:8px 24px;font-size:14px;cursor:pointer">Print</button></div>'+
+    '</body></html>';
+  var w=window.open('','_blank'); w.document.write(html); w.document.close();
 }
 
 async function loadLeaveData() {
@@ -7913,7 +8167,36 @@ function getAnnualPeriod(startDateStr, offset) {
 
 function elChangePeriod(offset) {
   elPeriodOffset = offset;
-  renderTabContent('annual');
+  var ents = getEmpEntitlements(elCurrentEmpId);
+  renderPeriodNav(ents);
+  renderTabContent(elActiveTab);
+}
+
+function renderPeriodNav(ents) {
+  var nav = document.getElementById('el-period-nav');
+  if(!nav) return;
+  if(!ents || !ents.length) {
+    nav.innerHTML = '<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--amber)">'
+      +'No annual entitlement periods set up yet. Click <strong>&#9998; Entitlement</strong> above to add one.</div>';
+    return;
+  }
+  var entRec  = ents[elPeriodOffset] || ents[0];
+  var period  = entPeriod(entRec);
+  var canPrev = elPeriodOffset < ents.length - 1;
+  var canNext = elPeriodOffset > 0;
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var isActive = period && today >= period.from && today <= period.to;
+  var btnSt = 'background:none;border:none;font-size:16px;padding:0 6px;';
+  nav.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;'
+    +'background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:8px 12px">'
+    +'<button onclick="elChangePeriod('+(elPeriodOffset+1)+')" style="'+btnSt+'cursor:'+(canPrev?'pointer':'default')+';color:'+(canPrev?'var(--txt)':'var(--bdr2)')+'" '+(canPrev?'':'disabled')+'>&#8592;</button>'
+    +'<div style="text-align:center">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--txt)">'+(period?elFmtPeriodLabel(period.from,period.to):'—')+'</div>'
+      +'<div style="font-size:10px;color:'+(isActive?'var(--green)':'var(--txt3)')+';margin-top:1px">'+(isActive?'Current period':'Past period')+'</div>'
+    +'</div>'
+    +'<button onclick="elChangePeriod('+(elPeriodOffset-1)+')" style="'+btnSt+'cursor:'+(canNext?'pointer':'default')+';color:'+(canNext?'var(--txt)':'var(--bdr2)')+'" '+(canNext?'':'disabled')+'>&#8594;</button>'
+    +'</div>';
 }
 
 function elFmtPeriodLabel(from, to) {
@@ -7957,11 +8240,14 @@ function elLeaveUsed(empId, type, from, to) {
   elRecords.forEach(function(r){
     if(elEmpId(r.fields['Employee']) !== empId) return;
     if(r.fields['Type'] !== type) return;
-    var d = r.fields['Start_Date'] || r.fields['Date'];
-    if(!d) return;
-    var dt = new Date(d); dt.setHours(0,0,0,0);
-    if(from && dt < from) return;
-    if(to   && dt > to)   return;
+    var startStr = r.fields['Start_Date'] || r.fields['Date'];
+    if(!startStr) return;
+    var startDt = new Date(startStr); startDt.setHours(0,0,0,0);
+    var endStr  = r.fields['End_Date'];
+    var endDt   = endStr ? new Date(endStr) : startDt; endDt.setHours(0,0,0,0);
+    // Include if leave overlaps the period (end >= from AND start <= to)
+    if(from && endDt < from) return;
+    if(to   && startDt > to) return;
     total += parseFloat(r.fields['Days']) || 0;
   });
   return total;
@@ -7976,14 +8262,31 @@ function getCurrentTicket(empId) {
   }) || null;
 }
 
+function setHolYear(delta) {
+  elHolYear += delta;
+  renderHolidaysBar();
+}
+
 function renderHolidaysBar() {
-  var yrNow = new Date().getFullYear();
   var list = document.getElementById('el-holidays-list');
+  var nav  = document.getElementById('el-hol-year-nav');
+  if(!list) return;
+
+  var btnSt = 'background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;padding:0 4px;line-height:1';
+  if(nav) nav.innerHTML =
+    '<button onclick="setHolYear(-1)" style="'+btnSt+'">‹</button>'+
+    '<span style="font-size:13px;font-weight:600;color:var(--txt);min-width:36px;text-align:center;display:inline-block">'+elHolYear+'</span>'+
+    '<button onclick="setHolYear(1)" style="'+btnSt+'">›</button>';
+
   var relevant = elHolidays.filter(function(h){
     var d = h.fields['Date'];
-    return d && new Date(d).getFullYear() === yrNow;
+    return d && new Date(d).getFullYear() === elHolYear;
   }).sort(function(a,b){ return new Date(a.fields['Date'])-new Date(b.fields['Date']); });
-  if(!relevant.length) { list.innerHTML='<span style="font-size:12px;color:var(--txt3)">No holidays added yet</span>'; return; }
+
+  if(!relevant.length) {
+    list.innerHTML='<span style="font-size:12px;color:var(--txt3)">No holidays for '+elHolYear+'</span>';
+    return;
+  }
   list.innerHTML = relevant.map(function(h){
     var confirmed = h.fields['Confirmed'];
     var col = confirmed ? 'var(--green)' : 'var(--amber)';
@@ -8009,9 +8312,8 @@ function renderLeaveTable() {
     if(period) {
       annualUsed = elLeaveUsed(emp.id, 'Annual', period ? period.from : null, period ? period.to : null);
       sickUsed   = elLeaveUsed(emp.id, 'Sick', new Date(yrNow,0,1), new Date(yrNow,11,31));
-      unpaidUsed = elLeaveUsed(emp.id,'Unpaid',period?period.from:new Date(yrNow,0,1),period?period.to:new Date(yrNow,11,31));
+      unpaidUsed = elLeaveUsed(emp.id, 'Unpaid', period ? period.from : new Date(yrNow,0,1), period ? period.to : new Date(yrNow,11,31));
       wfhUsed    = elLeaveUsed(emp.id, 'WFH',    new Date(yrNow,0,1), new Date(yrNow,11,31));
-      unpaidUsed = elLeaveUsed(emp.id, 'Unpaid', new Date(yrNow,0,1), new Date(yrNow,11,31));
     }
     var annualRem = annualEnt - annualUsed;
     var sickRem   = sickEnt   - sickUsed;
@@ -8052,13 +8354,14 @@ function openEmpDetail(empId) {
     (period ? ' · Current annual period: '+elFmtPeriod(period.from, period.to) : ' · No active annual period') +
     (activeEnt ? ' · Annual entitlement: '+activeEnt.fields['Days']+' days' : '') +
     ' · Sick entitlement: '+(f['Sick Leave Days']||'?')+' days';
+  renderPeriodNav(getEmpEntitlements(empId));
   elShowTab('all');
   document.getElementById('el-emp-modal').style.display='flex';
 }
 
 function elShowTab(tab) {
   elActiveTab = tab;
-  ['all','annual','sick','wfh','ticket'].forEach(function(t){
+  ['all','annual','sick','wfh','unpaid','ticket'].forEach(function(t){
     document.getElementById('el-tab-'+t).className = 'el-tab'+(t===tab?' el-tab-active':'');
     document.getElementById('el-tab-content-'+t).style.display = t===tab ? '' : 'none';
   });
@@ -8108,48 +8411,27 @@ function renderTabContent(tab) {
     return;
   }
 
-  var typeMap = {annual:'Annual', sick:'Sick', wfh:'WFH'};
+  var typeMap = {annual:'Annual', sick:'Sick', wfh:'WFH', unpaid:'Unpaid'};
   var leaveType = typeMap[tab];
-  var ents = getEmpEntitlements(elCurrentEmpId);
-  var entRec = tab==='annual' ? (ents[elPeriodOffset]||ents[0]||null) : null;
-  var period = tab==='annual' ? entPeriod(entRec) : {from:new Date(yrNow,0,1), to:new Date(yrNow,11,31)};
-  var ent = tab==='annual' ? (entRec ? (parseFloat(entRec.fields['Days'])||0) : 0) : (tab==='sick'?(parseFloat(f['Sick Leave Days'])||0):null);
-  var used = period ? elLeaveUsed(elCurrentEmpId, leaveType, period ? period.from : null, period ? period.to : null) : 0;
+  var ents   = getEmpEntitlements(elCurrentEmpId);
+  var entRec = ents[elPeriodOffset] || ents[0] || null;
+  var period = entRec ? entPeriod(entRec) : null;
+  var ent = tab==='annual' ? (entRec ? (parseFloat(entRec.fields['Days'])||0) : 0)
+          : tab==='sick'   ? (parseFloat(f['Sick Leave Days'])||0)
+          : null;
+  var used = period ? elLeaveUsed(elCurrentEmpId, leaveType, period.from, period.to) : 0;
   var entries = elRecords.filter(function(r){
     if(elEmpId(r.fields['Employee']) !== elCurrentEmpId) return false;
     if(r.fields['Type']!==leaveType) return false;
-    var d = r.fields['Start_Date']||r.fields['Date']; if(!d) return false;
-    var dt=new Date(d); dt.setHours(0,0,0,0);
-    if(period && dt<period.from) return false;
-    if(period && dt>period.to)   return false;
+    var startStr = r.fields['Start_Date']||r.fields['Date']; if(!startStr) return false;
+    var startDt  = new Date(startStr); startDt.setHours(0,0,0,0);
+    var endStr   = r.fields['End_Date'];
+    var endDt    = endStr ? new Date(endStr) : startDt; endDt.setHours(0,0,0,0);
+    // Include if leave overlaps the period
+    if(period && endDt   < period.from) return false;
+    if(period && startDt > period.to)   return false;
     return true;
   }).sort(function(a,b){ return new Date(a.fields['Start_Date']||a.fields['Date'])-new Date(b.fields['Start_Date']||b.fields['Date']); });
-
-  // Period navigation (annual tab only)
-  var periodNavHtml = '';
-  if(tab==='annual') {
-    if(!ents.length) {
-      periodNavHtml = '<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--amber)">'
-        +'No annual entitlement periods set up yet. Click <strong>&#9998; Entitlement</strong> above to add one.</div>';
-    } else {
-      var canPrev = elPeriodOffset < ents.length-1;
-      var canNext = elPeriodOffset > 0;
-      var isActive= entRec && (function(){
-        var today=new Date(); today.setHours(0,0,0,0);
-        var p=entPeriod(entRec);
-        return p && today>=p.from && today<=p.to;
-      })();
-      periodNavHtml = '<div style="display:flex;align-items:center;justify-content:space-between;'
-        +'background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:8px 12px;margin-bottom:12px">'
-        +'<button onclick="elChangePeriod('+(elPeriodOffset+1)+')" style="background:none;border:none;cursor:'+(canPrev?'pointer':'default')+';font-size:16px;color:'+(canPrev?'var(--txt)':'var(--bdr2)')+';padding:0 6px" '+(canPrev?'':'disabled')+'>&#8592;</button>'
-        +'<div style="text-align:center">'
-          +'<div style="font-size:13px;font-weight:700;color:var(--txt)">'+(period?elFmtPeriodLabel(period.from,period.to):'—')+'</div>'
-          +'<div style="font-size:10px;color:'+(isActive?'var(--green)':'var(--txt3)')+';margin-top:1px">'+(isActive?'Current period':'Past period')+'</div>'
-        +'</div>'
-        +'<button onclick="elChangePeriod('+(elPeriodOffset-1)+')" style="background:none;border:none;cursor:'+(canNext?'pointer':'default')+';font-size:16px;color:'+(canNext?'var(--txt)':'var(--bdr2)')+';padding:0 6px" '+(canNext?'':'disabled')+'>&#8594;</button>'
-      +'</div>';
-    }
-  }
 
   var summaryHtml = '';
   if(ent !== null) {
@@ -8201,7 +8483,7 @@ function renderTabContent(tab) {
       '</tbody></table>';
   }
 
-  el.innerHTML = periodNavHtml + summaryHtml + bholNote +
+  el.innerHTML = summaryHtml + bholNote +
     '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'+
     '<button class="btn-pri" onclick="openAddEntry(\''+leaveType+'\')" style="font-size:12px">+ Add Entry</button></div>'+
     '<div style="border:1px solid var(--bdr2);border-radius:6px;overflow:hidden"><div style="overflow-x:auto">'+listHtml+'</div></div>';
@@ -8209,8 +8491,9 @@ function renderTabContent(tab) {
 
 function renderTicketTab(emp) {
   var el = document.getElementById('el-tab-content-ticket');
-  var f = emp.fields;
-  var period = getAnnualPeriod(f['Start Date']);
+  var ents = getEmpEntitlements(emp.id);
+  var entRec = ents[elPeriodOffset] || ents[0] || null;
+  var period = entRec ? entPeriod(entRec) : null;
   var periodLabel = period ? elFmtPeriod(period.from, period.to) : null;
 
   // Get all tickets for this employee sorted by period
@@ -8252,7 +8535,9 @@ function renderTicketTab(emp) {
 async function setTicketStatus(status) {
   var emp = empRecords.find(function(e){ return e.id===elCurrentEmpId; });
   if(!emp) return;
-  var period = getAnnualPeriod(emp.fields['Start Date']);
+  var ents = getEmpEntitlements(elCurrentEmpId);
+  var entRec = ents[elPeriodOffset] || ents[0] || null;
+  var period = entRec ? entPeriod(entRec) : null;
   if(!period) return;
   var label = elFmtPeriod(period.from, period.to);
   var existing = elTickets.find(function(t){
@@ -8814,6 +9099,103 @@ document.addEventListener("DOMContentLoaded",function(){
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:32px">
       <button class="btn-ghost" onclick="loadDiagnostics()" style="font-size:13px">↻ Refresh</button>
       <span id="diag-timestamp" style="font-size:12px;color:var(--txt3)"></span>
+    </div>
+  </div>
+</div>
+
+<!-- LEAVE REQUESTS SCREEN -->
+<div id="leave-requests-screen" style="display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;background:var(--bg)">
+  <div class="top-bar">
+    <div class="bname">mBELLAb</div>
+    <div class="bsep"></div>
+    <div class="page-title">Leave Requests</div>
+    <div style="flex:1"></div>
+    <button class="btn-pri" onclick="openLeaveRequestForm(null)" style="font-size:12px;margin-right:8px">+ New Request</button>
+    <button class="btn-ghost" onclick="showHome()">Home</button>
+  </div>
+  <div class="body-wrap" style="padding:20px;max-width:960px;margin:0 auto;width:100%;overflow-y:auto">
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--bdr2);padding-bottom:0">
+      <button id="lr-tab-pending"  onclick="setLRFilter('pending')"  class="el-tab el-tab-active">Pending</button>
+      <button id="lr-tab-approved" onclick="setLRFilter('approved')" class="el-tab">Approved</button>
+      <button id="lr-tab-rejected" onclick="setLRFilter('rejected')" class="el-tab">Rejected</button>
+      <button id="lr-tab-all"      onclick="setLRFilter('all')"      class="el-tab">All</button>
+    </div>
+    <div id="lr-body"></div>
+  </div>
+</div>
+
+<!-- LEAVE REQUEST FORM MODAL -->
+<div class="modal-bg" id="lr-form-modal" style="display:none;z-index:600">
+  <div class="modal" style="max-width:520px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div class="modal-title" style="margin:0">Leave Request</div>
+      <button onclick="document.getElementById('lr-form-modal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt3)">&#10005;</button>
+    </div>
+    <div style="display:grid;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Employee *</label>
+        <select id="lr-form-employee" class="form-input" style="width:100%"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Submission Date</label>
+          <input id="lr-form-submitted" type="date" class="form-input" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Leave Type *</label>
+          <select id="lr-form-type" class="form-input" style="width:100%">
+            <option value="Annual">Annual</option>
+            <option value="Sick">Sick Leave</option>
+            <option value="WFH">WFH</option>
+            <option value="Unpaid">Unpaid</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Date Out *</label>
+          <input id="lr-form-date-out" type="date" class="form-input" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Date In *</label>
+          <input id="lr-form-date-in" type="date" class="form-input" style="width:100%">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Days *</label>
+          <input id="lr-form-days" type="number" step="0.5" min="0.5" class="form-input" style="width:100%" placeholder="e.g. 3">
+        </div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Detail / Reason</label>
+        <textarea id="lr-form-detail" class="form-input" rows="2" style="width:100%;resize:vertical" placeholder="Optional reason or notes"></textarea>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Coverage Required</label>
+        <input id="lr-form-coverage" type="text" class="form-input" style="width:100%" placeholder="Who will cover?">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn-ghost" onclick="document.getElementById('lr-form-modal').style.display='none'">Cancel</button>
+        <button class="btn-pri" onclick="saveLeaveRequest()">Submit Request</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LEAVE REQUEST REJECTION MODAL -->
+<div class="modal-bg" id="lr-reject-modal" style="display:none;z-index:620">
+  <div class="modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="modal-title" style="margin:0">Reject Request</div>
+      <button onclick="document.getElementById('lr-reject-modal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt3)">&#10005;</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:6px">Reason for rejection (optional)</label>
+      <textarea id="lr-reject-notes" class="form-input" rows="3" style="width:100%;resize:vertical" placeholder="Explain why this request is being rejected…"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-ghost" onclick="document.getElementById('lr-reject-modal').style.display='none'">Cancel</button>
+      <button class="btn-pri" onclick="rejectRequest()" style="background:var(--red);border-color:var(--red)">Reject</button>
     </div>
   </div>
 </div>
