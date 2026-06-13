@@ -7880,6 +7880,11 @@ async function loadLeaveRequests() {
   var body = document.getElementById('lr-body');
   if(body) body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--txt3)">Loading…</div>';
   try {
+    // Ensure employee records are available (non-admins never load the Employees screen)
+    if(!empRecords.length) {
+      var eRes = await fetch(WORKER_URL+'/employees?pageSize=100', {headers:getHeaders()});
+      if(eRes.ok){ var eData=await eRes.json(); empRecords=eData.records||[]; }
+    }
     var res = await fetch(WORKER_URL+'/leave-requests?pageSize=100&sort[0][field]=Submission_Date&sort[0][direction]=desc', {headers:getHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
     var data = await res.json();
@@ -7951,7 +7956,7 @@ function renderLeaveRequests() {
       '<span style="font-size:14px;font-weight:700;font-family:monospace;text-align:center">'+e(String(f['Days']||'—'))+'</span>'+
       '<span style="font-size:12px;font-weight:600;color:'+sc+'">'+e(status)+'</span>'+
       '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
-        (status==='Pending'?
+        (status==='Pending' && userRole==='admin'?
           '<button onclick="approveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--green);border-color:var(--green-bdr)">✓ Approve</button>'+
           '<button onclick="openRejectModal(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">✗ Reject</button>':'')+
         '<button onclick="printLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Print</button>'+
@@ -8007,37 +8012,91 @@ async function rejectRequest() {
   } catch(err){ toast('Error: '+err.message,'err'); }
 }
 
-function openLeaveRequestForm(empId) {
-  var empSel=document.getElementById('lr-form-employee');
-  if(empSel){
-    var active=empRecords.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
-    empSel.innerHTML='<option value="">— Select Employee —</option>'+
-      active.map(function(e2){
-        var n=e2.fields['Employee Name']||e2.fields['Name']||'Unknown';
-        return '<option value="'+e2.id+'"'+(e2.id===empId?' selected':'')+'>'+n+'</option>';
-      }).join('');
+async function openLeaveRequestForm(empId) {
+  var isAdmin = userRole === 'admin';
+  var empSel  = document.getElementById('lr-form-employee');
+  var empRow  = document.getElementById('lr-form-employee-row');
+
+  // Ensure employees are loaded
+  if(!empRecords.length) {
+    try {
+      var eRes = await fetch(WORKER_URL+'/employees?pageSize=100', {headers:getHeaders()});
+      if(eRes.ok){ var eData=await eRes.json(); empRecords=eData.records||[]; }
+    } catch(err){ toast('Could not load employee list','err'); return; }
   }
+
+  // For non-admins, auto-detect employee from Username field
+  if(!isAdmin) {
+    var matched = empRecords.find(function(e2){
+      return (e2.fields['Username']||'').toLowerCase() === (currentUser.username||'').toLowerCase();
+    });
+    if(matched) {
+      empId = matched.id;
+    } else {
+      toast('Your account is not linked to an employee record — ask an admin to set your Username field.','err');
+      return;
+    }
+  }
+
+  // Show/hide employee row based on role
+  if(empRow) empRow.style.display = isAdmin ? '' : 'none';
+
+  if(empSel){
+    if(isAdmin){
+      var active=empRecords.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
+      empSel.innerHTML='<option value="">— Select Employee —</option>'+
+        active.map(function(e2){
+          var n=e2.fields['Employee Name']||e2.fields['Name']||'Unknown';
+          return '<option value="'+e2.id+'"'+(e2.id===empId?' selected':'')+'>'+n+'</option>';
+        }).join('');
+    } else {
+      // Store the resolved empId in the hidden select
+      empSel.innerHTML='<option value="'+empId+'" selected></option>';
+    }
+  }
+
   document.getElementById('lr-form-submitted').value=new Date().toISOString().split('T')[0];
   document.getElementById('lr-form-type').value='Annual';
   document.getElementById('lr-form-date-out').value='';
   document.getElementById('lr-form-date-in').value='';
-  document.getElementById('lr-form-days').value='';
   document.getElementById('lr-form-detail').value='';
   document.getElementById('lr-form-coverage').value='';
+  var prev=document.getElementById('lr-days-preview'); if(prev) prev.style.display='none';
+  var btn=document.getElementById('lr-form-submit-btn'); if(btn){btn.disabled=false;btn.textContent='Submit Request';}
   document.getElementById('lr-form-modal').style.display='flex';
 }
 
+function lrUpdateDays() {
+  var dateOut = document.getElementById('lr-form-date-out').value;
+  var dateIn  = document.getElementById('lr-form-date-in').value;
+  var prev    = document.getElementById('lr-days-preview');
+  if(!prev) return;
+  if(!dateOut || !dateIn) { prev.style.display='none'; return; }
+  if(new Date(dateIn) < new Date(dateOut)) {
+    prev.style.display=''; prev.textContent='Date In must be on or after Date Out.'; prev.style.color='var(--red)'; return;
+  }
+  var days = elWorkingDays(dateOut, dateIn).length;
+  prev.style.display='';
+  prev.style.color='var(--txt3)';
+  prev.textContent = days + ' working day'+(days!==1?'s':'')+' (weekends & bank holidays excluded)';
+}
+
 async function saveLeaveRequest() {
+  var btn=document.getElementById('lr-form-submit-btn');
+  if(btn && btn.disabled) return;
   var empId=document.getElementById('lr-form-employee').value;
   var type=document.getElementById('lr-form-type').value;
   var dateOut=document.getElementById('lr-form-date-out').value;
-  var dateIn=document.getElementById('lr-form-date-in').value;
-  var days=parseFloat(document.getElementById('lr-form-days').value)||0;
+  var dateIn=document.getElementById('lr-form-date-in').value||dateOut;
   var detail=document.getElementById('lr-form-detail').value.trim();
   var coverage=document.getElementById('lr-form-coverage').value.trim();
   var subDate=document.getElementById('lr-form-submitted').value;
-  if(!empId||!type||!dateOut||!days){ toast('Fill in all required fields','err'); return; }
-  var fields={Employee:[empId],Leave_Type:type,Date_Out:dateOut,Date_In:dateIn||dateOut,
+  if(!empId||!type||!dateOut){ toast('Fill in all required fields','err'); return; }
+  // Auto-calculate days (working days excluding weekends + bank holidays)
+  var days = elWorkingDays(dateOut, dateIn).length;
+  if(!days){ toast('No working days in selected range — check dates and bank holidays','err'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
+  var fields={Employee:[empId],Leave_Type:type,Date_Out:dateOut,Date_In:dateIn,
     Days:days,Status:'Pending',Submission_Date:subDate};
   if(detail)   fields.Detail=detail;
   if(coverage) fields.Coverage=coverage;
@@ -8048,9 +8107,13 @@ async function saveLeaveRequest() {
     var data=await res.json();
     leaveRequests=(data.records||[]).concat(leaveRequests);
     document.getElementById('lr-form-modal').style.display='none';
-    toast('Leave request submitted','ok');
+    toast('Leave request submitted ('+days+' day'+(days!==1?'s':'')+')','ok');
     renderLeaveRequests(); updateLRBadge();
-  } catch(err){ toast('Error: '+err.message,'err'); }
+  } catch(err){
+    toast('Error: '+err.message,'err');
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Submit Request'; }
+  }
 }
 
 function printLeaveRequest(id) {
@@ -9133,7 +9196,7 @@ document.addEventListener("DOMContentLoaded",function(){
       <button onclick="document.getElementById('lr-form-modal').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--txt3)">&#10005;</button>
     </div>
     <div style="display:grid;gap:14px">
-      <div>
+      <div id="lr-form-employee-row">
         <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Employee *</label>
         <select id="lr-form-employee" class="form-input" style="width:100%"></select>
       </div>
@@ -9152,20 +9215,17 @@ document.addEventListener("DOMContentLoaded",function(){
           </select>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Date Out *</label>
-          <input id="lr-form-date-out" type="date" class="form-input" style="width:100%">
+          <input id="lr-form-date-out" type="date" class="form-input" style="width:100%" onchange="lrUpdateDays()">
         </div>
         <div>
           <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Date In *</label>
-          <input id="lr-form-date-in" type="date" class="form-input" style="width:100%">
-        </div>
-        <div>
-          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Days *</label>
-          <input id="lr-form-days" type="number" step="0.5" min="0.5" class="form-input" style="width:100%" placeholder="e.g. 3">
+          <input id="lr-form-date-in" type="date" class="form-input" style="width:100%" onchange="lrUpdateDays()">
         </div>
       </div>
+      <div id="lr-days-preview" style="display:none;font-size:12px;color:var(--txt3);padding:6px 10px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--bdr)"></div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Detail / Reason</label>
         <textarea id="lr-form-detail" class="form-input" rows="2" style="width:100%;resize:vertical" placeholder="Optional reason or notes"></textarea>
@@ -9176,7 +9236,7 @@ document.addEventListener("DOMContentLoaded",function(){
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
         <button class="btn-ghost" onclick="document.getElementById('lr-form-modal').style.display='none'">Cancel</button>
-        <button class="btn-pri" onclick="saveLeaveRequest()">Submit Request</button>
+        <button id="lr-form-submit-btn" class="btn-pri" onclick="saveLeaveRequest()">Submit Request</button>
       </div>
     </div>
   </div>
