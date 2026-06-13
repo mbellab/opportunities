@@ -31,7 +31,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.4  ·  2026-06-13';
+var APP_VERSION = 'v1.5  ·  2026-06-13';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -5153,61 +5153,254 @@ async function countTableFull(path) {
 }
 
 async function loadDiagnostics() {
-  var body = document.getElementById('diag-table-body');
-  var bar  = document.getElementById('diag-bar');
-  var tot  = document.getElementById('diag-total');
+  var sessionEl = document.getElementById('diag-session');
+  var body      = document.getElementById('diag-table-body');
+  var bar       = document.getElementById('diag-bar');
+  var tot       = document.getElementById('diag-total');
+  var intEl     = document.getElementById('diag-integrity');
+  var lvEl      = document.getElementById('diag-leave-health');
+  var tsEl      = document.getElementById('diag-timestamp');
   if(!body) return;
 
-  body.innerHTML = '<div style="padding:16px;color:var(--txt3);font-size:13px">Fetching row counts…</div>';
-  if(bar) { bar.style.width='0%'; bar.style.background='var(--green)'; }
-  if(tot) tot.textContent='';
-
-  // Derived automatically from DIAG_TABLES — add entries there, not here.
-  var tables = DIAG_TABLES.map(function(t){
-    var base = t.url === '/' ? WORKER_URL : WORKER_URL + t.url;
-    return {n: t.name, u: base + '?pageSize=100'};
-  });
-
-  async function countTable(url) {
-    var total=0, offset=null;
-    do {
-      var fetchUrl = offset ? url+'&offset='+offset : url;
-      var d = await fetch(fetchUrl,{headers:getHeaders()}).then(function(r){return r.json();}).catch(function(){return {};});
-      total += (d.records||[]).length;
-      offset = d.offset||null;
-    } while(offset);
-    return total;
+  // ── 1. Session info (instant, no fetch) ─────────────────────────
+  if(sessionEl) {
+    var chipSt = 'display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:3px 10px;font-size:12px;margin:2px 3px';
+    var memRows = [
+      ['Opportunities', allRecords.length],
+      ['Employees',     empRecords.length],
+      ['Leave Records', elRecords.length],
+      ['Entitlements',  elEntitlements.length],
+      ['Bank Holidays', elHolidays.length],
+      ['Annual Tickets',elTickets.length],
+    ];
+    sessionEl.innerHTML =
+      '<div style="display:flex;flex-wrap:wrap;margin-bottom:10px">'+
+        '<span style="'+chipSt+'">Version: <b>'+APP_VERSION+'</b></span>'+
+        '<span style="'+chipSt+'">User: <b>'+e(userName||'—')+'</b></span>'+
+        '<span style="'+chipSt+'">Role: <b>'+e(userRole||'—')+'</b></span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--txt3);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">In-memory counts</div>'+
+      '<div style="display:flex;flex-wrap:wrap">'+
+        memRows.map(function(m){
+          var col = m[1]===0?'var(--txt3)':'var(--txt)';
+          return '<span style="'+chipSt+';color:'+col+'">'+e(m[0])+': <b>'+m[1]+'</b></span>';
+        }).join('')+
+      '</div>';
   }
 
-  // Build rows container
-  body.innerHTML = '';
-  var rowStyle = 'display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--bdr)';
-  var total = 0;
+  // ── 2. Table row counts ──────────────────────────────────────────
+  var rowSt = 'display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:16px;padding:9px 16px;border-bottom:1px solid var(--bdr)';
+  body.innerHTML =
+    '<div style="'+rowSt+';background:var(--bg2);padding:7px 16px">'+
+      '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Table</span>'+
+      '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;text-align:right">Rows</span>'+
+      '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;text-align:right">Response</span>'+
+    '</div>';
+  if(bar){ bar.style.width='0%'; bar.style.background='var(--green)'; }
+  if(tot) tot.textContent='';
+  if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Running after table counts…</div>';
+  if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Running after table counts…</div>';
 
-  for(var i=0; i<tables.length; i++){
-    var t = tables[i];
-    // Add loading placeholder row
-    var rowId = 'diag-row-'+i;
-    body.innerHTML += '<div id="'+rowId+'" style="'+rowStyle+'">'+
-      '<span style="font-size:13px;color:var(--txt)">'+e(t.n)+'</span>'+
-      '<span style="font-size:13px;color:var(--txt3);font-family:monospace">loading…</span>'+
+  async function countTimed(baseUrl) {
+    var count=0, offset=null, t0=performance.now();
+    do {
+      var u = offset ? baseUrl+'&offset='+offset : baseUrl;
+      var d = await fetch(u,{headers:getHeaders()}).then(function(r){return r.json();}).catch(function(){return {};});
+      count += (d.records||[]).length;
+      offset = d.offset||null;
+    } while(offset);
+    return {count:count, ms:Math.round(performance.now()-t0)};
+  }
+
+  var grand = 0;
+  for(var i=0; i<DIAG_TABLES.length; i++){
+    var dt   = DIAG_TABLES[i];
+    var base = dt.url==='/' ? WORKER_URL+'?pageSize=100' : WORKER_URL+dt.url+'?pageSize=100';
+    var rid  = 'diag-row-'+i;
+    body.innerHTML += '<div id="'+rid+'" style="'+rowSt+'">'+
+      '<span style="font-size:13px;color:var(--txt)">'+e(dt.name)+'</span>'+
+      '<span style="font-size:13px;color:var(--txt3);font-family:monospace;text-align:right">…</span>'+
+      '<span style="font-size:12px;color:var(--txt3);font-family:monospace;text-align:right">…</span>'+
       '</div>';
-    // Fetch count
-    var n = await countTable(t.u).catch(function(){return 0;});
-    total += n;
-    // Update this row with actual count
-    var rowEl = document.getElementById(rowId);
-    if(rowEl) {
-      var color = n>=100?'var(--amber)':'var(--txt)';
+
+    var res = await countTimed(base).catch(function(){return {count:0,ms:0};});
+    grand += res.count;
+    var rowEl = document.getElementById(rid);
+    if(rowEl){
+      var rc = res.count>=500?'var(--red)':res.count>=100?'var(--amber)':'var(--txt)';
+      var mc = res.ms>=2000?'var(--red)':res.ms>=1000?'var(--amber)':'var(--txt3)';
       rowEl.innerHTML =
-        '<span style="font-size:13px;color:var(--txt)">'+e(t.n)+'</span>'+
-        '<span style="font-size:14px;font-weight:700;color:'+color+';font-family:monospace">'+n+' rows</span>';
+        '<span style="font-size:13px;color:var(--txt)">'+e(dt.name)+'</span>'+
+        '<span style="font-size:14px;font-weight:700;color:'+rc+';font-family:monospace;text-align:right">'+res.count+'</span>'+
+        '<span style="font-size:12px;color:'+mc+';font-family:monospace;text-align:right">'+res.ms+'ms</span>';
     }
-    // Update total
-    var pct = Math.round(total/1000*100);
-    var barColor = pct>=90?'var(--red)':pct>=75?'var(--amber)':'var(--green)';
-    if(bar){ bar.style.width=pct+'%'; bar.style.background=barColor; }
-    if(tot) tot.textContent=total+' / 1,000 rows';
+    var pct = Math.round(grand/1000*100);
+    if(bar){ bar.style.width=pct+'%'; bar.style.background=pct>=90?'var(--red)':pct>=75?'var(--amber)':'var(--green)'; }
+    if(tot) tot.textContent=grand+' / 1,000 rows';
+  }
+  if(tsEl) tsEl.textContent='Last refreshed: '+new Date().toLocaleTimeString();
+
+  // ── 3. Fetch data for checks (always fresh) ──────────────────────
+  async function fetchAll(path) {
+    var recs=[],offset=null;
+    do {
+      var u=WORKER_URL+path+'?pageSize=100'+(offset?'&offset='+offset:'');
+      var d=await fetch(u,{headers:getHeaders()}).then(function(r){return r.json();}).catch(function(){return {};});
+      recs=recs.concat(d.records||[]);
+      offset=d.offset||null;
+    } while(offset);
+    return recs;
+  }
+
+  var diagEmps, diagLeave, diagEnts, diagTickets, diagHols;
+  try {
+    var fetched = await Promise.all([
+      fetchAll('/employees'),
+      fetchAll('/leave-records'),
+      fetchAll('/annual-entitlements'),
+      fetchAll('/annual-tickets'),
+      fetchAll('/bank-holidays'),
+    ]);
+    diagEmps=fetched[0]; diagLeave=fetched[1]; diagEnts=fetched[2]; diagTickets=fetched[3]; diagHols=fetched[4];
+  } catch(err) {
+    if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
+    if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
+    return;
+  }
+
+  var empIds = {};
+  diagEmps.forEach(function(e2){ empIds[e2.id]=e2; });
+
+  // ── 4. Leave health ──────────────────────────────────────────────
+  if(lvEl) {
+    var today=new Date(); today.setHours(0,0,0,0);
+    var noEnt=[], negBal=[];
+
+    var activeEmps = diagEmps.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
+    activeEmps.forEach(function(emp){
+      // Find active entitlement
+      var empEnts = diagEnts
+        .filter(function(r){ return elEmpId(r.fields['Employee'])===emp.id; })
+        .sort(function(a,b){ return new Date(b.fields['Period_Start'])-new Date(a.fields['Period_Start']); });
+      var activeEnt = empEnts.find(function(r){
+        var s=r.fields['Period_Start'], en=r.fields['Period_End'];
+        if(!s||!en) return false;
+        var from=new Date(s+'T00:00:00'), to=new Date(en+'T00:00:00');
+        return today>=from && today<=to;
+      })||null;
+
+      if(!activeEnt){ noEnt.push(emp.fields['Name']||emp.id); return; }
+
+      var from = new Date(activeEnt.fields['Period_Start']+'T00:00:00');
+      var to   = new Date(activeEnt.fields['Period_End']+'T00:00:00');
+      var annualDays = parseFloat(activeEnt.fields['Days'])||0;
+      var used=0;
+      diagLeave.forEach(function(r){
+        if(elEmpId(r.fields['Employee'])!==emp.id) return;
+        if(r.fields['Type']!=='Annual') return;
+        var d=r.fields['Start_Date']||r.fields['Date'];
+        if(!d) return;
+        var dt=new Date(d); dt.setHours(0,0,0,0);
+        if(dt<from||dt>to) return;
+        used+=parseFloat(r.fields['Days'])||0;
+      });
+      var bal=annualDays-used;
+      if(bal<0) negBal.push({name:emp.fields['Name']||emp.id, bal:bal});
+    });
+
+    var lv='';
+    var okSt='display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--bdr);font-size:13px';
+
+    // Summary row
+    lv+='<div style="'+okSt+';background:var(--bg2)">'+
+      '<span style="font-weight:600;color:var(--txt)">Active employees: '+activeEmps.length+'</span>'+
+      '<span style="margin-left:auto;color:'+(noEnt.length?'var(--amber)':'var(--green)')+'">'+
+        (activeEmps.length-noEnt.length)+' / '+activeEmps.length+' have active entitlement'+
+      '</span></div>';
+
+    if(noEnt.length===0 && negBal.length===0){
+      lv+='<div style="'+okSt+';color:var(--green)">✓ All active employees have valid entitlements and positive leave balances</div>';
+    } else {
+      if(noEnt.length){
+        lv+='<div style="'+okSt+';border-left:3px solid var(--amber)">'+
+          '<div><div style="font-weight:600;color:var(--amber);margin-bottom:4px">No active entitlement period ('+noEnt.length+')</div>'+
+          '<div style="color:var(--txt3);font-size:12px">'+noEnt.map(function(n){return e(n);}).join(', ')+'</div></div></div>';
+      }
+      if(negBal.length){
+        lv+='<div style="'+okSt+';border-left:3px solid var(--red)">'+
+          '<div><div style="font-weight:600;color:var(--red);margin-bottom:4px">Negative leave balance ('+negBal.length+')</div>'+
+          '<div style="color:var(--txt3);font-size:12px">'+
+            negBal.map(function(x){return e(x.name)+' ('+x.bal.toFixed(1)+' days)';}).join(', ')+
+          '</div></div></div>';
+      }
+    }
+    lvEl.innerHTML=lv;
+  }
+
+  // ── 5. Data integrity ────────────────────────────────────────────
+  if(intEl) {
+    var issues=[];
+
+    // Leave records: unknown employee
+    var orphanLeave=diagLeave.filter(function(r){
+      var id=elEmpId(r.fields['Employee']);
+      return !id||!empIds[id];
+    });
+    if(orphanLeave.length) issues.push({
+      sev:'amber', label:'Leave records with no matching employee ('+orphanLeave.length+')',
+      detail:orphanLeave.slice(0,5).map(function(r){return r.fields['Start_Date']||r.id;}).join(', ')+(orphanLeave.length>5?' …':'')
+    });
+
+    // Annual tickets: unknown employee
+    var orphanTix=diagTickets.filter(function(r){
+      var id=elEmpId(r.fields['Employee']);
+      return !id||!empIds[id];
+    });
+    if(orphanTix.length) issues.push({
+      sev:'amber', label:'Annual tickets with no matching employee ('+orphanTix.length+')',
+      detail:orphanTix.slice(0,5).map(function(r){return r.fields['Period']||r.id;}).join(', ')+(orphanTix.length>5?' …':'')
+    });
+
+    // Bank holidays: missing date
+    var missingDate=diagHols.filter(function(h){ return !h.fields['Date']; });
+    if(missingDate.length) issues.push({
+      sev:'amber', label:'Bank holidays missing a date ('+missingDate.length+')',
+      detail:missingDate.map(function(h){return e(h.fields['Name']||h.id);}).join(', ')
+    });
+
+    // Bank holidays: duplicate dates
+    var dateCounts={};
+    diagHols.forEach(function(h){
+      var d=h.fields['Date']; if(!d) return;
+      dateCounts[d]=(dateCounts[d]||[]); dateCounts[d].push(h.fields['Name']||d);
+    });
+    var dupes=Object.keys(dateCounts).filter(function(d){return dateCounts[d].length>1;});
+    if(dupes.length) issues.push({
+      sev:'amber', label:'Duplicate bank holiday dates ('+dupes.length+')',
+      detail:dupes.map(function(d){return d+' ('+dateCounts[d].join(', ')+')';}).join('; ')
+    });
+
+    // Entitlements: missing Period_Start or Period_End
+    var badEnts=diagEnts.filter(function(r){ return !r.fields['Period_Start']||!r.fields['Period_End']; });
+    if(badEnts.length) issues.push({
+      sev:'amber', label:'Annual entitlements with missing start or end date ('+badEnts.length+')',
+      detail:badEnts.map(function(r){return elEmpId(r.fields['Employee'])||r.id;}).join(', ')
+    });
+
+    var rowSt2='padding:10px 16px;border-bottom:1px solid var(--bdr);font-size:13px';
+    var it='';
+    if(!issues.length){
+      it='<div style="'+rowSt2+';color:var(--green);display:flex;align-items:center;gap:8px">✓ No integrity issues found</div>';
+    } else {
+      issues.forEach(function(iss){
+        var col=iss.sev==='red'?'var(--red)':'var(--amber)';
+        it+='<div style="'+rowSt2+';border-left:3px solid '+col+'">'+
+          '<div style="font-weight:600;color:'+col+';margin-bottom:3px">'+e(iss.label)+'</div>'+
+          '<div style="font-size:12px;color:var(--txt3)">'+e(iss.detail)+'</div>'+
+          '</div>';
+      });
+    }
+    intEl.innerHTML=it;
   }
 }
 
