@@ -31,7 +31,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.6.4  ·  2026-06-14';
+var APP_VERSION = 'v1.6.6  ·  2026-06-14';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
