@@ -70,6 +70,7 @@ var sortField = 'sr_no';
 var sortDir = 'desc';
 var appPassword  = sessionStorage.getItem('mbb_pwd') || null;
 var currentUser  = JSON.parse(sessionStorage.getItem('mbb_user') || 'null');
+if(currentUser && currentUser.role) currentUser.role = currentUser.role.toLowerCase();
 var userRole     = currentUser ? currentUser.role : null;
 var userName     = currentUser ? currentUser.name : '';
 
@@ -225,8 +226,8 @@ async function attemptLogin() {
     }
     // Success
     appPassword = pwd;
-    currentUser = {name: data.name, role: data.role, username: username};
-    userRole    = data.role;
+    currentUser = {name: data.name, role: (data.role||'').toLowerCase(), username: username};
+    userRole    = currentUser.role;
     userName    = data.name;
     sessionStorage.setItem('mbb_pwd',  pwd);
     sessionStorage.setItem('mbb_user', JSON.stringify(currentUser));
@@ -258,6 +259,13 @@ function toast(msg, type) {
   t.style.opacity = '1';
   clearTimeout(t._to);
   t._to = setTimeout(function(){ t.style.opacity='0'; }, 2800);
+}
+
+function showError(html) {
+  var b = document.getElementById('err-banner');
+  if(!b) return;
+  b.innerHTML = html;
+  b.style.display = html ? 'block' : 'none';
 }
 
 function applyRoleRestrictions() {
@@ -303,31 +311,7 @@ function applyRoleRestrictions() {
   style.textContent = rules.join('\n');
 }
 
-// Auto-login if cached
-if(appPassword && currentUser) {
-  HEADERS['X-App-Password']=appPassword;
-  document.getElementById('login-screen').style.display='none';
-  applyRoleRestrictions();
-  var lastScreen = sessionStorage.getItem('mbb_screen') || 'home';
-  if(lastScreen === 'opportunities') showOpportunities();
-  else if(lastScreen === 'vendors') showVendors();
-  else if(lastScreen === 'dashboard') { showDashboard(); }
-  else if(lastScreen === 'contractors') { showContractors(); }
-  else if(lastScreen === 'suppliers') { showSuppliers(); }
-  else if(lastScreen === 'quality')   { showQualityObjectives(); }
-  else if(lastScreen === 'employees') { showEmployees(); }
-  else if(lastScreen === 'renewals')    { showRenewals(); }
-  else if(lastScreen === 'company-docs') { showCompanyDocs(); }
-  else if(lastScreen === 'petty-cash')   { showPettyCash(); }
-  else if(lastScreen === 'passwords')       { showPasswords(); }
-  else if(lastScreen === 'employee-leave')  { showEmployeeLeave(); }
-  else if(lastScreen === 'employee-leave')  { showEmployeeLeave(); }
-  else showHome();
-} else {
-  sessionStorage.removeItem('mbb_pwd');
-  sessionStorage.removeItem('mbb_user');
-  document.getElementById('login-screen').style.display='flex';
-}
+// Auto-login handled in DOMContentLoaded below (after all globals are initialised)
 
 // ── Load ─────────────────────────────────────────────────────────
 async function loadAll() {
@@ -891,7 +875,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -5804,10 +5788,10 @@ function showEmployeeLeave() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('employees-leave-screen').style.display='flex';
-  sessionStorage.setItem('mbb_screen','employees-leave');
+  sessionStorage.setItem('mbb_screen','employee-leave');
   if(!elLoaded) loadLeaveData();
 }
 
@@ -5817,7 +5801,7 @@ function showLeaveRequests() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('leave-requests-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','leave-requests');
@@ -6250,31 +6234,34 @@ function printLeaveRequest(id) {
   doc.save('mBB-FM-32_'+safeName+'_'+subDate+'.pdf');
 }
 
+async function elFetchAll(path) {
+  var recs = [], offset = null;
+  do {
+    var u = WORKER_URL + path + '?pageSize=100' + (offset ? '&offset=' + encodeURIComponent(offset) : '');
+    var d = await fetch(u, {headers:getHeaders()}).then(function(r){ return r.json(); });
+    recs = recs.concat(d.records || []);
+    offset = d.offset || null;
+  } while(offset);
+  return recs;
+}
+
 async function loadLeaveData() {
   try {
     var yr = new Date().getFullYear();
     document.getElementById('el-period-label').textContent = yr + ' Leave Year';
-    // Load all 4 sources in parallel
-    var [lRes, tRes, hRes, eRes, entRes] = await Promise.all([
-      fetch(WORKER_URL+'/leave-records?pageSize=100',        {headers:getHeaders()}),
-      fetch(WORKER_URL+'/annual-tickets?pageSize=100',       {headers:getHeaders()}),
-      fetch(WORKER_URL+'/bank-holidays?pageSize=100',        {headers:getHeaders()}),
-      fetch(WORKER_URL+'/employees?pageSize=100',            {headers:getHeaders()}),
-      fetch(WORKER_URL+'/annual-entitlements?pageSize=100',  {headers:getHeaders()})
+    // Fetch all pages for records that can grow beyond 100
+    var [lRecs, tRecs, hRecs, eRecs, entRecs] = await Promise.all([
+      elFetchAll('/leave-records'),
+      elFetchAll('/annual-tickets'),
+      elFetchAll('/bank-holidays'),
+      elFetchAll('/employees'),
+      elFetchAll('/annual-entitlements'),
     ]);
-    var lData   = await lRes.json();
-    var tData   = await tRes.json();
-    var hData   = await hRes.json();
-    var eData   = await eRes.json();
-    var entData = await entRes.json();
-    if(!lRes.ok)   throw new Error('/leave-records: HTTP '+lRes.status+' '+JSON.stringify(lData));
-    if(!tRes.ok)   throw new Error('/annual-tickets: HTTP '+tRes.status+' '+JSON.stringify(tData));
-    if(!hRes.ok)   throw new Error('/bank-holidays: HTTP '+hRes.status+' '+JSON.stringify(hData));
-    elRecords      = lData.records   || [];
-    elTickets      = tData.records   || [];
-    elHolidays     = hData.records   || [];
-    elEntitlements = entData.records || [];
-    if(eData.records && eData.records.length) empRecords = eData.records;
+    elRecords      = lRecs;
+    elTickets      = tRecs;
+    elHolidays     = hRecs;
+    elEntitlements = entRecs;
+    if(eRecs.length) empRecords = eRecs;
     elLoaded = true;
     renderHolidaysBar();
     renderLeaveTable();
@@ -7112,6 +7099,155 @@ async function saveSickLeave() {
 
 
 
+// ================================================================
+// ADMIN
+// ================================================================
+var adminUsers = [], adminEditId = null;
+
+function showAdmin() {
+  if(userRole !== 'admin'){ toast('Admin only','err'); return; }
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
+   'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
+   'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'employees-leave-screen','home-screen','admin-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('admin-screen').style.display='flex';
+  sessionStorage.setItem('mbb_screen','admin');
+  loadAdminUsers();
+}
+
+async function loadAdminUsers() {
+  var body = document.getElementById('admin-users-body');
+  body.innerHTML='<div style="padding:20px;color:var(--txt3);font-size:13px">Loading…</div>';
+  try {
+    var res = await fetch(WORKER_URL+'/users?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    adminUsers = data.records || [];
+    renderAdminUsers();
+  } catch(err) { body.innerHTML='<div style="padding:20px;color:var(--red)">Failed to load users: '+err.message+'</div>'; }
+}
+
+function adminPwdDots(id) { return '<span id="upwd-'+id+'" data-pwd="" style="font-family:monospace;font-size:13px;color:var(--txt3)">••••••••</span><button onclick="adminTogglePwd(\''+id+'\')" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--txt3);margin-left:4px;padding:0 4px" id="upwd-btn-'+id+'">Show</button>'; }
+function adminTogglePwd(id) {
+  var span = document.getElementById('upwd-'+id);
+  var btn  = document.getElementById('upwd-btn-'+id);
+  if(btn.textContent==='Show'){ span.textContent=span.dataset.pwd; btn.textContent='Hide'; }
+  else { span.textContent='••••••••'; btn.textContent='Show'; }
+}
+
+function renderAdminUsers() {
+  var body = document.getElementById('admin-users-body');
+  if(!adminUsers.length){ body.innerHTML='<div style="padding:20px;color:var(--txt3);font-size:13px">No users found.</div>'; return; }
+  var roleCol = {admin:'var(--amber)',engineer:'var(--green)',viewer:'var(--txt3)'};
+  var rows = adminUsers.map(function(r){
+    var f = r.fields;
+    var active = f['Active']===true;
+    var role   = (f['Role']||'').toLowerCase();
+    var col    = roleCol[role]||'var(--txt3)';
+    return '<tr style="border-bottom:1px solid var(--bdr)">' +
+      '<td style="padding:10px 14px;font-weight:500">'+e(f['Name']||'—')+'</td>'+
+      '<td style="padding:10px 14px;font-family:monospace;font-size:13px;color:var(--txt2)">'+e(f['Username']||'—')+'</td>'+
+      '<td style="padding:10px 14px" id="upwd-cell-'+r.id+'">'+adminPwdDots(r.id)+'</td>'+
+      '<td style="padding:10px 14px"><span style="font-size:11px;font-weight:700;color:'+col+';text-transform:uppercase;letter-spacing:.5px">'+e(role)+'</span></td>'+
+      '<td style="padding:10px 14px;text-align:center">'+
+        '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+(active?'var(--green)':'var(--red)')+'"></span>'+
+      '</td>'+
+      '<td style="padding:10px 14px;text-align:right">'+
+        '<button class="btn-ghost" onclick="openUserModal(\''+r.id+'\')" style="font-size:12px;margin-right:6px">Edit</button>'+
+        '<button class="btn-ghost" onclick="toggleUserActive(\''+r.id+'\','+(!active)+')" style="font-size:12px;color:'+(active?'var(--red)':'var(--green)')+'">'+
+          (active?'Deactivate':'Activate')+
+        '</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+  body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px">'+
+    '<thead><tr style="border-bottom:2px solid var(--bdr2)">'+
+      '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Name</th>'+
+      '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Username</th>'+
+      '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Password</th>'+
+      '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Role</th>'+
+      '<th style="padding:8px 14px;text-align:center;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Active</th>'+
+      '<th></th>'+
+    '</thead><tbody>'+rows+'</tbody></table>';
+  // Inject passwords into data-pwd after render (avoids escaping issues in onclick)
+  adminUsers.forEach(function(r){
+    var span = document.getElementById('upwd-'+r.id);
+    if(span) span.dataset.pwd = r.fields['Password']||'';
+  });
+}
+
+function openUserModal(id) {
+  adminEditId = id;
+  var r = id ? adminUsers.find(function(u){ return u.id===id; }) : null;
+  var f = r ? r.fields : {};
+  document.getElementById('user-modal-title').textContent = id ? 'Edit User' : 'Add User';
+  document.getElementById('user-name').value     = f['Name']     || '';
+  document.getElementById('user-username').value = f['Username'] || '';
+  // Role select: match case-insensitively
+  var role = (f['Role']||'engineer').toLowerCase();
+  var roleEl = document.getElementById('user-role');
+  for(var i=0;i<roleEl.options.length;i++){
+    if(roleEl.options[i].value.toLowerCase()===role){ roleEl.selectedIndex=i; break; }
+  }
+  var pwdEl = document.getElementById('user-password');
+  pwdEl.value = f['Password'] || '';
+  pwdEl.type  = 'password';
+  var eye = document.getElementById('user-pwd-eye');
+  if(eye) eye.textContent = '👁';
+  document.getElementById('user-active').checked = id ? (f['Active']===true) : true;
+  document.getElementById('user-modal').style.display='flex';
+}
+
+function toggleUserPwdVis() {
+  var el  = document.getElementById('user-password');
+  var eye = document.getElementById('user-pwd-eye');
+  if(el.type==='password'){ el.type='text'; if(eye) eye.textContent='🙈'; }
+  else                    { el.type='password'; if(eye) eye.textContent='👁'; }
+}
+
+async function saveUser() {
+  var name     = document.getElementById('user-name').value.trim();
+  var username = document.getElementById('user-username').value.trim().toLowerCase();
+  var roleRaw  = document.getElementById('user-role').value;
+  // Capitalise to match Airtable Single Select options (Admin / Engineer / Viewer)
+  var role     = roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1).toLowerCase();
+  var password = document.getElementById('user-password').value.trim();
+  var active   = document.getElementById('user-active').checked;
+  if(!name||!username||!password){ toast('Name, username and password are required','err'); return; }
+  var btn = document.getElementById('user-modal-save');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    var fields = {Name:name, Username:username, Role:role, Password:password, Active:active};
+    var url    = adminEditId ? WORKER_URL+'/users/'+adminEditId : WORKER_URL+'/users';
+    var method = adminEditId ? 'PATCH' : 'POST';
+    var res = await fetch(url, {method:method, headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    if(adminEditId) {
+      adminUsers = adminUsers.map(function(u){ return u.id===adminEditId ? data : u; });
+    } else {
+      adminUsers.push(data);
+    }
+    document.getElementById('user-modal').style.display='none';
+    toast(adminEditId ? 'User updated' : 'User added','ok');
+    renderAdminUsers();
+  } catch(err){ toast('Save failed: '+err.message,'err'); }
+  finally { btn.disabled=false; btn.textContent='Save'; }
+}
+
+async function toggleUserActive(id, active) {
+  try {
+    var res = await fetch(WORKER_URL+'/users/'+id, {method:'PATCH', headers:getHeaders(), body:JSON.stringify({fields:{Active:active}})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    adminUsers = adminUsers.map(function(u){ return u.id===id ? data : u; });
+    toast(active ? 'User activated' : 'User deactivated','ok');
+    renderAdminUsers();
+  } catch(err){ toast('Failed: '+err.message,'err'); }
+}
+
 document.addEventListener("DOMContentLoaded",function(){
   ["login-user","login-pwd"].forEach(function(id){
     var el=document.getElementById(id);
@@ -7125,4 +7261,30 @@ document.addEventListener("DOMContentLoaded",function(){
     ver.textContent=APP_VERSION;
     navWrap.parentNode.insertBefore(ver,navWrap);
   });
+  // Auto-login if cached — runs here so all global arrays are initialised before any show* call
+  if(appPassword && currentUser) {
+    HEADERS['X-App-Password']=appPassword;
+    document.getElementById('login-screen').style.display='none';
+    applyRoleRestrictions();
+    var lastScreen = sessionStorage.getItem('mbb_screen') || 'home';
+    if(lastScreen === 'opportunities')  showOpportunities();
+    else if(lastScreen === 'vendors')       showVendors();
+    else if(lastScreen === 'dashboard')     showDashboard();
+    else if(lastScreen === 'contractors')   showContractors();
+    else if(lastScreen === 'suppliers')     showSuppliers();
+    else if(lastScreen === 'quality')       showQualityObjectives();
+    else if(lastScreen === 'employees')     showEmployees();
+    else if(lastScreen === 'renewals')      showRenewals();
+    else if(lastScreen === 'company-docs')  showCompanyDocs();
+    else if(lastScreen === 'petty-cash')    showPettyCash();
+    else if(lastScreen === 'passwords')     showPasswords();
+    else if(lastScreen === 'employee-leave') showEmployeeLeave();
+    else if(lastScreen === 'leave-requests') showLeaveRequests();
+    else if(lastScreen === 'admin')          showAdmin();
+    else showHome();
+  } else {
+    sessionStorage.removeItem('mbb_pwd');
+    sessionStorage.removeItem('mbb_user');
+    document.getElementById('login-screen').style.display='flex';
+  }
 });
