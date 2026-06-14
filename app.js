@@ -31,7 +31,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.6.9  ·  2026-06-14';
+var APP_VERSION = 'v1.7.0  ·  2026-06-14';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -332,12 +332,16 @@ function applyRoleRestrictions() {
     var fn = Object.keys(navFnMap).find(function(f){ return oc.indexOf(f) !== -1; });
     if(fn) el.style.display = canAccess(navFnMap[fn]) ? '' : 'none';
   });
-  // Hide group containers whose tiles are all hidden
+  // Hide group containers whose tiles are all hidden; recalc tile-row columns
   document.querySelectorAll('.hs-group').forEach(function(group){
     var tiles = group.querySelectorAll('.hs-tile');
-    var anyVisible = false;
-    tiles.forEach(function(t){ if(t.style.display !== 'none') anyVisible = true; });
-    group.style.display = anyVisible ? '' : 'none';
+    var count = 0;
+    tiles.forEach(function(t){ if(t.style.display !== 'none') count++; });
+    group.style.display = count ? '' : 'none';
+    if(count) {
+      var row = group.querySelector('.hs-row');
+      if(row) row.style.gridTemplateColumns = 'repeat('+count+',minmax(120px,1fr))';
+    }
   });
   if(!canAccess('employees') && !canAccess('employee-leave')) {
     rules.push('#upcoming-group{display:none!important}');

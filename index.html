@@ -277,100 +277,90 @@
     </div>
 
     <!-- ── ROW: ISO QUALITY | COMPLIANCE | FINANCE ── -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 20px">
-      <div>
-        <div class="hs-group" id="hs-quality">
-          <div class="hs-group-hdr">
-            <span class="hs-group-icon">&#9745;</span>
-            <span class="hs-group-lbl">ISO Quality</span>
-            <div class="hs-group-line"></div>
-          </div>
-          <div class="hs-row" style="grid-template-columns:1fr">
-            <div class="hs-tile" onclick="showQualityObjectives()">
-              <span class="hs-tile-icon">&#127959;</span>
-              <span class="hs-tile-name">Quality Objectives</span>
-            </div>
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div class="hs-group" id="hs-quality" style="flex:1;min-width:0">
+        <div class="hs-group-hdr">
+          <span class="hs-group-icon">&#9745;</span>
+          <span class="hs-group-lbl">ISO Quality</span>
+          <div class="hs-group-line"></div>
+        </div>
+        <div class="hs-row" style="grid-template-columns:1fr">
+          <div class="hs-tile" onclick="showQualityObjectives()">
+            <span class="hs-tile-icon">&#127959;</span>
+            <span class="hs-tile-name">Quality Objectives</span>
           </div>
         </div>
       </div>
-      <div>
-        <div class="hs-group" id="hs-compliance">
-          <div class="hs-group-hdr">
-            <span class="hs-group-icon">&#128196;</span>
-            <span class="hs-group-lbl">Compliance</span>
-            <div class="hs-group-line"></div>
+      <div class="hs-group" id="hs-compliance" style="flex:1;min-width:0">
+        <div class="hs-group-hdr">
+          <span class="hs-group-icon">&#128196;</span>
+          <span class="hs-group-lbl">Compliance</span>
+          <div class="hs-group-line"></div>
+        </div>
+        <div class="hs-row" style="grid-template-columns:1fr 1fr">
+          <div class="hs-tile" onclick="showRenewals()">
+            <span class="hs-tile-icon">&#128197;</span>
+            <span class="hs-tile-name">Renewals</span>
           </div>
-          <div class="hs-row" style="grid-template-columns:1fr 1fr">
-            <div class="hs-tile" onclick="showRenewals()">
-              <span class="hs-tile-icon">&#128197;</span>
-              <span class="hs-tile-name">Renewals</span>
-            </div>
-            <div class="hs-tile" onclick="showCompanyDocs()">
-              <span class="hs-tile-icon">&#128196;</span>
-              <span class="hs-tile-name">Company Docs</span>
-            </div>
+          <div class="hs-tile" onclick="showCompanyDocs()">
+            <span class="hs-tile-icon">&#128196;</span>
+            <span class="hs-tile-name">Company Docs</span>
           </div>
         </div>
       </div>
-      <div>
-        <div class="hs-group" id="hs-finance">
-          <div class="hs-group-hdr">
-            <span class="hs-group-icon">&#128181;</span>
-            <span class="hs-group-lbl">Finance</span>
-            <div class="hs-group-line"></div>
-          </div>
-          <div class="hs-row" style="grid-template-columns:1fr">
-            <div class="hs-tile" onclick="showPettyCash()">
-              <span class="hs-tile-icon">&#128181;</span>
-              <span class="hs-tile-name">Petty Cash</span>
-            </div>
+      <div class="hs-group" id="hs-finance" style="flex:1;min-width:0">
+        <div class="hs-group-hdr">
+          <span class="hs-group-icon">&#128181;</span>
+          <span class="hs-group-lbl">Finance</span>
+          <div class="hs-group-line"></div>
+        </div>
+        <div class="hs-row" style="grid-template-columns:1fr">
+          <div class="hs-tile" onclick="showPettyCash()">
+            <span class="hs-tile-icon">&#128181;</span>
+            <span class="hs-tile-name">Petty Cash</span>
           </div>
         </div>
       </div>
     </div>
 
     <!-- ── ROW: EMPLOYEES | SECURITY ── -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 20px">
-      <div>
-        <div class="hs-group" id="hs-employees">
-          <div class="hs-group-hdr">
-            <span class="hs-group-icon">&#128100;</span>
-            <span class="hs-group-lbl">Employees</span>
-            <div class="hs-group-line"></div>
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <div class="hs-group" id="hs-employees" style="flex:1;min-width:0">
+        <div class="hs-group-hdr">
+          <span class="hs-group-icon">&#128100;</span>
+          <span class="hs-group-lbl">Employees</span>
+          <div class="hs-group-line"></div>
+        </div>
+        <div class="hs-row" style="grid-template-columns:1fr 1fr 1fr">
+          <div class="hs-tile hs-tile-employees" onclick="showEmployees()">
+            <span class="hs-tile-icon">&#128100;</span>
+            <span class="hs-tile-name">Employees</span>
           </div>
-          <div class="hs-row" style="grid-template-columns:1fr 1fr 1fr">
-            <div class="hs-tile hs-tile-employees" onclick="showEmployees()">
-              <span class="hs-tile-icon">&#128100;</span>
-              <span class="hs-tile-name">Employees</span>
-            </div>
-            <div class="hs-tile hs-tile-emp-leave" onclick="showEmployeeLeave()">
-              <span class="hs-tile-icon">&#127958;</span>
-              <span class="hs-tile-name">Employee Leave</span>
-            </div>
-            <div class="hs-tile" onclick="showLeaveRequests()" style="position:relative">
-              <span class="hs-tile-icon">&#128203;</span>
-              <span class="hs-tile-name">Leave Requests</span>
-              <span id="lr-pending-badge" style="display:none;position:absolute;top:8px;right:8px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center"></span>
-            </div>
+          <div class="hs-tile hs-tile-emp-leave" onclick="showEmployeeLeave()">
+            <span class="hs-tile-icon">&#127958;</span>
+            <span class="hs-tile-name">Employee Leave</span>
+          </div>
+          <div class="hs-tile" onclick="showLeaveRequests()" style="position:relative">
+            <span class="hs-tile-icon">&#128203;</span>
+            <span class="hs-tile-name">Leave Requests</span>
+            <span id="lr-pending-badge" style="display:none;position:absolute;top:8px;right:8px;background:var(--red);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:1px 6px;min-width:18px;text-align:center"></span>
           </div>
         </div>
       </div>
-      <div>
-        <div class="hs-group" id="hs-security">
-          <div class="hs-group-hdr">
-            <span class="hs-group-icon">&#128274;</span>
-            <span class="hs-group-lbl">Security</span>
-            <div class="hs-group-line"></div>
+      <div class="hs-group" id="hs-security" style="flex:1;min-width:0">
+        <div class="hs-group-hdr">
+          <span class="hs-group-icon">&#128274;</span>
+          <span class="hs-group-lbl">Security</span>
+          <div class="hs-group-line"></div>
+        </div>
+        <div class="hs-row" style="grid-template-columns:minmax(0,220px) minmax(0,220px)">
+          <div class="hs-tile" onclick="showPasswords()">
+            <span class="hs-tile-icon">&#128272;</span>
+            <span class="hs-tile-name">Passwords</span>
           </div>
-          <div class="hs-row" style="grid-template-columns:minmax(0,220px) minmax(0,220px)">
-            <div class="hs-tile" onclick="showPasswords()">
-              <span class="hs-tile-icon">&#128272;</span>
-              <span class="hs-tile-name">Passwords</span>
-            </div>
-            <div class="hs-tile" onclick="showAdmin()">
-              <span class="hs-tile-icon">&#9881;</span>
-              <span class="hs-tile-name">Admin</span>
-            </div>
+          <div class="hs-tile" onclick="showAdmin()">
+            <span class="hs-tile-icon">&#9881;</span>
+            <span class="hs-tile-name">Admin</span>
           </div>
         </div>
       </div>
@@ -2143,7 +2133,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.6.9  ·  2026-06-14';
+var APP_VERSION = 'v1.7.0  ·  2026-06-14';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -2432,12 +2422,16 @@ function applyRoleRestrictions() {
     var fn = Object.keys(navFnMap).find(function(f){ return oc.indexOf(f) !== -1; });
     if(fn) el.style.display = canAccess(navFnMap[fn]) ? '' : 'none';
   });
-  // Hide group containers whose tiles are all hidden
+  // Hide group containers whose tiles are all hidden; recalc tile-row columns
   document.querySelectorAll('.hs-group').forEach(function(group){
     var tiles = group.querySelectorAll('.hs-tile');
-    var anyVisible = false;
-    tiles.forEach(function(t){ if(t.style.display !== 'none') anyVisible = true; });
-    group.style.display = anyVisible ? '' : 'none';
+    var count = 0;
+    tiles.forEach(function(t){ if(t.style.display !== 'none') count++; });
+    group.style.display = count ? '' : 'none';
+    if(count) {
+      var row = group.querySelector('.hs-row');
+      if(row) row.style.gridTemplateColumns = 'repeat('+count+',minmax(120px,1fr))';
+    }
   });
   if(!canAccess('employees') && !canAccess('employee-leave')) {
     rules.push('#upcoming-group{display:none!important}');
