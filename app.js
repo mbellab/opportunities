@@ -3899,6 +3899,7 @@ function renderFilteredEmployees(records) {
           '<div class="emp-name">'+e(name)+'</div>'+
           (f['Date of Birth']?'<div class="emp-dob">DOB: '+fmtDate(f['Date of Birth'])+'</div>':'')+
           (f['Start Date']?'<div class="emp-dob" style="color:var(--amber)">Joined: '+fmtDate(f['Start Date'])+'</div>':'')+
+          (f['Username']?'<div style="margin-top:4px"><span style="font-size:10px;font-family:monospace;color:var(--green);background:var(--green-bg,rgba(40,167,69,.1));border:1px solid rgba(40,167,69,.3);border-radius:10px;padding:2px 7px">@'+e(f['Username'])+'</span></div>':'')+
         '</div>'+
       '</div>'+
       '<div class="emp-body">'+
@@ -4025,7 +4026,7 @@ function renderEmployees() {
   }).join('');
 }
 
-function showEmployeeModal(recordId) {
+async function showEmployeeModal(recordId) {
   empEditId = recordId;
   var isNew = !recordId;
   document.getElementById('emp-modal-title').textContent = isNew ? 'Add Employee' : 'Edit Employee';
@@ -4044,12 +4045,26 @@ function showEmployeeModal(recordId) {
   fields.forEach(function(id){
     var el=document.getElementById(id); if(!el) return;
     var val = f[fmap[id]]||'';
-    // date fields: take first 10 chars
     if(el.type==='date') el.value=(val||'').substring(0,10);
     else el.value=val;
   });
-  var lvBtn=document.getElementById('emp-view-leave-btn');
-  if(lvBtn) lvBtn.style.display=recordId?'':'none';
+  // Populate username dropdown
+  var unameEl = document.getElementById('empf-username');
+  if(unameEl) {
+    if(!adminUsers.length) {
+      try {
+        var ud = await fetch(WORKER_URL+'/users?pageSize=100',{headers:getHeaders()}).then(function(r){return r.json();});
+        adminUsers = ud.records||[];
+      } catch(ex){}
+    }
+    var currentUname = f['Username']||'';
+    unameEl.innerHTML = '<option value="">— No portal account —</option>' +
+      adminUsers.map(function(u){
+        var uname = u.fields['Username']||'';
+        var label = (u.fields['Name']||uname)+' (@'+uname+')';
+        return '<option value="'+e(uname)+'"'+(uname===currentUname?' selected':'')+'>'+e(label)+'</option>';
+      }).join('');
+  }
   var lvBtn=document.getElementById('emp-view-leave-btn');
   if(lvBtn) lvBtn.style.display = recordId ? '' : 'none';
   document.getElementById('emp-modal').style.display='flex';
@@ -4074,7 +4089,8 @@ async function saveEmployee() {
     'empf-visa-num':'Visa File Number','empf-visa-exp':'Visa Expiry','empf-visa-link':'Link to Visa',
     'empf-hi-policy':'Health Insurance Policy Number','empf-hi-member':'Health Insurance Membership Number',
     'empf-hi-link':'Link to Health Insurance Card',
-    'empf-start':'Start Date'
+    'empf-start':'Start Date',
+    'empf-username':'Username'
   };
   var fields={};
   Object.keys(fmap).forEach(function(id){
@@ -5111,6 +5127,7 @@ var DIAG_TABLES = [
   {name:'Bank Holidays',                 url:'/bank-holidays'},
   {name:'Annual Entitlements',           url:'/annual-entitlements'},
   {name:'Leave Requests',                url:'/leave-requests'},
+  {name:'Users',                         url:'/users'},
 ];
 
 function showDiagnostics() {
