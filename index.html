@@ -2185,6 +2185,30 @@ var currentUser  = JSON.parse(sessionStorage.getItem('mbb_user') || 'null');
 if(currentUser && currentUser.role) currentUser.role = currentUser.role.toLowerCase();
 var userRole     = currentUser ? currentUser.role : null;
 var userName     = currentUser ? currentUser.name : '';
+var rolePermissions = JSON.parse(sessionStorage.getItem('mbb_perms') || 'null');
+
+function canAccess(screen) {
+  if(userRole === 'admin') return true;
+  if(!rolePermissions) return false;
+  var p = rolePermissions[screen];
+  if(!p) return false;
+  return p[userRole] === true;
+}
+
+async function loadPermissions() {
+  try {
+    var res  = await fetch(WORKER_URL+'/role-permissions?pageSize=100', {headers:getHeaders()});
+    var data = await res.json();
+    rolePermissions = {};
+    (data.records||[]).forEach(function(r){
+      var key = r.fields['Screen'];
+      if(!key) return;
+      rolePermissions[key] = {id:r.id, label:r.fields['Label']||key, section:r.fields['Section']||'',
+        engineer:r.fields['Engineer']===true, viewer:r.fields['Viewer']===true, finance:r.fields['Finance']===true};
+    });
+    sessionStorage.setItem('mbb_perms', JSON.stringify(rolePermissions));
+  } catch(ex) {}
+}
 
 var IC_PENCIL = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M11.013 1.427a1.75 1.75 0 012.474 2.474L4.92 12.47l-3.795.505.505-3.794 8.383-8.754zM13 3.5L12 2.5 3 11.5l-.25 1.75 1.75-.25L13 3.5z" fill="currentColor"/></svg>';
 var IC_SAVE   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" fill="currentColor"/></svg>';
@@ -5965,7 +5989,7 @@ var empLoaded   = false;
 var empEditId   = null;
 
 function showEmployees() {
-  if(userRole !== 'admin') { toast('Employees is restricted to Admin users','err'); return; }
+  if(!canAccess('employees')){ toast('Employees is restricted to your role','err'); return; }
   sessionStorage.setItem('mbb_screen','employees');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
@@ -7772,8 +7796,7 @@ async function confirmDeletePCTransaction() {
 var pwdRecords=[],pwdLoaded=false,pwdEditId=null;
 
 function showPasswords(){
-  if(userRole!=='admin'){toast('Access restricted','err');return;}
-  if(userRole!=='admin'){toast('Access restricted','err');return;}
+  if(!canAccess('passwords')){toast('Access restricted','err');return;}
   sessionStorage.setItem('mbb_screen','passwords');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
@@ -7912,7 +7935,7 @@ var elHolYear = new Date().getFullYear();
 var elPeriodOffset = 0;  // 0 = current period, -1 = previous
 
 function showEmployeeLeave() {
-  if(userRole !== 'admin'){ toast('Access restricted','err'); return; }
+  if(!canAccess('employee-leave')){ toast('Access restricted','err'); return; }
   elLoaded = false;
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
@@ -9233,8 +9256,84 @@ async function saveSickLeave() {
 // ================================================================
 var adminUsers = [], adminEditId = null;
 
+function adminShowTab(tab) {
+  ['admin-tab-users','admin-tab-perms'].forEach(function(t){
+    var btn = document.getElementById('admintab-'+t.replace('admin-tab-',''));
+    var pnl = document.getElementById(t);
+    var active = t.replace('admin-tab-','') === tab;
+    if(btn){ btn.style.fontWeight=active?'700':'400'; btn.style.borderBottom=active?'2px solid var(--blue)':'2px solid transparent'; btn.style.color=active?'var(--blue)':'var(--txt3)'; }
+    if(pnl) pnl.style.display=active?'':'none';
+  });
+  if(tab==='perms') loadPermissionsGrid();
+}
+
+var PERM_ROLES = ['Engineer','Viewer','Finance'];
+
+async function loadPermissionsGrid() {
+  var body = document.getElementById('admin-perms-body');
+  if(!body) return;
+  body.innerHTML='<div style="padding:20px;color:var(--txt3);font-size:13px">Loading…</div>';
+  try {
+    var res  = await fetch(WORKER_URL+'/role-permissions?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    renderPermissionsGrid(data.records||[]);
+  } catch(err){ body.innerHTML='<div style="padding:20px;color:var(--red)">Failed: '+err.message+'</div>'; }
+}
+
+function renderPermissionsGrid(records) {
+  var body = document.getElementById('admin-perms-body');
+  if(!body) return;
+  var sections = {};
+  records.forEach(function(r){
+    var sec = r.fields['Section']||'Other';
+    if(!sections[sec]) sections[sec]=[];
+    sections[sec].push(r);
+  });
+  var thSt = 'padding:8px 16px;text-align:center;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;width:90px';
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:14px">'+
+    '<thead><tr style="border-bottom:2px solid var(--bdr2)">'+
+      '<th style="padding:8px 16px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Screen</th>'+
+      '<th style="'+thSt+'">Admin</th>'+
+      PERM_ROLES.map(function(r){ return '<th style="'+thSt+'">'+r+'</th>'; }).join('')+
+    '</tr></thead><tbody>';
+  Object.keys(sections).forEach(function(sec){
+    html += '<tr><td colspan="'+(2+PERM_ROLES.length)+'" style="padding:10px 16px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);background:var(--bg2)">'+e(sec)+'</td></tr>';
+    sections[sec].forEach(function(r){
+      var f = r.fields;
+      html += '<tr style="border-bottom:1px solid var(--bdr)">'+
+        '<td style="padding:10px 16px;font-weight:500">'+e(f['Label']||f['Screen']||'—')+'</td>'+
+        '<td style="text-align:center;padding:10px 16px"><input type="checkbox" checked disabled style="width:16px;height:16px;accent-color:var(--green);opacity:.5;cursor:not-allowed"></td>'+
+        PERM_ROLES.map(function(role){
+          var checked = f[role]===true;
+          return '<td style="text-align:center;padding:10px 16px">'+
+            '<input type="checkbox" '+(checked?'checked':'')+' data-perm-id="'+r.id+'" data-perm-role="'+role+'" onchange="savePermission(this)" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer">'+
+          '</td>';
+        }).join('')+
+      '</tr>';
+    });
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+async function savePermission(checkbox) {
+  var id   = checkbox.dataset.permId;
+  var role = checkbox.dataset.permRole;
+  var val  = checkbox.checked;
+  checkbox.disabled = true;
+  try {
+    var fields = {}; fields[role] = val;
+    var res = await fetch(WORKER_URL+'/role-permissions/'+id, {method:'PATCH', headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadPermissions();
+    applyRoleRestrictions();
+  } catch(err){ toast('Save failed: '+err.message,'err'); checkbox.checked=!val; }
+  finally { checkbox.disabled=false; }
+}
+
 function showAdmin() {
-  if(userRole !== 'admin'){ toast('Admin only','err'); return; }
+  if(!canAccess('admin')){ toast('Admin only','err'); return; }
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
    'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
    'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
@@ -9644,12 +9743,28 @@ document.addEventListener("DOMContentLoaded",function(){
     <div style="flex:1"></div>
     <button class="btn-ghost" onclick="showHome()">Home</button>
   </div>
-  <div class="body-wrap" style="padding:20px;max-width:860px;margin:0 auto;width:100%;overflow-y:auto">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <div style="font-size:18px;font-weight:700">Users</div>
-      <button class="btn-pri" onclick="openUserModal(null)" style="font-size:13px">+ Add User</button>
+  <!-- Admin tabs -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr);padding:0 24px;background:var(--bg)">
+    <button id="admintab-users" onclick="adminShowTab('users')" style="background:none;border:none;border-bottom:2px solid var(--blue);padding:12px 18px;font-size:13px;font-weight:700;color:var(--blue);cursor:pointer">Users</button>
+    <button id="admintab-perms" onclick="adminShowTab('perms')" style="background:none;border:none;border-bottom:2px solid transparent;padding:12px 18px;font-size:13px;font-weight:400;color:var(--txt3);cursor:pointer">Permissions</button>
+  </div>
+  <div class="body-wrap" style="padding:20px;max-width:900px;margin:0 auto;width:100%;overflow-y:auto">
+    <!-- Users tab -->
+    <div id="admin-tab-users">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="font-size:18px;font-weight:700">Users</div>
+        <button class="btn-pri" onclick="openUserModal(null)" style="font-size:13px">+ Add User</button>
+      </div>
+      <div id="admin-users-body"></div>
     </div>
-    <div id="admin-users-body"></div>
+    <!-- Permissions tab -->
+    <div id="admin-tab-perms" style="display:none">
+      <div style="margin-bottom:20px">
+        <div style="font-size:18px;font-weight:700">Role Permissions</div>
+        <div style="font-size:12px;color:var(--txt3);margin-top:4px">Tick which screens each role can access. Admin always has full access.</div>
+      </div>
+      <div id="admin-perms-body"></div>
+    </div>
   </div>
 </div>
 
@@ -9678,6 +9793,7 @@ document.addEventListener("DOMContentLoaded",function(){
             <option value="admin">Admin</option>
             <option value="engineer" selected>Engineer</option>
             <option value="viewer">Viewer</option>
+            <option value="finance">Finance</option>
           </select>
         </div>
         <div>

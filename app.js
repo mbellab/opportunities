@@ -73,6 +73,37 @@ var currentUser  = JSON.parse(sessionStorage.getItem('mbb_user') || 'null');
 if(currentUser && currentUser.role) currentUser.role = currentUser.role.toLowerCase();
 var userRole     = currentUser ? currentUser.role : null;
 var userName     = currentUser ? currentUser.name : '';
+// Role permissions: keyed by screen key, values have {id, engineer, viewer, finance}
+var rolePermissions = JSON.parse(sessionStorage.getItem('mbb_perms') || 'null');
+
+function canAccess(screen) {
+  if(userRole === 'admin') return true;
+  if(!rolePermissions) return false;
+  var p = rolePermissions[screen];
+  if(!p) return false;
+  return p[userRole] === true;
+}
+
+async function loadPermissions() {
+  try {
+    var res  = await fetch(WORKER_URL+'/role-permissions?pageSize=100', {headers:getHeaders()});
+    var data = await res.json();
+    rolePermissions = {};
+    (data.records||[]).forEach(function(r){
+      var key = r.fields['Screen'];
+      if(!key) return;
+      rolePermissions[key] = {
+        id: r.id,
+        label: r.fields['Label']||key,
+        section: r.fields['Section']||'',
+        engineer: r.fields['Engineer']===true,
+        viewer:   r.fields['Viewer']===true,
+        finance:  r.fields['Finance']===true,
+      };
+    });
+    sessionStorage.setItem('mbb_perms', JSON.stringify(rolePermissions));
+  } catch(ex) { /* keep existing permissions if fetch fails */ }
+}
 
 var IC_PENCIL = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M11.013 1.427a1.75 1.75 0 012.474 2.474L4.92 12.47l-3.795.505.505-3.794 8.383-8.754zM13 3.5L12 2.5 3 11.5l-.25 1.75 1.75-.25L13 3.5z" fill="currentColor"/></svg>';
 var IC_SAVE   = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" fill="currentColor"/></svg>';
@@ -231,6 +262,8 @@ async function attemptLogin() {
     userName    = data.name;
     sessionStorage.setItem('mbb_pwd',  pwd);
     sessionStorage.setItem('mbb_user', JSON.stringify(currentUser));
+    HEADERS['X-App-Password'] = pwd;
+    await loadPermissions();
     document.getElementById('login-screen').style.display='none';
     applyRoleRestrictions();
     updateAllUserLabels();
@@ -272,13 +305,35 @@ function applyRoleRestrictions() {
   var isAdmin   = (userRole === 'admin');
   var isViewer  = userRole === 'viewer';
   var isEngineer= userRole === 'engineer';
+  var isFinance = userRole === 'finance';
   var style = document.getElementById('role-restrictions-style');
   if(!style){ style = document.createElement('style'); style.id='role-restrictions-style'; document.head.appendChild(style); }
   var rules = [];
-  // Diagnostics & admin nav items
-  ['diag-nav-btn','diag-nav-btn2'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=isAdmin?'':'none';});
-  // Nav menu: hide admin-only items for non-admins
+
+  // Diagnostics & admin nav items: always admin-only regardless of permissions table
+  ['diag-nav-btn','diag-nav-btn2'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=canAccess('diagnostics')?'':'none';});
   document.querySelectorAll('.nav-admin-only').forEach(function(el){el.style.display=isAdmin?'':'none';});
+
+  // Home screen tiles: show/hide based on permissions
+  var homeMap = {
+    '.hs-tile-employees':     'employees',
+    '.hs-tile-emp-leave':     'employee-leave',
+    '#tile-pettycash':        'petty-cash',
+    '#hs-compliance':         'passwords',
+    '#hs-security':           'admin',
+    '#hs-finance':            'petty-cash',
+  };
+  Object.keys(homeMap).forEach(function(sel){
+    var allowed = canAccess(homeMap[sel]);
+    rules.push(sel+'{display:'+(allowed?'':'none')+'!important}');
+  });
+  if(!canAccess('employees') && !canAccess('employee-leave')) {
+    rules.push('#upcoming-group{display:none!important}');
+    rules.push('#passport-alert-group{display:none!important}');
+    rules.push('#hs-quality-people{display:none!important}');
+  }
+
+  // Viewer: hide edit/write controls globally
   if(isViewer) {
     rules = rules.concat([
       '.btn-pri:not(.viewer-ok){display:none!important}',
@@ -290,23 +345,12 @@ function applyRoleRestrictions() {
       'button[onclick*="showVendorModal"]{display:none!important}',
     ]);
   }
-  if(isViewer || isEngineer) {
-    // Hide Quotes tab for viewers and engineers
+  // Non-admin: hide quotes/invoices tabs
+  if(!isAdmin) {
     rules.push('.modal-tab[data-tab="tab-quotes"]{display:none!important}');
     rules.push('#tab-quotes{display:none!important}');
-    // Hide Invoices tab for non-admins
     rules.push('.modal-tab[data-tab="tab-invoices"]{display:none!important}');
     rules.push('#tab-invoices{display:none!important}');
-    // Hide admin-only home sections
-    rules.push('.hs-tile-employees{display:none!important}');
-    rules.push('.hs-tile-emp-leave{display:none!important}');
-    rules.push('#upcoming-group{display:none!important}');
-    rules.push('#passport-alert-group{display:none!important}');
-    rules.push('#hs-quality-people{display:none!important}');
-    rules.push('#tile-pettycash{display:none!important}');
-    rules.push('#hs-compliance{display:none!important}');
-    rules.push('#hs-security{display:none!important}');
-    rules.push('#hs-finance{display:none!important}');
   }
   style.textContent = rules.join('\n');
 }
@@ -3853,7 +3897,7 @@ var empLoaded   = false;
 var empEditId   = null;
 
 function showEmployees() {
-  if(userRole !== 'admin') { toast('Employees is restricted to Admin users','err'); return; }
+  if(!canAccess('employees')) { toast('Employees is restricted to your role','err'); return; }
   sessionStorage.setItem('mbb_screen','employees');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
@@ -5660,8 +5704,7 @@ async function confirmDeletePCTransaction() {
 var pwdRecords=[],pwdLoaded=false,pwdEditId=null;
 
 function showPasswords(){
-  if(userRole!=='admin'){toast('Access restricted','err');return;}
-  if(userRole!=='admin'){toast('Access restricted','err');return;}
+  if(!canAccess('passwords')){toast('Access restricted','err');return;}
   sessionStorage.setItem('mbb_screen','passwords');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
@@ -5800,7 +5843,7 @@ var elHolYear = new Date().getFullYear();
 var elPeriodOffset = 0;  // 0 = current period, -1 = previous
 
 function showEmployeeLeave() {
-  if(userRole !== 'admin'){ toast('Access restricted','err'); return; }
+  if(!canAccess('employee-leave')){ toast('Access restricted','err'); return; }
   elLoaded = false;
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
@@ -7122,7 +7165,7 @@ async function saveSickLeave() {
 var adminUsers = [], adminEditId = null;
 
 function showAdmin() {
-  if(userRole !== 'admin'){ toast('Admin only','err'); return; }
+  if(!canAccess('admin')){ toast('Admin only','err'); return; }
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
    'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
    'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
@@ -7265,7 +7308,96 @@ async function toggleUserActive(id, active) {
   } catch(err){ toast('Failed: '+err.message,'err'); }
 }
 
-document.addEventListener("DOMContentLoaded",function(){
+// ── Admin tabs ────────────────────────────────────────────────────
+function adminShowTab(tab) {
+  ['admin-tab-users','admin-tab-perms'].forEach(function(t){
+    var btn = document.getElementById('admintab-'+t.replace('admin-tab-',''));
+    var pnl = document.getElementById(t);
+    var active = t.replace('admin-tab-','') === tab;
+    if(btn){ btn.style.fontWeight=active?'700':'400'; btn.style.borderBottom=active?'2px solid var(--blue)':'2px solid transparent'; btn.style.color=active?'var(--blue)':'var(--txt3)'; }
+    if(pnl) pnl.style.display=active?'':'none';
+  });
+  if(tab==='perms') loadPermissionsGrid();
+}
+
+// ── Permissions grid ──────────────────────────────────────────────
+var PERM_ROLES = ['Engineer','Viewer','Finance'];
+
+async function loadPermissionsGrid() {
+  var body = document.getElementById('admin-perms-body');
+  if(!body) return;
+  body.innerHTML='<div style="padding:20px;color:var(--txt3);font-size:13px">Loading…</div>';
+  try {
+    var res  = await fetch(WORKER_URL+'/role-permissions?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    // Also refresh in-memory rolePermissions
+    (data.records||[]).forEach(function(r){
+      var key = r.fields['Screen'];
+      if(key && rolePermissions) {
+        rolePermissions[key] = {id:r.id, label:r.fields['Label']||key, section:r.fields['Section']||'',
+          engineer:r.fields['Engineer']===true, viewer:r.fields['Viewer']===true, finance:r.fields['Finance']===true};
+      }
+    });
+    renderPermissionsGrid(data.records||[]);
+  } catch(err){ body.innerHTML='<div style="padding:20px;color:var(--red)">Failed: '+err.message+'</div>'; }
+}
+
+function renderPermissionsGrid(records) {
+  var body = document.getElementById('admin-perms-body');
+  if(!body) return;
+  // Group by section
+  var sections = {};
+  records.forEach(function(r){
+    var sec = r.fields['Section']||'Other';
+    if(!sections[sec]) sections[sec]=[];
+    sections[sec].push(r);
+  });
+  var thSt = 'padding:8px 16px;text-align:center;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;width:90px';
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:14px">'+
+    '<thead><tr style="border-bottom:2px solid var(--bdr2)">'+
+      '<th style="padding:8px 16px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Screen</th>'+
+      '<th style="'+thSt+'">Admin</th>'+
+      PERM_ROLES.map(function(r){ return '<th style="'+thSt+'">'+r+'</th>'; }).join('')+
+    '</tr></thead><tbody>';
+  Object.keys(sections).forEach(function(sec){
+    html += '<tr><td colspan="'+(2+PERM_ROLES.length)+'" style="padding:10px 16px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);background:var(--bg2)">'+e(sec)+'</td></tr>';
+    sections[sec].forEach(function(r){
+      var f = r.fields;
+      html += '<tr style="border-bottom:1px solid var(--bdr)">'+
+        '<td style="padding:10px 16px;font-weight:500">'+e(f['Label']||f['Screen']||'—')+'</td>'+
+        '<td style="text-align:center;padding:10px 16px"><input type="checkbox" checked disabled style="width:16px;height:16px;accent-color:var(--green);opacity:.5;cursor:not-allowed"></td>'+
+        PERM_ROLES.map(function(role){
+          var key = role.toLowerCase();
+          var checked = f[role]===true;
+          return '<td style="text-align:center;padding:10px 16px">'+
+            '<input type="checkbox" '+(checked?'checked':'')+' data-perm-id="'+r.id+'" data-perm-role="'+role+'" onchange="savePermission(this)" style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer">'+
+          '</td>';
+        }).join('')+
+      '</tr>';
+    });
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+async function savePermission(checkbox) {
+  var id   = checkbox.dataset.permId;
+  var role = checkbox.dataset.permRole;
+  var val  = checkbox.checked;
+  checkbox.disabled = true;
+  try {
+    var fields = {}; fields[role] = val;
+    var res = await fetch(WORKER_URL+'/role-permissions/'+id, {method:'PATCH', headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    // Update in-memory cache
+    await loadPermissions();
+    applyRoleRestrictions();
+  } catch(err){ toast('Save failed: '+err.message,'err'); checkbox.checked=!val; }
+  finally { checkbox.disabled=false; }
+}
+
+document.addEventListener("DOMContentLoaded",async function(){
   ["login-user","login-pwd"].forEach(function(id){
     var el=document.getElementById(id);
     if(el)el.addEventListener("keydown",function(ev){if(ev.key==="Enter")document.querySelector(".lbtn").click();});
@@ -7282,6 +7414,8 @@ document.addEventListener("DOMContentLoaded",function(){
   if(appPassword && currentUser) {
     HEADERS['X-App-Password']=appPassword;
     document.getElementById('login-screen').style.display='none';
+    // Fetch permissions if not cached from a previous session load
+    if(!rolePermissions) { await loadPermissions(); }
     applyRoleRestrictions();
     var lastScreen = sessionStorage.getItem('mbb_screen') || 'home';
     if(lastScreen === 'opportunities')  showOpportunities();
