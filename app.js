@@ -7213,6 +7213,60 @@ async function saveSickLeave() {
 
 
 // ================================================================
+// CHANGE PASSWORD
+// ================================================================
+function openChangePwd() {
+  document.getElementById('cpwd-current').value = '';
+  document.getElementById('cpwd-new').value     = '';
+  document.getElementById('cpwd-confirm').value = '';
+  document.getElementById('cpwd-err').textContent = '';
+  document.getElementById('change-pwd-modal').style.display = 'flex';
+}
+
+async function saveChangePwd() {
+  var current = document.getElementById('cpwd-current').value;
+  var newPwd  = document.getElementById('cpwd-new').value.trim();
+  var confirm = document.getElementById('cpwd-confirm').value.trim();
+  var errEl   = document.getElementById('cpwd-err');
+  errEl.textContent = '';
+
+  function showErr(msg) { errEl.textContent = msg; }
+
+  if (!current)              return showErr('Please enter your current password.');
+  if (current !== appPassword) return showErr('Current password is incorrect.');
+  if (!newPwd)               return showErr('Please enter a new password.');
+  if (newPwd.length < 4)    return showErr('New password must be at least 4 characters.');
+  if (newPwd !== confirm)    return showErr('Passwords do not match.');
+  if (newPwd === current)    return showErr('New password must be different from current password.');
+
+  try {
+    var res = await fetch(WORKER_URL + '/users?pageSize=100', { headers: getHeaders() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    var rec = (data.records || []).find(function(r) {
+      return (r.fields['Username'] || '').toLowerCase() === (currentUser.username || '').toLowerCase();
+    });
+    if (!rec) throw new Error('User record not found.');
+
+    var patch = await fetch(WORKER_URL + '/users/' + rec.id, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ fields: { Password: newPwd } })
+    });
+    if (!patch.ok) throw new Error('HTTP ' + patch.status);
+
+    appPassword = newPwd;
+    sessionStorage.setItem('mbb_pwd', newPwd);
+    HEADERS['X-App-Password'] = newPwd;
+
+    document.getElementById('change-pwd-modal').style.display = 'none';
+    toast('Password updated', 'ok');
+  } catch(err) {
+    showErr('Failed to update password: ' + err.message);
+  }
+}
+
+// ================================================================
 // ADMIN
 // ================================================================
 var adminUsers = [], adminEditId = null;
