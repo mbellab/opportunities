@@ -5196,6 +5196,7 @@ var DIAG_TABLES = [
   {name:'Annual Entitlements',           url:'/annual-entitlements'},
   {name:'Leave Requests',                url:'/leave-requests'},
   {name:'Users',                         url:'/users'},
+  {name:'Role Permissions',              url:'/role-permissions'},
 ];
 
 function showDiagnostics() {
@@ -7432,7 +7433,7 @@ document.addEventListener("DOMContentLoaded",async function(){
   if(vEl) vEl.textContent=APP_VERSION;
   document.querySelectorAll('.top-bar .app-nav-wrap').forEach(function(navWrap){
     var ver=document.createElement('span');
-    ver.style.cssText='font-size:10px;color:var(--txt3);font-family:monospace;letter-spacing:.4px;margin-right:8px;align-self:center;white-space:nowrap';
+    ver.style.cssText='font-size:10px;color:rgba(255,255,255,0.45);font-family:monospace;letter-spacing:.4px;margin-right:8px;align-self:center;white-space:nowrap';
     ver.textContent=APP_VERSION;
     navWrap.parentNode.insertBefore(ver,navWrap);
   });
