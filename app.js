@@ -31,7 +31,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.5  ·  2026-06-13';
+var APP_VERSION = 'v1.6.4  ·  2026-06-14';
 var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -291,13 +291,12 @@ function applyRoleRestrictions() {
     rules.push('#tab-invoices{display:none!important}');
     // Hide admin-only home sections
     rules.push('.hs-tile-employees{display:none!important}');
+    rules.push('.hs-tile-emp-leave{display:none!important}');
     rules.push('#upcoming-group{display:none!important}');
     rules.push('#passport-alert-group{display:none!important}');
     rules.push('#hs-quality-people{display:none!important}');
     rules.push('#tile-pettycash{display:none!important}');
     rules.push('#hs-compliance{display:none!important}');
-    rules.push('#hs-employees{display:none!important}');
-    rules.push('#hs-security{display:none!important}');
     rules.push('#hs-security{display:none!important}');
     rules.push('#hs-finance{display:none!important}');
   }
@@ -892,7 +891,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -5127,6 +5126,7 @@ var DIAG_TABLES = [
   {name:'Annual Tickets',                url:'/annual-tickets'},
   {name:'Bank Holidays',                 url:'/bank-holidays'},
   {name:'Annual Entitlements',           url:'/annual-entitlements'},
+  {name:'Leave Requests',                url:'/leave-requests'},
 ];
 
 function showDiagnostics() {
@@ -5289,7 +5289,7 @@ async function loadDiagnostics() {
         return today>=from && today<=to;
       })||null;
 
-      if(!activeEnt){ noEnt.push(emp.fields['Name']||emp.id); return; }
+      if(!activeEnt){ noEnt.push(emp.fields['Employee Name']||emp.id); return; }
 
       var from = new Date(activeEnt.fields['Period_Start']+'T00:00:00');
       var to   = new Date(activeEnt.fields['Period_End']+'T00:00:00');
@@ -5305,7 +5305,7 @@ async function loadDiagnostics() {
         used+=parseFloat(r.fields['Days'])||0;
       });
       var bal=annualDays-used;
-      if(bal<0) negBal.push({name:emp.fields['Name']||emp.id, bal:bal});
+      if(bal<0) negBal.push({name:emp.fields['Employee Name']||emp.id, bal:bal});
     });
 
     var lv='';
@@ -5793,7 +5793,9 @@ async function deletePassword(id){
 
 // ── EMPLOYEE LEAVE MODULE ─────────────────────────────────────────
 var elRecords = [], elTickets = [], elHolidays = [], elEntitlements = [], elLoaded = false;
+var leaveRequests = [], lrFilter = 'pending', lrRejectId = null;
 var elCurrentEmpId = null, elCurrentEditId = null, elHolEditId = null, elActiveTab = 'all';
+var elHolYear = new Date().getFullYear();
 var elPeriodOffset = 0;  // 0 = current period, -1 = previous
 
 function showEmployeeLeave() {
@@ -5802,11 +5804,450 @@ function showEmployeeLeave() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('employees-leave-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','employees-leave');
   if(!elLoaded) loadLeaveData();
+}
+
+// ── LEAVE REQUESTS ──────────────────────────────────────────────────────────────
+
+function showLeaveRequests() {
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen',
+   'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
+   'passwords-screen','employees-leave-screen','leave-requests-screen'
+  ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
+  document.getElementById('leave-requests-screen').style.display='flex';
+  sessionStorage.setItem('mbb_screen','leave-requests');
+  loadLeaveRequests();
+}
+
+async function loadLeaveRequests() {
+  var body = document.getElementById('lr-body');
+  if(body) body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--txt3)">Loading…</div>';
+  try {
+    // Ensure employee records are available (non-admins never load the Employees screen)
+    if(!empRecords.length) {
+      var eRes = await fetch(WORKER_URL+'/employees?pageSize=100', {headers:getHeaders()});
+      if(eRes.ok){ var eData=await eRes.json(); empRecords=eData.records||[]; }
+    }
+    var res = await fetch(WORKER_URL+'/leave-requests?pageSize=100&sort[0][field]=Submission_Date&sort[0][direction]=desc', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    leaveRequests = data.records||[];
+    while(data.offset){
+      var r2 = await fetch(WORKER_URL+'/leave-requests?pageSize=100&offset='+data.offset, {headers:getHeaders()});
+      data = await r2.json();
+      leaveRequests = leaveRequests.concat(data.records||[]);
+    }
+    renderLeaveRequests();
+    updateLRBadge();
+  } catch(err) {
+    if(body) body.innerHTML = '<div style="padding:32px;text-align:center;color:var(--red)">Error: '+e(err.message)+'</div>';
+  }
+}
+
+function updateLRBadge() {
+  var badge = document.getElementById('lr-pending-badge');
+  var n = leaveRequests.filter(function(r){ return (r.fields['Status']||'Pending')==='Pending'; }).length;
+  if(badge){ badge.textContent=n; badge.style.display=n>0?'':'none'; }
+}
+
+function setLRFilter(f) {
+  lrFilter = f;
+  ['all','pending','approved','rejected'].forEach(function(t){
+    var el=document.getElementById('lr-tab-'+t);
+    if(el) el.className='el-tab'+(t===f?' el-tab-active':'');
+  });
+  renderLeaveRequests();
+}
+
+function getEmpNameById(id) {
+  if(!id) return '—';
+  var emp = empRecords.find(function(emp2){ return emp2.id===id; });
+  return emp ? (emp.fields['Employee Name']||emp.fields['Name']||id) : id;
+}
+
+function renderLeaveRequests() {
+  var body = document.getElementById('lr-body');
+  if(!body) return;
+  var filtered = leaveRequests.filter(function(r){
+    if(lrFilter==='all') return true;
+    return (r.fields['Status']||'Pending').toLowerCase()===lrFilter;
+  });
+  if(!filtered.length){
+    body.innerHTML='<div style="padding:32px;text-align:center;color:var(--txt3)">No '+lrFilter+' requests</div>';
+    return;
+  }
+  var rowSt='display:grid;grid-template-columns:1fr 130px 190px 60px 90px auto;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--bdr)';
+  var html='<div style="'+rowSt.replace('padding:10px 16px','padding:7px 16px')+';background:var(--bg2)">'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Employee</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Type</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Dates</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;text-align:center">Days</span>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Status</span>'+
+    '<span></span></div>';
+  filtered.forEach(function(r){
+    var f=r.fields;
+    var status=f['Status']||'Pending';
+    var sc=status==='Approved'?'var(--green)':status==='Rejected'?'var(--red)':'var(--amber)';
+    var empName=getEmpNameById(elEmpId(f['Employee']));
+    var d1=f['Date_Out']?elFmtDate(f['Date_Out']):'?';
+    var d2=f['Date_In']&&f['Date_In']!==f['Date_Out']?' → '+elFmtDate(f['Date_In']):'';
+    html+='<div style="'+rowSt+'">'+
+      '<div><div style="font-size:13px;font-weight:500">'+e(empName)+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3)">'+elFmtDate(f['Submission_Date'])+'</div></div>'+
+      '<span style="font-size:13px">'+e(f['Leave_Type']||'—')+'</span>'+
+      '<span style="font-size:12px;white-space:nowrap">'+d1+d2+'</span>'+
+      '<span style="font-size:14px;font-weight:700;font-family:monospace;text-align:center">'+e(String(f['Days']||'—'))+'</span>'+
+      '<span style="font-size:12px;font-weight:600;color:'+sc+'">'+e(status)+'</span>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+        (status==='Pending' && userRole==='admin'?
+          '<button onclick="approveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--green);border-color:var(--green-bdr)">✓ Approve</button>'+
+          '<button onclick="openRejectModal(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">✗ Reject</button>':'')+
+        '<button onclick="printLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Print</button>'+
+      '</div></div>';
+  });
+  body.innerHTML=html;
+}
+
+async function approveRequest(id) {
+  var req=leaveRequests.find(function(r){ return r.id===id; });
+  if(!req) return;
+  var f=req.fields;
+  try {
+    // Create the leave record
+    var leaveFields={Employee:[elEmpId(f['Employee'])],Type:f['Leave_Type'],
+      Start_Date:f['Date_Out'],End_Date:f['Date_In'],Days:f['Days']};
+    if(f['Detail']) leaveFields.Notes=f['Detail'];
+    var lRes=await fetch(WORKER_URL+'/leave-records',{method:'POST',headers:getHeaders(),
+      body:JSON.stringify({records:[{fields:leaveFields}]})});
+    if(!lRes.ok) throw new Error('Failed to create leave record: HTTP '+lRes.status);
+    var lData=await lRes.json();
+    if(lData.records) elRecords=elRecords.concat(lData.records);
+    // Update request status
+    var today=new Date().toISOString().split('T')[0];
+    var pRes=await fetch(WORKER_URL+'/leave-requests/'+id,{method:'PATCH',headers:getHeaders(),
+      body:JSON.stringify({fields:{Status:'Approved',Approved_By:userName,Approval_Date:today}})});
+    if(!pRes.ok) throw new Error('Failed to update request: HTTP '+pRes.status);
+    var pData=await pRes.json();
+    leaveRequests=leaveRequests.map(function(r){ return r.id===id?pData:r; });
+    toast('Approved — leave record created','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){ toast('Error: '+err.message,'err'); }
+}
+
+function openRejectModal(id) {
+  lrRejectId=id;
+  document.getElementById('lr-reject-notes').value='';
+  document.getElementById('lr-reject-modal').style.display='flex';
+}
+
+async function rejectRequest() {
+  if(!lrRejectId) return;
+  var notes=document.getElementById('lr-reject-notes').value.trim();
+  try {
+    var res=await fetch(WORKER_URL+'/leave-requests/'+lrRejectId,{method:'PATCH',headers:getHeaders(),
+      body:JSON.stringify({fields:{Status:'Rejected',Rejection_Notes:notes,Rejected_By:userName,Rejection_Date:new Date().toISOString().split('T')[0]}})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    leaveRequests=leaveRequests.map(function(r){ return r.id===lrRejectId?data:r; });
+    document.getElementById('lr-reject-modal').style.display='none';
+    toast('Request rejected','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){ toast('Error: '+err.message,'err'); }
+}
+
+async function openLeaveRequestForm(empId) {
+  var isAdmin = userRole === 'admin';
+  var empSel  = document.getElementById('lr-form-employee');
+  var empRow  = document.getElementById('lr-form-employee-row');
+
+  // Ensure employees are loaded
+  if(!empRecords.length) {
+    try {
+      var eRes = await fetch(WORKER_URL+'/employees?pageSize=100', {headers:getHeaders()});
+      if(eRes.ok){ var eData=await eRes.json(); empRecords=eData.records||[]; }
+    } catch(err){ toast('Could not load employee list','err'); return; }
+  }
+
+  // For non-admins, auto-detect employee from Username field
+  if(!isAdmin) {
+    var matched = empRecords.find(function(e2){
+      return (e2.fields['Username']||'').toLowerCase() === (currentUser.username||'').toLowerCase();
+    });
+    if(matched) {
+      empId = matched.id;
+    } else {
+      toast('Your account is not linked to an employee record — ask an admin to set your Username field.','err');
+      return;
+    }
+  }
+
+  // Show/hide employee row based on role
+  if(empRow) empRow.style.display = isAdmin ? '' : 'none';
+
+  if(empSel){
+    if(isAdmin){
+      var active=empRecords.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
+      empSel.innerHTML='<option value="">— Select Employee —</option>'+
+        active.map(function(e2){
+          var n=e2.fields['Employee Name']||e2.fields['Name']||'Unknown';
+          return '<option value="'+e2.id+'"'+(e2.id===empId?' selected':'')+'>'+n+'</option>';
+        }).join('');
+    } else {
+      // Store the resolved empId in the hidden select
+      empSel.innerHTML='<option value="'+empId+'" selected></option>';
+    }
+  }
+
+  document.getElementById('lr-form-submitted').value=new Date().toISOString().split('T')[0];
+  document.getElementById('lr-form-type').value='Annual';
+  document.getElementById('lr-form-date-out').value='';
+  document.getElementById('lr-form-date-in').value='';
+  document.getElementById('lr-form-detail').value='';
+  document.getElementById('lr-form-coverage').value='';
+  var prev=document.getElementById('lr-days-preview'); if(prev) prev.style.display='none';
+  var btn=document.getElementById('lr-form-submit-btn'); if(btn){btn.disabled=false;btn.textContent='Submit Request';}
+  document.getElementById('lr-form-modal').style.display='flex';
+}
+
+function lrUpdateDays() {
+  var dateOut = document.getElementById('lr-form-date-out').value;
+  var dateIn  = document.getElementById('lr-form-date-in').value;
+  var prev    = document.getElementById('lr-days-preview');
+  if(!prev) return;
+  if(!dateOut || !dateIn) { prev.style.display='none'; return; }
+  if(new Date(dateIn) < new Date(dateOut)) {
+    prev.style.display=''; prev.textContent='Date In must be on or after Date Out.'; prev.style.color='var(--red)'; return;
+  }
+  var days = elWorkingDays(dateOut, dateIn).length;
+  prev.style.display='';
+  prev.style.color='var(--txt3)';
+  prev.textContent = days + ' working day'+(days!==1?'s':'')+' (weekends & bank holidays excluded)';
+}
+
+async function saveLeaveRequest() {
+  var btn=document.getElementById('lr-form-submit-btn');
+  if(btn && btn.disabled) return;
+  var empId=document.getElementById('lr-form-employee').value;
+  var type=document.getElementById('lr-form-type').value;
+  var dateOut=document.getElementById('lr-form-date-out').value;
+  var dateIn=document.getElementById('lr-form-date-in').value||dateOut;
+  var detail=document.getElementById('lr-form-detail').value.trim();
+  var coverage=document.getElementById('lr-form-coverage').value.trim();
+  var subDate=document.getElementById('lr-form-submitted').value;
+  if(!empId||!type||!dateOut){ toast('Fill in all required fields','err'); return; }
+  // Auto-calculate days (working days excluding weekends + bank holidays)
+  var days = elWorkingDays(dateOut, dateIn).length;
+  if(!days){ toast('No working days in selected range — check dates and bank holidays','err'); return; }
+  if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
+  var fields={Employee:[empId],Leave_Type:type,Date_Out:dateOut,Date_In:dateIn,
+    Days:days,Status:'Pending',Submission_Date:subDate};
+  if(detail)   fields.Detail=detail;
+  if(coverage) fields.Coverage=coverage;
+  try {
+    var res=await fetch(WORKER_URL+'/leave-requests',{method:'POST',headers:getHeaders(),
+      body:JSON.stringify({records:[{fields:fields}]})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    leaveRequests=(data.records||[]).concat(leaveRequests);
+    document.getElementById('lr-form-modal').style.display='none';
+    toast('Leave request submitted ('+days+' day'+(days!==1?'s':'')+')','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){
+    toast('Error: '+err.message,'err');
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Submit Request'; }
+  }
+}
+
+function printLeaveRequest(id) {
+  var req=leaveRequests.find(function(r){ return r.id===id; });
+  if(!req) return;
+  if(!window.jspdf){ toast('PDF library not loaded — try refreshing','err'); return; }
+  var f=req.fields;
+  var empName=getEmpNameById(elEmpId(f['Employee']));
+  var emp=empRecords.find(function(e2){ return e2.id===elEmpId(f['Employee']); });
+  var position=emp?(emp.fields['Position']||emp.fields['Job Title']||''):'';
+  var leaveType=f['Leave_Type']||'';
+
+  var LOGO='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAEYAagDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9U6KKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAOQ1b4oeG9Fv57S71ARXMLbJECk7SOccfWq3/C5/CX/AEE//IT/AOFeP/Ev4UeNNc8bapeaZpEFxYzSmWKZrsIWyB2/CuW/4Uf8Q/8AoA2v/gaP8aAPon/hc/hL/oJ/+Qn/AMKP+Fz+Ev8AoJ/+Qn/wr52/4Uf8Q/8AoA2v/gaP8a5r4jeEvFXwt8G6l4o1/RoodI0+PzbiSG7DuozjoDSbtqyoxc5KMVds+rv+Fz+Ev+gn/wCQn/wo/wCFz+Ev+gn/AOQn/wAK/Mz/AIbA8H/887v/AL5NH/DYHg//AJ53f/fJqPaQ7ns/2JmX/PiR+mf/AAufwl/0E/8AyE/+FN/4XT4R/wCgp/5Cf/CvzOX9r7we7bfLu/8Avk19J+E/ht418aeG9N1zTdEgksL6ETwNJdhSyHpkZqoyUtmcWJwOJwdniION9rn07J8bfBsX39WVf+2bf4Uq/Gvwg67hqny+vlN/hXzx/wAKO+If/Qv2n/gaP8aP+FH/ABD/AOgDZ/8AgaP8ao4T3y4/aB8B2rbZdejjb/ajf/CrOl/HDwRrLqlr4gtmc9myv8xXzxJ8EviEq5/4R20b/t7U1k6t8N/FOh2bT6p4bnjjX5f9FjE38qAPsy21ixvmC219bzk9BFIG/kau18BWqx2s0ktr5tneD7zRsySRn3Hau68MfGXxf4XWGKLVv7Ut926VNSXeceisOlAH2HRXkXgz9o3QPEEyWeqxyaFfP91bhsxsPXeOBXrMciTRq6MGjYZBHIINAElFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAV4D+3b/AMmq+PP+vQf+hivfq8B/bt/5NV8ef9eg/wDQxUy2Z2YL/eqX+Jfmj8PaKKK8w/pEli/1n41+937Nv/JCPA3/AGDI6/BGL/WfjX73fs2/8kI8Df8AYMjrpw+7PzLjX4aH/b36HptFFFdh+XhRRRQB5r8T/gxpfju0kuLVV07W0y0V3CoG8+jjvXytqWm3mjahdWGo2/2W/tpNksf9R7GvvOvA/wBpzwfElja+K4dsctuwt7zavzSxscL+RoA8AbDRsjqskbdUbpXd/Dr4v6v8P7tY5JJdU0N2/eWcjZeH/aQn+VcMylW2tTVbZQB9zeHfENh4r0mDUtOuFuLWZchl7H0PuK1a+PvhJ8R7n4f+JI0dmk0O/kEVzD/zxcnAkX+tfXscizKrowZTyCOhFAElFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABXgP7dv/ACar48/69B/6GK9+rwH9u3/k1Xx5/wBeg/8AQxUy2Z2YL/eqX+Jfmj8PaKKK8w/pEli/1n41+937Nv8AyQjwN/2DI6/BGL/WfjX73fs2/wDJCPA3/YMjrpw+7PzLjX4aH/b36HptFFFdh+XhRRRQAVyfxT0uPWfh7r1u67gLR5R9VG4fyrrKzfENut1oGpQHpJbSJ+akUAfCFnI9xY2ssn33jDH61NUkkP2WOGJf4FK/kxqOgA8tJdyS/wCqf5W+lfVn7PnimXxL8PreK6ZftmnubV07hV+5n8K+U69s/Zc1AW/iDxFZP966WO4X/gPB/nQB9H0UUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFeA/t2/8AJqvjz/r0H/oYr36vAf27f+TVfHn/AF6D/wBDFTLZnZgv96pf4l+aPw9ooorzD+kSWL/WfjX73fs2/wDJCPA3/YMjr8EYv9Z+Nfvd+zb/AMkI8Df9gyOunD7s/MuNfhof9vfoem0UUV2H5eFFFFABVTVGCaddM33RE+fyq3WL4zufsfhHWpt20pZzMD77DQB8Uakwe4Zl+6WOP++jVWo7OY3Wn2srfeePcfxJNSUAFer/ALN0by/EOZ1+5Fp7K31L15Qq7vlr339lbR3+z6/rJXdb3MyQ27+yj5v1oA9+ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAorN1fXdO0G3E+o31vYRMdoe6kEak/U1lf8LL8Jf9DLpP/gbH/wDFUFKMnsjp6K5j/hZfhL/oZdJ/8DY//iqP+Fl+Ev8AoZdJ/wDA2P8A+Ko0H7Of8r+46eiuY/4WX4S/6GXSf/A2P/4qpbPx54a1G5S3tvEGm3Fw52rFHdRszH2ANAOE1q0dFRRRQQFFZeteItL8OWbXWq39tp9uoyZbiQIP1rwDxp/wUA+Dfg55oV8Rrq1zEcNFYIX5HvSbS3N6VCtXdqUHJ+SufSdFfEV1/wAFWvhrbsdnh3xBLH/z0ESKv6mtLQP+Co/wq1aZY7qy1bS1P8c8QI/Sp549z0HlGPUeb2Mreh9l0V5F8PP2qPhf8T2WLQfF1jLcn/lhM3lv+TV6xHIk0aujK6NyGXkGqTueXOnOm+Was/MlooopkBRRVW+v7fTbdri7uI7aBPvSTOEUfiaALVFeB+PP23fhB8P7ma0vfFNveXsfW3sx5jfpXkl7/wAFU/hpBIy2+ha9fIP44Ykx+pqXOK6no0suxlZXp0pNejPtevAf27f+TVfHn/XoP/QxXkun/wDBVf4ZXswSXRdbtR3aSJCB+RrH/aX/AGzPhb8Xv2cPGWi6Jr23Wbm0Cw2U0ZV5DkHAqHOLTsztw+W4yjiacqlKSXMtbO26Pyvooorzz9/JYv8AWfjX73fs2/8AJCPA3/YMjr8EYv8AWfjX73fs2/8AJCPA3/YMjrpw+7PzLjX4aH/b36HptFFFdh+XhRRRQAV5v8f9afQ/hhqjxDdLPstwndtxwf0r0ivmP9o/xjFrfiaz0O3kby9K/fTMrfI0rcbD9BQB5B5aRKsSfcRdooop2190arG00srbY4o1y8h9BQBNp9jc6tqVrp9grSX944ihEa5K5PLfQV9qeCfCtv4L8MWOkW6riBPnZVxvc8s34muA+B3wlbwlb/25rMKjXLlNqx/8+0Z/h/3j3r16gAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigDxb9qH9nK3/AGkvBtjoNxq0ukraXP2kSxru3cYxivl3/h01p3/Q7T/9+K/QuiocIy1aPUw2aY3Bw9nh6rjHsj87rv8A4JRadbWk03/CbT/u0Z/9R6DNfnJr1u+ka3qFgszSLa3MkAf+9sYrn9K/of1j/kFX3/XB/wD0E1/PP42/5HLXf+whcf8Ao1q5a0VG1kfovCuYYrGzrLEVHKyVr+rMj7TL/wA9G/OvY/2Q5pG/aM8C5kb/AJCCfxV4xXsn7IH/ACcb4F/7CCVjD4kfYZr/ALhX/wALP3cr5W/av/bh0P4EbvD2hRrr3jWUbVtI/nS2J6b8d/atf9tb9puP9nz4feVprJJ4q1ZTDYQ94weDLj2rxz9iT9jcs0fxU+JUb6p4j1JvtVnaXnz+Tu58189XNd8pNvljufiOEwtGnS+uYz4Nox6yf6JdWcF4J/Zb+Mn7XN3H4o+K3iG80Pw/M3mwaezFXZD2WP8AhH1r6u+Hn7C3we+H1msSeFbbWbkf8vWqr5z5/GvoJVCKFUYA6CnUKCRliMzxNb3Yvkh0jHRfhv6vU85uP2fPhve232ebwVo0kHTY1ouK+Rv2q/8AgnFoWp6Bf+JPhna/2ZqkCmWTR0/1MyjkhB2Nff8ARTlBSVmYYTH4nBVFUoTafro/VH85UsdzpN9JE/m213BIUYfdeNgcV9J/s/ft5/EH4Nahb2mp6hL4m8ObgsljeNveNf8Apmx6Vn/t9eAbfwJ+0f4iWzhSCzvyt5FGvAUsPm/WvnGvP1hJ2P3KNLC51g4VK8E1JfNej33P6Afg18ZvDfxx8G23iPw3drPbSDEsLf6yB+6MK7+vxK/Yl/aFvfgb8XNPjluG/wCEc1eVbW/gZvkXccCT6iv1f/aB+O2kfA34UX3i66kSZjFiwh3f8fErLlVFd0J80bs/Hs1yipl+L+rw95S+Hz/4KMD9pj9q3wv+znoOb1v7S8RXK/6FpEJzJIT0Legr5Q0T4TfHv9tS4/tjxrrc/gvwNOd8GnR5TzEzxhOv4mup/ZM/Zqv/AIyeIH+Nvxa8zUdR1GTztM025+5HHnKuQe3oK+9o40hjVEVVRRgBeAAKLOer2FOtSy393h0pVFvJ6pPtFbad/uPmv4b/APBPz4P+AoQ0+gJ4juv4ptWPmc+oHavWIPgF8ObSHyoPBejRx9MLaLXoNFaJJbI8mriq9d3qzb9Wz55+J/7DPwm+JelyQHw3baFfFTsvtMUROD2z61+U/wC0t+zjr37OHjltH1T/AEvT7jMthqCr8s0ef0Ir93q+OP8Agp54Mt/EHwCj1Yov2nSbxZUk284YYIzWNWCcW7an02QZxiMLioUZzbhJpWeu/Y/IainU2uE/biWL/WfjX73/ALN42/AjwP8A9gyL+VfgYud3HWvf/Dfib9oK30GxTRp/FK6SIgtr9nVvL2dttbUpclz4riXLZZhGly1Iw5b/ABO1/Q/cCivxQ/4Sz9pX/nr4t/75ej/hLP2lf+evi3/vl66PbLsz4f8A1bqf9BFP/wACP2vor8T/APhLf2lf+e3i7/vmSsDXvi18ddJjZdU1rxPax/dPmeYBS9suzHHhmrJ2Ven/AOBf8A/XD4s/HOy8L28ml6FNHf65Iv30+aO2HQsxHcelfMc0hTzri4mZmdt81zM3MjnqSa+GNF/aZ8deH28t7pbhN24pNFyx9TX0d8EP23Ph3ZXELfEDwfO92PlN9BIZom9zGeKca0GY4rhnMcMuZR51/d1/A978J/D7xD42uPK0jT28jcPMvrhSkKg91z96vpL4afBbSvAK/bJ2/tPWX5a8kXhPZB2FQ/Cn49fD34qWEK+EtesbnagxZKwSSMemyvTa2vc+XnCVN8s1Z+YUUUUyAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooApax/yCr7/rg/8A6Ca/nn8bf8jlrv8A2ELj/wBGtX9DGsf8gq+/64P/AOgmv55/G3/I5a7/ANhC4/8ARrVyYjZH6TwX/Er+kfzZiV7B+yZeQad+0F4NvLiTy7e3vRLI7dFArx+rmmapc6TdefayeTLtKb1681zJ2aZ+j42jLEYapRjvJNfefoL8OtAm/bX/AGxNa8UatHJceCPDFwUhhk5jbacIn4kZr9Koo0t4lRFWNEXCgdABXzf+wF8Lovht+z5o88kPl6nrY+33bt1Ynhf0r6Vr0IKy13PwXMq6q1/Z0/gh7sfRdfm9QooorQ8kKKKKAPyY/wCCrFusXxx0V1HzSaXk/gwr4mr7e/4Ku/8AJbdA/wCwX/7MK+Ia86p8bP3vh3/kV0fT9WOVijBlO1h0NfcHw98Wav8AtzfEf4aeD71Zh4e8K2iT6qO023ADf0r4dr9OP+CS/gyCHwr4u8TyJi6luUskf/YAz/OqpXcrHHxLKFDCLE/bjpHyctG/uPv6wsLfS7GCztY1htoEWOKNeAqgYAq1RRXefiAUUUUAFfM//BQ5Q37Lnib22fzr6Yr5p/4KGf8AJrfij6J/OplszuwP+90f8UfzPxXptOpteYf0eSxf6z8a/ev9m+CJvgR4HJjT/kGRfwivwUi/1n41+937Nv8AyQjwN/2DI66KG7PzLjX4aH/b36Ho/wBmg/54x/8AfIo+zQf88Y/++RU1Fdp+XkP2aD/njH/3yKqXGh6beLi40+0mHpJCrfzFaNFAHhnxV/Y2+Fnxat7j+0fDdtY6hIp239ivlyRk9wBxX5jftU/sWeJf2dbttThZ9a8JyyYj1GNfmi9FlHav2srA8Z+ENL8e+GdQ0LWbZbrTr2IxSxuueo6j3FZTpxmfQZZneKy2orScodYvb5dj+e/Rde1Hw/ex3em3s9jdxMGWa3kKHI+lfd/7L/8AwUt1LQri10D4oM+o6c2Ej1lV/fRdvnHcV8o/tIfBm7+BPxa1nwrcbmtoZPNtJf78L8rz9K8trhjKVN2R+v4jA4LO8PGpNXUldNbr5n9E3hbxZpHjTRLbV9Dv4NS065UPFcQNuVga2q/DP9mf9rLxX+zpr8Jsrh77w/LIPtekzNlCO5X0Nfsn8Ivi3oHxn8F2XiTw7dLcWdwo3x5+eFu6MPUV3QqKaPx7Nsnr5TUtPWD2l+j7M7miiitTwQooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigClrH/IKvv8Arg//AKCa/nn8bf8AI5a7/wBhC4/9GtX9DGsf8gq+/wCuD/8AoJr+efxt/wAjlrv/AGELj/0a1cmI2R+k8F/xK/pH82YlXtGs2v8AVbO2VdzSyomPqwFUa6X4cQifx74fRvutfQj/AMeFcqWp+m15ONGcl0T/ACP34+Hemx6T4E8PWcQ2pDp8Cgf9sxXR1n6Gu3Q9PX+7bRj/AMdFaFeqfzS9XcKKKKACiiigD8nf+Crv/JbdA/7Bf/swr4hr7e/4Ku/8lt0D/sF/+zCviGvOq/Gz964d/wCRXR9P1Y6v18/4JiWS2v7PkkqrtM9+7H8OK/IOv2I/4Jnf8m4W3/X3J/Oro/EePxj/ALhD/EvyZ9bUUUV3H46FFFFABXzT/wAFDP8Ak1vxR9E/nX0tXzT/AMFDP+TW/FH0T+dTL4Wd2B/3ul/ij+Z+K9Np1NrzD+jyWL/WfjX73fs2/wDJCPA3/YMjr8EYv9Z+Nfvd+zb/AMkI8Df9gyOunD7s/MuNfhof9vfoem0UUV2H5eFFFFABRRRQB+fv/BVr4XR6h4Q8P+OYIwLiwm+yXDKvLI/3c/SvzBr90P2z/CkHiz9m3xtbSrue3sjdRf769K/DAnFcNZWlc/YuEMQ6mClSk/heno9RK+j/ANin9pi7+AHxKtYry4ZvCuqSCC/t2b5IyTgSj3FfOFOrFNxd0fX4zCU8bQlQqq6f9XP6NNPv4NUsre8tZFmtp0WWORejKRkGrVfI/wDwTf8AjJJ8Svgeuj30vmaj4dkFoWdsu8ZGVY19cV6afMk0fzxisPPCV50Km8XYKKKKZyhRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAUtY/wCQVff9cH/9BNfzz+Nv+Ry13/sIXH/o1q/oY1j/AJBV9/1wf/0E1/PP42/5HLXf+whcf+jWrkxGyP0ngv8AiV/SP5sxK6r4Wf8AJSPDf/X/AAf+hiuVrqvhZ/yUjw3/ANf8H/oYrmW6P0rFfwKn+F/kf0FaV/yCrL/rgn/oIq5VPSv+QVZf9cE/9BFXK9Q/mwKKKKACiiigD8nf+Crv/JbdA/7Bf/swr4hr7e/4Ku/8lt0D/sF/+zCviGvOq/Gz964d/wCRXR9P1Y6v2I/4Jnf8m4W3/X3J/Ovx3r9iP+CZ3/JuFt/19yfzq6PxHj8Y/wC4w/xL8mfW1FFFdx+OhRRRQAV80/8ABQz/AJNb8UfRP519LV80/wDBQz/k1vxR9E/nUy+Fndgf97pf4o/mfivTadTa8w/o8li/1n41+937Nv8AyQjwN/2DI6/BGL/WfjX73fs2/wDJCPA3/YMjrpw+7PzLjX4aH/b36HptFFFdh+XhRRRQAUUUUAcP8arMah8JfF1s3Il02Zf/AB2v5/8AUI/JvZ0/uOy/ka/oL+KrBPht4mZvujT5v/QTX8/Gsf8AIUvP+ur/AMzXJiOh+m8FPWuv8P6lOiiiuU/UD7c/4JXeLZNK+M+q6Q0jLBqVgcJ23qc1+slfjT/wTahll/aX0lo/upBIX+mK/Zau6i7wPxDiqChmk7dUn+AUUUVufIhRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAUtY/wCQVff9cH/9BNfzz+Nv+Ry13/sIXH/o1q/oY1j/AJBV9/1wf/0E1/PP42/5HLXf+whcf+jWrkxGyP0ngv8AiV/SP5sxK6r4Wf8AJSPDf/X/AAf+hiuVrqvhZ/yUjw3/ANf8H/oYrmW6P0rFfwKn+F/kf0FaV/yCrL/rgn/oIq5VPSv+QVZf9cE/9BFXK9Q/mwKKKKACiiigD8nf+Crv/JbdA/7Bf/swr4hr7e/4Ku/8lt0D/sF/+zCviGvOq/Gz964d/wCRXR9P1Y6v2I/4Jnf8m4W3/X3J/Ovx3r9iP+CZ3/JuFt/19yfzq6PxHj8Y/wC4w/xL8mfW1FFFdx+OhRRRQAV80/8ABQz/AJNb8UfRP519LV80/wDBQz/k1vxR9E/nUy+Fndgf97pf4o/mfivTadTa8w/o8li/1n41+937Nv8AyQjwN/2DI6/BGL/WfjX73fs2/wDJCPA3/YMjrpw+7PzLjX4aH/b36HptFFFdh+XhRRRQAUUUUAee/H2+/sz4LeM7rp5WmTN+lfgRdSebcO/98lvzr9v/ANt7xXD4S/Zm8ZzOdrXlqbKM/wC0/wD+qvw7rkr7o/VeC6dqVar5pfd/w42iinVyn6Qfdf8AwSi8HT3/AMUPEWvtGfsljZCIP28xj/hX6p18qf8ABOr4St8NPgFaahdRtFqHiCT7dKjLgqvRR+VfVdejTjyxSP5/zzFLF5hVqR2vZfLQKKKK0PCCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooApax/yCr7/rg/8A6Ca/nn8bf8jlrv8A2ELj/wBGtX9DGsf8gq+/64P/AOgmv55/G3/I5a7/ANhC4/8ARrVyYjZH6TwX/Er+kfzZiV1Xws/5KR4b/wCv+D/0MVytdV8LP+SkeG/+v+D/ANDFcy3R+lYr+BU/wv8AI/oK0r/kFWX/AFwT/wBBFXKp6V/yCrL/AK4J/wCgirleofzYFFFFABRRRQB+Tv8AwVd/5LboH/YL/wDZhXxDX29/wVd/5LboH/YL/wDZhXxDXnVfjZ+9cO/8iuj6fqx1fsR/wTO/5Nwtv+vuT+dfjvX7Ef8ABM7/AJNwtv8Ar7k/nV0fiPH4x/3GH+Jfkz62oooruPx0KKKKACvmn/goZ/ya34o+ifzr6Wr5p/4KGf8AJrfij6J/Opl8LO7A/wC90v8AFH8z8V6bTqbXmH9HksX+s/Gv3u/Zt/5IR4G/7BkdfgjF/rPxr97v2bf+SEeBv+wZHXTh92fmXGvw0P8At79D02iiiuw/LwooooAKKKxPFnirTfBXhy/1zV7hLTT7KIzSyu2MACgEr6I+Fv8Agq78To7Hwn4c8EQyBp76U3c6K3Kon3c/WvzFr1X9pj403Px5+Lur+KJTttHbyLSPssC8L+deUV5s5c0mz99yHAvAYGFOfxPV+rCvdP2Qv2f734//ABY0/T/Jb+wrFxdalcN9xY1OdmfVq4b4Q/B7xJ8a/F9roHhuxkubmVgJZtp8qBO7Ma/af9m79nnQ/wBnXwDDoelqtxfSYkvtQZcPcSd/wHarpU+d3ex5fEWdQwNF4ek/3ktP8K7+p6lpun2+k6fbWVrGsNtbRiKJF6KoGBVyiiu8/FgooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACivmz9uPxf8SfBnw30q6+Gcdy+rPfBLj7LD5r+Vj0r4f/4X1+1t/wA++t/+AIrKVTldrHu4LKZ42l7WNWEfKUrM/WbWP+QVff8AXB//AEE1/PP42/5HLXf+whcf+jWr6um+O37WtxDJE9rrbI6lSv2IdDXgF78CPidf3dxcz+C9ZaeaQyyN9m+8ScmuarLntZH3nD2EhlU6sq9aD5krWkul/Q81rqvhZ/yUjw3/ANf8H/oYrY/4Z8+JX/Qk6z/4CmremfA34oaPqMF9a+DNZiuIJFljf7N90g5FY2a6H19fGYWpSlBVo6pr4l1R+8+lf8gqy/64J/6CKuV+RUfx2/a1ihjiS11tURQoX7EOgp3/AAvr9rb/AJ99b/8AAEV2+1XZn5F/q9V/5/0//Av+AfrnRXzz+xP4r+IPjD4Uz33xIS5j1r7Y6Ri6i8t/LHTivcvEc1zB4f1KWy/4+0tpGhxz84U4/Wtk7q583WpOjVlSbTs7XW3yNSivyU1D47/taRahdJFb63sErqu2yGMAnGKr/wDC+f2uP+ffW/8AwCFYuql0Z9EuH6skn7en/wCBf8A0v+Crv/JbfD//AGC//ZhXxBXvPxV8O/HP4z61Bqvizw3rmp3sEPkRytZ7dqdccVxH/DPnxK/6EnWf/AU1yzvKV0j9Pymrh8FgqeHqVoc0VraStuef1+xP/BND/k3C2/6+5P51+XH/AAz38Sv+hJ1n/wABjXr3w28WftKfCbw6ND8M6PrenaaJC/krZBuT9aqm3CV2jgz+FLNMNGjRrQTUr6yXZn7PUV+Rn/C+v2tv+ffW/wDwBFez/sifFj9oPxT8adO07x9Dqi+HHt5WmN1aBEyANvNdKqpu1j86r5HUoUpVXWptRV7KWvy0P0Mor8wf22L742xfHjVU8HyeJF0Py08n+zWbyenPSvBZNW/aSiba8/jJW/3pKHUs7WNMNkUsTSjVVeC5ujeqP24r5p/4KFozfst+KWHQBM/nX5s/23+0f/z9eMv++pKzfEVv8evFukTabrMPivUrCT/WW9wsjo31BqHVurWZ6WG4fdGvCrLEU7Rafxdjw+m13n/CjPiD/wBCfq3/AICtR/woz4g/9Cfq3/gK1cln2P1f67hf+fsfvX+ZxEX+s/Gv3u/Zt/5IR4G/7BkdfiQPgZ8QVbP/AAh+rf8AgM1fU/g/9on9qLwh4Y03Q9N8I3P2GwhEMO7T8ttHTNb0nyXufD8TUFmUaX1epF8t73klv8z9XaK/Lj/hrL9q7/oUp/8AwW0f8NZftXf9ClP/AOC2uj2iPhv7ExH88P8AwOP+Z+o9Ffl1/wANQ/tbXXyweE7lT/2DRVLUvGf7ZfxAtZLR9L1ezt5f4re2EO3/AIEKPaLohrJan/LytTj/ANvr9Ln6KfE743+C/hBpU194o16109I13eR5gaZvog5r8p/2wf229Y/aDu30LRxLpHg2CTIg3Ye6I6M/t7VuQ/8ABPv48fEq7W/8QvEsr/el1S9LyL+Br2T4ff8ABJuzjaC58XeLZXZf9ZZ6fEArf8CJzWUvaT2VkfQYGnk2UyVavW9rNbKKdl6d/mz83rOzuL66jt7aKSe4kbCRRqWLH2Ar6q/Z7/4J5eO/ixcW+o6/A3hXw4fmMt0uJ5B6KnUfWv0r+Fn7KPwy+D8UbaD4atjdL832u8Xzpc+uW6V7FRGgk7yHmHF1asnDBx5F3e/+SPOPgz8CfCXwK8Nx6R4Y06O2G0efdMuZp2Hdmr0eiiupK2iPgJzlUk5zd2wooooICiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAayhuozTfJj/uL/wB81JRQBH5Mf9xf++aPJj/uL/3zUlFAEfkx/wBxf++aPJj/ALi/981JRQBH5Mf9xf8AvmjyY/7i/wDfNSUUANVQvQYp1FFAEfkx/wBxf++aPJj/ALi/981JRQBH5Mf9xf8AvmjyY/7i/wDfNSUUAR+TH/cX/vmjyY/7i/8AfNSUUAR+TH/cX/vmhY0TkKq1JRQBE0MbHcyKx9dtI1tE3WFf++RU1FAEP2aD/njH/wB8ij7NB/zxj/75FTUUAQ/ZoP8AnjH/AN8ij7NB/wA8Y/8AvkVNRQBD9mg/54x/98ineTH/AHF/75qSigCPyY/7i/8AfNHkx/3F/wC+akooAYsar91QKfRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAVheK9T1fSdMM2jaP8A25d5/wCPb7SsPH+81btFAHzl8Yv2rNU+BHh631vxh4Cns7CaXyEe31COZtx9gKz/AILfti3n7QUeoSeC/A89zFYMFuXu71IsE9AMiuA/4Krf8kS0f/sJJXEf8Ej/APkD+OP+u8X8qxcn7Tl6H08cvoSyd4+3vqVvK2h9P+MPjt4x+H9jLqOu/DW8bSouZJ9PvEuHUDqdijNaHwd/au+HHxwc23hzW1GpL96wvF8qbPcAHrXsEkazKyOoZTwQehFfix+2VoB+CH7U2sT+GJn0uQyJqVu1u23y3fkgY7U5ycFfoYZVgKWaTlh78s7Xi+mnRrz7n7V0V5P+zB8UJ/jB8DvC/ii7XbeXUG2f3kQ7SfxxXrFaJ31PDqQlSm4T3WgV5lqXj3xzYSXZj+H32i2hyRN/akQ3qO+MV6bVHW/+QNff9cJP/QTTITs9j4z07/gpz4a1fxRb+HrXwjqDapcXf2KNGnUL5pO3GcetfRv/AAnfxC/6Jv8A+ViH/Cvxf+H3/Jx+if8AYxJ/6Or97aypzck7n0+d4Chl8qSor4opu76njuv/ABa8eeHLGS8uPhhc3EKLuK2uoxyPx7AV4QP+CnPhqHxVb+H7/wAFazpuoSXKWzRXDAGMs23JGK+1ywWvjL9vT9ne08TweHviDo9mseu6Vqlt9s8mP5rmEyDrjuDVT5krxPNy9YSpV9niouz2aez899D7Itp1ubeGZfuyqHH4jNT1S0g7tKsT/wBME/8AQRV2rPJMbxPqOp6ZpMtxpOl/2xerjZa+esO7/gTcV4r8XP2m9b+B/hJvEvi3wBPa6SJ0tzJb6lFM29s7eAPavoOvkP8A4Kif8muTf9hi0/8AZ6ib5YtnpZdQhisXSoVNpNJmx8GP22W+P9zqFt4M8C3d5JYKHn+03scO0Hp1Fe++Dtd8QaxHcNrnh3+wWT/Vr9rSff8A989K/PP/AIJI/wDIxeNP+veP+a1+mdKm3KN2bZvhaeCxtTD0vhi9L77IKKKK0PHCiiigDgvEXi3xlp2rzW+meCv7Vsk+5d/2lHDv/wCAkZr5r8cf8FKNB+HfjHUfC2teDtQh1jTp/s1xHHcI6K/+8BX2jX4Zfthf8nYePv8AsL/1FZVJuK0PpsiwFDMa8qVZaKLemmqP100P4m+N9esNPv7f4dt9hu0SZJG1SIHYwyDjHoa9ThdnhRnXy3IBK9dp9K5n4U/8k08Lf9gu3/8ARYrrK1Pm5NX0QUUUUEhRRRQAUUVW1C+i02xuLudtsNvG0rn2AyaAPnP9oD9sCw+CXxd8GeDGtVujqzp9slZv9RG7bUP519IRyJMiujBkIyCvQivxM/bTvPE2rfGu58VaskkNlq6rc6RL/wBOyn5PxFfqJ+xr8WY/i/8AAbw7qbNm+tIhZXS7snegxk/WsozvJxPpcwyuOGwOHxdN35l73r/WnyPdKKKK1PmgrJ8SXWqWelSSaRZrfXq/chkkCBvxNa1FAHxf8ff2+NX/AGefFdv4e13wN9ovZ7YXStDdjbtJxX1X8PfFy+O/A2h+IVtzajU7SO68ludm4ZxX5df8FVf+S/6R/wBgeP8A9CNfpF+zv/yQrwN/2CLf/wBBFYxk+dpn0uOwVCjlmGxMF7073+R6RRRRWx80FFFFAGbq3iDTtEWNr+8itQ/3fMbG6suH4jeFri6jt01/TmuXbYsP2lNxJ7YzWnrHh3TNfWMajYw3gj5Xzlztr8X/AIwavB4I/bL1C8ijZbLTtfSVbeNjtwsg4AqJy5Fc9jLMu/tKpOmpWcYuXrbofsx4i8XaP4VtxLquoRWinorN87fRRzXLWXx78A3+sppK+JbSHUX+5DcZhZvpvArK+GfgBdZRPGXilP7R1/UVE0azcpaRHlERe3HWvBP+Cm/w/wBHu/gtb+JktlttX0u7j8m5h+R8NxgkU5PlVzkwmHjicRCg3bmaV+zPs1rmJbczGRVh258zcNuPXNcTq3xu8FaG032vXI41i++6xu6j8QCK+Nv2A/iD4p+PfgeTwb4gvZptB8PSZuLln/fXStykRP8AdHevu238JaLa6abCLS7ZLMpsMPljbjpiiL5ldBi8LLBYiWHq6uLtoQeE/HGg+OdP+26Bq1pqlv8A37aQNj6jqK6CvyHh+IV3+zb+3Nq9l4cdrXw/PrKWk2nqx8lo5CB09ia/XZXVlUjoelKMua/kb47ASwXs5XvGcVJP+uw6iiirPLPiP/gqt/yRLR/+wklcR/wSP/5A/jj/AK7xfyrt/wDgqt/yRLR/+wkleRf8EvfDWp67pfjBrDWp9JWOVNwh/i4rn/5ffI+6p/8AJNS/x/5H6bO4jVmZtqjklumK/Gn9rZrz9oj9rLVtP8GW761Mrpp8bW6713JwTkcYFfpN8Q/gT4r8ZaFNY23xC1Cwd1KnH3JAezCvlbwF8fNM/Y1+I1x4G8d+ArLT5WO7/hJtNjG+eM9JDnk5q6iTST2PKyStUw1WdbDw56ii7L83527I+0P2dPhX/wAKZ+Dvhzwm7+ZPZQfvm9ZDy1emVi+FfFWleNvD9nrWi3kV/pl5GJIZ4myrA1tVra2iPnakpTnKU929fUKo63/yBr7/AK4Sf+gmr1Udb/5A19/1wk/9BNBHU/CD4ff8nH6J/wBjEn/o6v3tr8C/BtvJdftB6VFFM1vI/iABZV6qTN1r9nPEHwo8U6tpdxa2vjzULGWRcLNH1U1z0dmfc8Ur95hr/wAiPPvjT8Z47f8AaX+FHw+068zcTXrXd8kTfdUKQFbFfSk0Mc6bJI1kQ9mXIr8tPCHwW8YfBr9v3wVD4s1STX5NSuXuLbWJMk3K7COc9CK/VCtYtu9z53MMPSwypKjLmTje/m2xqqFXA6U6iirPICvkP/gqJ/ya5N/2GLT/ANnr68r5D/4Kif8AJrk3/YYtP/Z6zqfAz2sl/wCRlQ/xI8I/4JI/8jF40/694/5rX6Z1+Zn/AASR/wCRi8af9e8f81r9M6VL4EdPEX/I1r+q/JBRRRWp84FFFFABX4Zfthf8nYePv+wv/UV+5tfhl+2F/wAnYePv+wv/AFFc9bZH2/Cf+91P8DP2h+FP/JNPC3/YLt//AEWK6yuT+FP/ACTTwt/2C7f/ANFiusroPiXuwooooEFFFFABXlH7QesTr4YsfDdh8upeI7tNPhYfwjO5j+Qr1evAYvGegeIPj9q13qmsWVrZ+GIBZQwXM4X/AEljuMgz7cUFxWtzx/8A4KM/AmDVvgNpWraTBm48K7UCxry0BGD+XWvDv+CV/wAXP7A8f6x4FvJ9lrq8X2m3WRuPNTsPrmv0L8X+K/BHjTwvq2hXXiTSWg1G2ktX3XKfxKRnr2r8T9O1Kf4C/HiO6sLhbj+wdV+SaNsiWNX9fda5qnuzUz7rJv8AhRy2vl0t170fX/h/zP30orB8F+J7Xxn4U0nXLKRZLa/tknRl6fMMn9a3q6T4J6OzCiiigD8lf+Cqv/Jf9I/7A8f/AKEa/RD4JeIdO8N/ADwNcaleR2sf9kW/Mh5PyDoOpr88P+Cq3/JwGk/9geP/ANCNfaX7IPh9vG3wj8K+JvEcHnzx2SWtlaScxwRoMbgPVq54fxJH2uZL/hEwfrI9Yi+OPgmW7jtjr0EUkh2qZkaNf++mAFdzDNHcRLJE6yRtyHRsgj6iua8Y/DnQPHfh670fVtMtri0uIyn+rAK5GAQR3Ffn9+z1+0trP7PP7QGrfCDxbqM+peF49Qays7q6bfJbEn5Of7vOK2lJRtc+aw2Dli4VJUd4K9u68j9LKKarhwpX5gehoqjzx1fih8aLeO6/bY1KKVd0b+IYwyt6eYK/a+vxU+MH/J8N9/2MUf8A6MFYVtl6n2PDH+8Vv+vcv0P2g02JIdOtUQbUWJFA9gK+XP8AgpX/AMm0aj/19w/zr6msf+PG3/65r/Kvln/gpX/ybRqP/X3D/OtJ/Czwcr/3+h/ij+aPJ/8Agkqo/wCEU8af3vtMf8jX6DV+fX/BJT/kUvGX/XzH/I1+gtKn8COnPP8AkZ1/8TPxT/aO/wCT3dV/7GC3/wDRi1+0lj/x42//AFzX+Vfi3+0d/wAnu6r/ANjBb/8Aoxa/aSx/48bf/rmv8qinvL1PVz7/AHbBf4CxRRRW58cfEf8AwVW/5Ilo/wD2EkriP+CR/wDyB/HH/XeL+Vdv/wAFVv8AkiWj/wDYSSuI/wCCR/8AyB/HH/XeL+Vc/wDy++R9zT/5JqX+P/I/ROvzn/4K2eH4GsfBWsKqrdBpYCy9WHXmv0Yr8y/+Cr/j6x1LxF4S8KWlws97Zo9xdRJyYy3CjjuaurbkdzyOH4zlmdHk6P8ADqbf/BJ/4jajeW3ijwbcTST2FvsvLYO25Ys8EL6Zr9Ga+Iv+CZnwI1D4efD/AFLxXrlo1pfa6y/ZYZF2utuB3Hua+3adO6grmGd1KVXMa0qPw3/4f8Qqjrf/ACBr7/rhJ/6CavVR1v8A5A19/wBcJP8A0E1oeJ1Pwg+H3/Jx+if9jEn/AKOr97a/BL4ff8nH6J/2MSf+jq/e2uejsz7jin48P/gR5l8SvhT/AMJn488BeJIPKW48PX7TyO/UxFSCB+Nem0V49+018d9H+Anwz1TWL24T+0pYmisbTd+8mlIwCB6Ct9FqfGwjUrSjSgrvZfM73wT440zx7pl1faU7SW9vdy2blhj54zhq6Svlv/gnJqtzr37NVrqV5J5l1d6vfTSv6sZea+pKE7pMvFUHhq86L3i7BXyH/wAFRP8Ak1yb/sMWn/s9fXlfIf8AwVE/5Ncm/wCwxaf+z1FT4Gejkv8AyMqH+JHhH/BJH/kYvGn/AF7x/wA1r9M6/Mz/AIJI/wDIxeNP+veP+a1+mdKl8COniL/ka1/Vfkgrm/HHjjS/h9oEur6tN5VqjonyjJZmIAA/Oukr87f28f2jrPX/AIk+D/hp4fuknS01WC41OeFsjdvAEXFXKSirs8nCYWeMq+zgujb8ktT9DoZRLGrr91lDD8akqvZ/8edv/uD+VWKo4gr8Mv2wv+TsPH3/AGF/6iv3Nr8Mv2wv+TsPH3/YX/qK562yPt+E/wDe6n+Bn7Q/Cn/kmnhb/sF2/wD6LFdZXJ/Cn/kmnhb/ALBdv/6LFdZXQfEvdhXM6H480rxB4n13QbOVn1DRjGt0uOAXGRiqHxZ+KOjfB/wNqXiTXLqO3trSIsiyNgyyY+VB9TXyf/wTa8f3vxS1v4veKNRZvtGo6pBKEb/lmhRtq/hUuSTSO2lhJ1cPUxP2Y2XzZ9y0UUVRwnN/EHxSngrwdqutMnmG0gaRU7s3QAVxvwo+E+jWHguxl1nSbDUtWvVN3c3NxbI7sXO4ZJHYHFVviszeMfHfhTwbE26Dzv7Tvh28uPojf72a9cjjWJFRRtVRgD2FBd7LQ53/AIVx4T/6FzS//AOP/CvzR/4Kg/A+08G+MNF8YaLp0dnp+pRfZrlbeMJGkq9OB6iv1Trwv9sv4Tp8X/gF4i0tYzJe2sf260C9fMjGQKzqR5otHrZRjXgcbTrX0vZ+jPI/+CY/xfHjT4OzeFLydTf+HpfLiRm+doG5B/AmvtCvxT/YR+K8nwi/aD02K8k+z6fqrHT7zd/CSeP/AB6v2qVty5pUpc0ddzs4hwawePny/DP3l8/+COooorU+aPyW/wCCq3/JwGk/9geP/wBCNfo1+zZaxWXwG8DRxDap0qBse5XJr85f+Cqpx+0BpPvo8f8A6Ea++P2NPFR8Vfs9eE2l+W6s7ZbWWNvvLt6Z+ornh/EkfaZnrkuD9ZHuNfib+3Wx0n9qbxXcWv7mZJ0nDr13jnNftlX47/EDwDfftK/ty+ING0hGvLEap/pFwvKRwIcsSadXVJIx4ZqRoYqpWqfDGEr/AIH6q/CDUZ9X+FnhK8utxuJtLt3kLdSfLHNFdFoekwaDotjptsMW9nAkEY9lGB/KiuhHyM2pSbMnxlZeKL2GAeGdTsdOkVv3pvrYzBh7YIr428Tf8E49d8T/ABWm8e3Pjy0TVZb1b4xJYHy/MBz0z0ooqXFSWp2YbGVsJJyoOzat8mfXfgzSvGmnyyjxFrWm6lB5e2JbO0MRU+pya8o+PP7Pnjv48eDrzwxqfjDS7PSppllHk2B8xdpyBnNFFDV9GYUq06M1Up6Nar1RzH7PH7IvjT9m7TNTsvDvjbTbtNQdZJDeaeTtI9MGvoXxLp/i660uyTQ9X0+xv1A+0TXVsZEkOOdoB4oooSUVZFVsRUxFR1qrvJ6tnx743/4Jxa747+Ktz48vvHlpHqs96l60UdgRHvUgjjPTivr3wXpXjTT7p/8AhI9a03UrUJiNLO0MTA+5JNFFCiot2Na+MrYmMIVXdRVl5I7OsLxZa69d6Z5fh6+tLC/z/rryEyJj6DFFFM4z55/aA/Ze8dftE+FLfQdf8aaXa2sE4uEa104hsj6msz9nH9kLxf8As0WurQ+HvGWm6jHqLK8q3dieo44INFFSopvm6nd9exCw7wql7jd7eeh6nrnhH4u67bSWsPjHR9IidcGW3sSZfwOeK4n4f/sKeBvDnilvFfiaa78b+J5W82S71Z96eZ6hfaiiqsnuYQxFWmmoO197aH0pFElvGqIqpGgwqrwABUtFFBgFeX6r4d+J97LeJB4n0SG0l3rHG2nMzKp4GTmiigE7M+RdJ/4Jcapo3jO38SQfECE3sF79vVWsjjzA2719a+q28J/GFjn/AITjQ1/7hZ/xooqOVR2PQr4/EYtp15X5dFotiG68GfGKe3kjXx5osZYYDrpZyP1r5r+JX/BOLxp8XddbVvFfxcl1S6/5ZrJaEpEPRRniiijlUtGLD46vg5+0oO0u9kfTn7MfwOb9nr4T2fg59UGsSQXE05ulj2bt7Zxj2r12iirtZWRyVas683VqO8pasxfFFvrN1pMkehXdtY6gcbJrqMyIv4DFeBfHj9nHx9+0D4DbwprvjLSbexNzHcl7XTiH3JnHU+9FFS1dWZpRrTw841abtJao4z9n79iLxl+znealceGvH1jLJfoqSi608uMD05r2r/hEPjF/0POh/wDgrP8AjRRRZRVkaV8VVxNR1arvJ7uxyXj/AODHxn8eaXJYr8VrbRIpV2s+m6eUfB9818+aD/wSsvNM8VWOtXXxCF3JBdpdPutDvkIbPJz3ooqXFSeptQzHE4WLp0ZcqlvZLU/QyGLyoo0/uqF/KpKKK0PNOA8R6P8AEK61eaXRdf0mz00j93DdWRkkX6sDXyF8Sv8AgmbrHxP+IOseL9S8fW0Ooanc/apkgsiEVvbmiipcVLc7sNja+DbnQlytq3yPo3Qvhz8WvD+iafpdt450b7PZQJbozaWclVXAzzV2Xwf8Y3jZV8d6IrHof7LP+NFFI5vaN62X3I+ffi3+wV8QvjdqK3Hiv4uveRRtuitFtCIY/oua9Y/Y/wD2Un/Zc0vxFaPrq662rTxzb1h8vy9ikYoopqEb83U655jiamH+quXuaaWVj6MrlvGlh4qvo7b/AIRjVNP0xwx8831sZtw7YwRiiiqPPvbU81074WfEvTfGGseIh4t0WS91COOJlk004jVBgbee/evVPCNp4gs9OKeIr+01C93cS2cBiTH0JNFFJFyk5bm/XnniLQviJeancHS/EOj2+mvwkFxYGR1Huc80UUyE7M+NNZ/4JY3+p+KrjXk8eW9nPNd/bBFDZEJG+7dxz619feF/DHxL0o6fDqPirSL6zgVUl22BEkigY6560UVEYqOx3YjH4jFxhGvK6jovJHqFY/iaDV7rSZY9Du7ey1E/cmuo/MRfqBRRVnEj4/8A2gv2CPE37RXi218Q6/46srW7gthahbWwIG0HPrXuug/BvU/hxpemt4R1KOG9gs47W7gmT9xd7BgPj+FqKKlJJtnXVxdarShRnK8YXsuw7xDp/wAUvGenTaXDNp/hiOZDHLer++k2ng7MdDV34Hfs8+FPgPpM8GhW7TaleNvvdVuPnnuW6/M3pRRVW6nOqklFwTsmz1SiiigzP//Z';
+
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var pw=210, ph=297, ml=18, mr=18, mt=14, cw=pw-ml-mr;
+  var y=mt;
+
+  // Logo
+  try { doc.addImage(LOGO,'JPEG',ml,y,30,20); } catch(_){}
+
+  // Title block
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(15);
+  doc.setTextColor(0,0,0);
+  doc.text('LEAVE REQUEST FORM', pw/2, y+8, {align:'center'});
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(100,100,100);
+  doc.text('mBELLAb P.S.   ·   mBB-FM-32   ·   HR', pw/2, y+14, {align:'center'});
+  doc.setTextColor(0,0,0);
+  y+=22;
+
+  // Divider
+  doc.setDrawColor(160,160,160);
+  doc.setLineWidth(0.3);
+  doc.line(ml, y, pw-mr, y);
+  y+=4;
+
+  // Policy text
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(7.3);
+  doc.setTextColor(80,80,80);
+  var policy='In line with the policies of mBELLAb relating to annual leave and other absences, please submit this form to the Administrative Assistant and/or your supervisor for authorization and approval. Please be reminded that application for any leave should be requested in accordance with the requirements in the applicable policy of mBELLAb, other than in cases of emergency (proof of which may be required in management\'s discretion). No plans (travel or otherwise) should be made without first obtaining the authorization for leave; any expenses incurred prior to authorization shall be for the account of the employee. All leave and absences are subject to terms and conditions of your employment contract, applicable law, applicable mBELLAb policy and management\'s discretion.';
+  var pLines=doc.splitTextToSize(policy, cw);
+  doc.text(pLines, ml, y);
+  y+=pLines.length*3.1+4;
+  doc.setTextColor(0,0,0);
+
+  // Helper: draw a labelled table cell
+  function cell(label, value, cx, cellW, cy, cellH) {
+    doc.setDrawColor(160,160,160);
+    doc.setLineWidth(0.25);
+    doc.rect(cx, cy, cellW, cellH);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(110,110,110);
+    doc.text(label.toUpperCase(), cx+2, cy+3.5);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(0,0,0);
+    var val = doc.splitTextToSize(String(value||''), cellW-4);
+    doc.text(val[0]||'', cx+2, cy+cellH-2.5);
+  }
+
+  var rh=10;
+  // Company row
+  cell('Company', 'mBELLAb P.S.', ml, cw, y, rh);
+  y+=rh;
+  // Employee Name | Position
+  cell('Employee Name', empName, ml, cw*0.6, y, rh);
+  cell('Position', position, ml+cw*0.6, cw*0.4, y, rh);
+  y+=rh;
+  // Submission Date | Coverage
+  cell('Submission Date', elFmtDate(f['Submission_Date']), ml, cw*0.38, y, rh);
+  cell('Coverage Required in Absence', f['Coverage']||'', ml+cw*0.38, cw*0.62, y, rh);
+  y+=rh+4;
+
+  // Leave type table
+  var c1=ml, c1w=72, c2=ml+c1w, c2w=50, c3=ml+c1w+c2w, c3w=20, c4=ml+c1w+c2w+c3w, c4w=20;
+  var c5=ml+c1w+c2w+c3w+c4w, c5w=cw-c1w-c2w-c3w-c4w;
+
+  // Header row
+  var hh=7;
+  doc.setFillColor(220,220,220);
+  doc.rect(ml, y, cw, hh, 'FD');
+  doc.setDrawColor(160,160,160);
+  [c2,c3,c4,c5].forEach(function(cx){doc.line(cx,y,cx,y+hh);});
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(30,30,30);
+  doc.text('(Please select the appropriate reason for leave)', c1+2, y+4.7);
+  doc.text('Date Out', c3+1.5, y+4.7);
+  doc.text('Date In', c4+1.5, y+4.7);
+  doc.text('Days', c5+1.5, y+4.7);
+  y+=hh;
+
+  var ltRows=[
+    {label:'Annual Leave', sub:'(Provide Detail)', types:['Annual']},
+    {label:'Sick & Compassionate Leave', sub:'(Provide Detail)', types:['Sick']},
+    {label:'Personal & Unpaid Leave', sub:'(Please Specify)', types:['Unpaid']},
+    {label:'Maternity / Paternity / Adoption Leave', sub:'(Provide Detail)', types:['Maternity']},
+    {label:'Other', sub:'(Provide Detail)', types:[]},
+  ];
+  var ltH=10;
+  ltRows.forEach(function(lt, idx){
+    var isSel=lt.types.indexOf(leaveType)!==-1||
+      (idx===4&&['Annual','Sick','Unpaid','Maternity'].indexOf(leaveType)===-1);
+    if(isSel){doc.setFillColor(255,248,230); doc.rect(ml,y,cw,ltH,'F');}
+    doc.setDrawColor(160,160,160);
+    doc.setLineWidth(0.25);
+    doc.rect(ml,y,cw,ltH);
+    [c2,c3,c4,c5].forEach(function(cx){doc.line(cx,y,cx,y+ltH);});
+    // Checkbox
+    var cbx=c1+2.5, cby=y+2.8, cbs=4.2;
+    doc.setDrawColor(isSel?30:160); doc.setLineWidth(isSel?0.5:0.25);
+    doc.rect(cbx,cby,cbs,cbs);
+    if(isSel){
+      doc.setDrawColor(0,130,0); doc.setLineWidth(0.9);
+      doc.line(cbx+0.7,cby+cbs/2, cbx+cbs/2-0.2, cby+cbs-0.9);
+      doc.line(cbx+cbs/2-0.2,cby+cbs-0.9, cbx+cbs+0.3,cby+0.7);
+    }
+    doc.setLineWidth(0.25);
+    // Label
+    doc.setFont('helvetica', isSel?'bold':'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(isSel?0:70);
+    doc.text(lt.label, cbx+cbs+2, y+5.2);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(6.3);
+    doc.setTextColor(130);
+    doc.text(lt.sub, cbx+cbs+2, y+8.5);
+    // Fill selected row data
+    if(isSel){
+      doc.setTextColor(0); doc.setFontSize(8); doc.setFont('helvetica','normal');
+      var det=doc.splitTextToSize(f['Detail']||'', c2w-4);
+      doc.text(det[0]||'', c2+2, y+5.2);
+      doc.text(elFmtDate(f['Date_Out'])||'', c3+1.5, y+5.2);
+      doc.text(elFmtDate(f['Date_In'])||'', c4+1.5, y+5.2);
+      doc.setFont('helvetica','bold');
+      doc.text(String(f['Days']||''), c5+1.5, y+5.2);
+    }
+    doc.setTextColor(0);
+    y+=ltH;
+  });
+
+  y+=5;
+
+  // Approval / decision section
+  var status = f['Status']||'Pending';
+  // Status banner
+  var bannerCol = status==='Approved'?[0,140,0]:status==='Rejected'?[180,0,0]:[160,120,0];
+  doc.setFillColor(bannerCol[0], bannerCol[1], bannerCol[2]);
+  doc.rect(ml, y, cw, 7, 'F');
+  doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
+  var bannerLabel = status==='Approved'?'APPROVED':status==='Rejected'?'REJECTED':'PENDING APPROVAL';
+  doc.text(bannerLabel, pw/2, y+4.8, {align:'center'});
+  doc.setTextColor(0);
+  y+=7;
+
+  if(status==='Approved'){
+    cell('Approved by', f['Approved_By']||'', ml, cw*0.55, y, rh+2);
+    cell('Approval Date', elFmtDate(f['Approval_Date'])||'', ml+cw*0.55, cw*0.45, y, rh+2);
+    y+=rh+2;
+  } else if(status==='Rejected'){
+    cell('Rejected by', f['Rejected_By']||'', ml, cw*0.55, y, rh+2);
+    cell('Rejection Date', elFmtDate(f['Rejection_Date'])||'', ml+cw*0.55, cw*0.45, y, rh+2);
+    y+=rh+2;
+    cell('Rejection Notes', f['Rejection_Notes']||'', ml, cw, y, rh+2);
+    y+=rh+2;
+  } else {
+    // Pending: blank signature lines for physical signing
+    cell('Approved by', '', ml, cw*0.55, y, rh+6);
+    cell('Date', '', ml+cw*0.55, cw*0.45, y, rh+6);
+    y+=rh+6;
+  }
+
+  // Footer
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(150,150,150);
+  doc.text('mBB-FM-32  ·  HR Leave Request Form  ·  mBELLAb P.S.', pw/2, ph-8, {align:'center'});
+
+  // Download
+  var safeName=(empName||'').replace(/[^a-zA-Z0-9 ]/g,'').replace(/\s+/g,'_');
+  var subDate=(f['Submission_Date']||'').replace(/-/g,'');
+  doc.save('mBB-FM-32_'+safeName+'_'+subDate+'.pdf');
 }
 
 async function loadLeaveData() {
@@ -5871,7 +6312,36 @@ function getAnnualPeriod(startDateStr, offset) {
 
 function elChangePeriod(offset) {
   elPeriodOffset = offset;
-  renderTabContent('annual');
+  var ents = getEmpEntitlements(elCurrentEmpId);
+  renderPeriodNav(ents);
+  renderTabContent(elActiveTab);
+}
+
+function renderPeriodNav(ents) {
+  var nav = document.getElementById('el-period-nav');
+  if(!nav) return;
+  if(!ents || !ents.length) {
+    nav.innerHTML = '<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:10px 14px;font-size:13px;color:var(--amber)">'
+      +'No annual entitlement periods set up yet. Click <strong>&#9998; Entitlement</strong> above to add one.</div>';
+    return;
+  }
+  var entRec  = ents[elPeriodOffset] || ents[0];
+  var period  = entPeriod(entRec);
+  var canPrev = elPeriodOffset < ents.length - 1;
+  var canNext = elPeriodOffset > 0;
+  var today   = new Date(); today.setHours(0,0,0,0);
+  var isActive = period && today >= period.from && today <= period.to;
+  var btnSt = 'background:none;border:none;font-size:16px;padding:0 6px;';
+  nav.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;'
+    +'background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:8px 12px">'
+    +'<button onclick="elChangePeriod('+(elPeriodOffset+1)+')" style="'+btnSt+'cursor:'+(canPrev?'pointer':'default')+';color:'+(canPrev?'var(--txt)':'var(--bdr2)')+'" '+(canPrev?'':'disabled')+'>&#8592;</button>'
+    +'<div style="text-align:center">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--txt)">'+(period?elFmtPeriodLabel(period.from,period.to):'—')+'</div>'
+      +'<div style="font-size:10px;color:'+(isActive?'var(--green)':'var(--txt3)')+';margin-top:1px">'+(isActive?'Current period':'Past period')+'</div>'
+    +'</div>'
+    +'<button onclick="elChangePeriod('+(elPeriodOffset-1)+')" style="'+btnSt+'cursor:'+(canNext?'pointer':'default')+';color:'+(canNext?'var(--txt)':'var(--bdr2)')+'" '+(canNext?'':'disabled')+'>&#8594;</button>'
+    +'</div>';
 }
 
 function elFmtPeriodLabel(from, to) {
@@ -5915,11 +6385,14 @@ function elLeaveUsed(empId, type, from, to) {
   elRecords.forEach(function(r){
     if(elEmpId(r.fields['Employee']) !== empId) return;
     if(r.fields['Type'] !== type) return;
-    var d = r.fields['Start_Date'] || r.fields['Date'];
-    if(!d) return;
-    var dt = new Date(d); dt.setHours(0,0,0,0);
-    if(from && dt < from) return;
-    if(to   && dt > to)   return;
+    var startStr = r.fields['Start_Date'] || r.fields['Date'];
+    if(!startStr) return;
+    var startDt = new Date(startStr); startDt.setHours(0,0,0,0);
+    var endStr  = r.fields['End_Date'];
+    var endDt   = endStr ? new Date(endStr) : startDt; endDt.setHours(0,0,0,0);
+    // Include if leave overlaps the period (end >= from AND start <= to)
+    if(from && endDt < from) return;
+    if(to   && startDt > to) return;
     total += parseFloat(r.fields['Days']) || 0;
   });
   return total;
@@ -5934,14 +6407,31 @@ function getCurrentTicket(empId) {
   }) || null;
 }
 
+function setHolYear(delta) {
+  elHolYear += delta;
+  renderHolidaysBar();
+}
+
 function renderHolidaysBar() {
-  var yrNow = new Date().getFullYear();
   var list = document.getElementById('el-holidays-list');
+  var nav  = document.getElementById('el-hol-year-nav');
+  if(!list) return;
+
+  var btnSt = 'background:none;border:none;cursor:pointer;color:var(--txt3);font-size:16px;padding:0 4px;line-height:1';
+  if(nav) nav.innerHTML =
+    '<button onclick="setHolYear(-1)" style="'+btnSt+'">‹</button>'+
+    '<span style="font-size:13px;font-weight:600;color:var(--txt);min-width:36px;text-align:center;display:inline-block">'+elHolYear+'</span>'+
+    '<button onclick="setHolYear(1)" style="'+btnSt+'">›</button>';
+
   var relevant = elHolidays.filter(function(h){
     var d = h.fields['Date'];
-    return d && new Date(d).getFullYear() === yrNow;
+    return d && new Date(d).getFullYear() === elHolYear;
   }).sort(function(a,b){ return new Date(a.fields['Date'])-new Date(b.fields['Date']); });
-  if(!relevant.length) { list.innerHTML='<span style="font-size:12px;color:var(--txt3)">No holidays added yet</span>'; return; }
+
+  if(!relevant.length) {
+    list.innerHTML='<span style="font-size:12px;color:var(--txt3)">No holidays for '+elHolYear+'</span>';
+    return;
+  }
   list.innerHTML = relevant.map(function(h){
     var confirmed = h.fields['Confirmed'];
     var col = confirmed ? 'var(--green)' : 'var(--amber)';
@@ -5967,9 +6457,8 @@ function renderLeaveTable() {
     if(period) {
       annualUsed = elLeaveUsed(emp.id, 'Annual', period ? period.from : null, period ? period.to : null);
       sickUsed   = elLeaveUsed(emp.id, 'Sick', new Date(yrNow,0,1), new Date(yrNow,11,31));
-      unpaidUsed = elLeaveUsed(emp.id,'Unpaid',period?period.from:new Date(yrNow,0,1),period?period.to:new Date(yrNow,11,31));
+      unpaidUsed = elLeaveUsed(emp.id, 'Unpaid', period ? period.from : new Date(yrNow,0,1), period ? period.to : new Date(yrNow,11,31));
       wfhUsed    = elLeaveUsed(emp.id, 'WFH',    new Date(yrNow,0,1), new Date(yrNow,11,31));
-      unpaidUsed = elLeaveUsed(emp.id, 'Unpaid', new Date(yrNow,0,1), new Date(yrNow,11,31));
     }
     var annualRem = annualEnt - annualUsed;
     var sickRem   = sickEnt   - sickUsed;
@@ -6010,13 +6499,14 @@ function openEmpDetail(empId) {
     (period ? ' · Current annual period: '+elFmtPeriod(period.from, period.to) : ' · No active annual period') +
     (activeEnt ? ' · Annual entitlement: '+activeEnt.fields['Days']+' days' : '') +
     ' · Sick entitlement: '+(f['Sick Leave Days']||'?')+' days';
+  renderPeriodNav(getEmpEntitlements(empId));
   elShowTab('all');
   document.getElementById('el-emp-modal').style.display='flex';
 }
 
 function elShowTab(tab) {
   elActiveTab = tab;
-  ['all','annual','sick','wfh','ticket'].forEach(function(t){
+  ['all','annual','sick','wfh','unpaid','ticket'].forEach(function(t){
     document.getElementById('el-tab-'+t).className = 'el-tab'+(t===tab?' el-tab-active':'');
     document.getElementById('el-tab-content-'+t).style.display = t===tab ? '' : 'none';
   });
@@ -6066,48 +6556,27 @@ function renderTabContent(tab) {
     return;
   }
 
-  var typeMap = {annual:'Annual', sick:'Sick', wfh:'WFH'};
+  var typeMap = {annual:'Annual', sick:'Sick', wfh:'WFH', unpaid:'Unpaid'};
   var leaveType = typeMap[tab];
-  var ents = getEmpEntitlements(elCurrentEmpId);
-  var entRec = tab==='annual' ? (ents[elPeriodOffset]||ents[0]||null) : null;
-  var period = tab==='annual' ? entPeriod(entRec) : {from:new Date(yrNow,0,1), to:new Date(yrNow,11,31)};
-  var ent = tab==='annual' ? (entRec ? (parseFloat(entRec.fields['Days'])||0) : 0) : (tab==='sick'?(parseFloat(f['Sick Leave Days'])||0):null);
-  var used = period ? elLeaveUsed(elCurrentEmpId, leaveType, period ? period.from : null, period ? period.to : null) : 0;
+  var ents   = getEmpEntitlements(elCurrentEmpId);
+  var entRec = ents[elPeriodOffset] || ents[0] || null;
+  var period = entRec ? entPeriod(entRec) : null;
+  var ent = tab==='annual' ? (entRec ? (parseFloat(entRec.fields['Days'])||0) : 0)
+          : tab==='sick'   ? (parseFloat(f['Sick Leave Days'])||0)
+          : null;
+  var used = period ? elLeaveUsed(elCurrentEmpId, leaveType, period.from, period.to) : 0;
   var entries = elRecords.filter(function(r){
     if(elEmpId(r.fields['Employee']) !== elCurrentEmpId) return false;
     if(r.fields['Type']!==leaveType) return false;
-    var d = r.fields['Start_Date']||r.fields['Date']; if(!d) return false;
-    var dt=new Date(d); dt.setHours(0,0,0,0);
-    if(period && dt<period.from) return false;
-    if(period && dt>period.to)   return false;
+    var startStr = r.fields['Start_Date']||r.fields['Date']; if(!startStr) return false;
+    var startDt  = new Date(startStr); startDt.setHours(0,0,0,0);
+    var endStr   = r.fields['End_Date'];
+    var endDt    = endStr ? new Date(endStr) : startDt; endDt.setHours(0,0,0,0);
+    // Include if leave overlaps the period
+    if(period && endDt   < period.from) return false;
+    if(period && startDt > period.to)   return false;
     return true;
   }).sort(function(a,b){ return new Date(a.fields['Start_Date']||a.fields['Date'])-new Date(b.fields['Start_Date']||b.fields['Date']); });
-
-  // Period navigation (annual tab only)
-  var periodNavHtml = '';
-  if(tab==='annual') {
-    if(!ents.length) {
-      periodNavHtml = '<div style="background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--amber)">'
-        +'No annual entitlement periods set up yet. Click <strong>&#9998; Entitlement</strong> above to add one.</div>';
-    } else {
-      var canPrev = elPeriodOffset < ents.length-1;
-      var canNext = elPeriodOffset > 0;
-      var isActive= entRec && (function(){
-        var today=new Date(); today.setHours(0,0,0,0);
-        var p=entPeriod(entRec);
-        return p && today>=p.from && today<=p.to;
-      })();
-      periodNavHtml = '<div style="display:flex;align-items:center;justify-content:space-between;'
-        +'background:var(--bg2);border:1px solid var(--bdr2);border-radius:6px;padding:8px 12px;margin-bottom:12px">'
-        +'<button onclick="elChangePeriod('+(elPeriodOffset+1)+')" style="background:none;border:none;cursor:'+(canPrev?'pointer':'default')+';font-size:16px;color:'+(canPrev?'var(--txt)':'var(--bdr2)')+';padding:0 6px" '+(canPrev?'':'disabled')+'>&#8592;</button>'
-        +'<div style="text-align:center">'
-          +'<div style="font-size:13px;font-weight:700;color:var(--txt)">'+(period?elFmtPeriodLabel(period.from,period.to):'—')+'</div>'
-          +'<div style="font-size:10px;color:'+(isActive?'var(--green)':'var(--txt3)')+';margin-top:1px">'+(isActive?'Current period':'Past period')+'</div>'
-        +'</div>'
-        +'<button onclick="elChangePeriod('+(elPeriodOffset-1)+')" style="background:none;border:none;cursor:'+(canNext?'pointer':'default')+';font-size:16px;color:'+(canNext?'var(--txt)':'var(--bdr2)')+';padding:0 6px" '+(canNext?'':'disabled')+'>&#8594;</button>'
-      +'</div>';
-    }
-  }
 
   var summaryHtml = '';
   if(ent !== null) {
@@ -6159,7 +6628,7 @@ function renderTabContent(tab) {
       '</tbody></table>';
   }
 
-  el.innerHTML = periodNavHtml + summaryHtml + bholNote +
+  el.innerHTML = summaryHtml + bholNote +
     '<div style="display:flex;justify-content:flex-end;margin-bottom:8px">'+
     '<button class="btn-pri" onclick="openAddEntry(\''+leaveType+'\')" style="font-size:12px">+ Add Entry</button></div>'+
     '<div style="border:1px solid var(--bdr2);border-radius:6px;overflow:hidden"><div style="overflow-x:auto">'+listHtml+'</div></div>';
@@ -6167,8 +6636,9 @@ function renderTabContent(tab) {
 
 function renderTicketTab(emp) {
   var el = document.getElementById('el-tab-content-ticket');
-  var f = emp.fields;
-  var period = getAnnualPeriod(f['Start Date']);
+  var ents = getEmpEntitlements(emp.id);
+  var entRec = ents[elPeriodOffset] || ents[0] || null;
+  var period = entRec ? entPeriod(entRec) : null;
   var periodLabel = period ? elFmtPeriod(period.from, period.to) : null;
 
   // Get all tickets for this employee sorted by period
@@ -6210,7 +6680,9 @@ function renderTicketTab(emp) {
 async function setTicketStatus(status) {
   var emp = empRecords.find(function(e){ return e.id===elCurrentEmpId; });
   if(!emp) return;
-  var period = getAnnualPeriod(emp.fields['Start Date']);
+  var ents = getEmpEntitlements(elCurrentEmpId);
+  var entRec = ents[elPeriodOffset] || ents[0] || null;
+  var period = entRec ? entPeriod(entRec) : null;
   if(!period) return;
   var label = elFmtPeriod(period.from, period.to);
   var existing = elTickets.find(function(t){
