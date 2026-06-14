@@ -7236,8 +7236,14 @@ async function saveChangePwd() {
   if (current !== appPassword) return showErr('Current password is incorrect.');
   if (!newPwd)               return showErr('Please enter a new password.');
   if (newPwd.length < 4)    return showErr('New password must be at least 4 characters.');
+  if (!/[A-Z]/.test(newPwd)) return showErr('New password must contain at least one uppercase letter.');
+  if (!/[0-9]/.test(newPwd)) return showErr('New password must contain at least one number.');
   if (newPwd !== confirm)    return showErr('Passwords do not match.');
   if (newPwd === current)    return showErr('New password must be different from current password.');
+
+  var saveBtn = document.querySelector('#change-pwd-modal button:last-child');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
 
   try {
     var res = await fetch(WORKER_URL + '/users?pageSize=100', { headers: getHeaders() });
@@ -7263,6 +7269,8 @@ async function saveChangePwd() {
     toast('Password updated', 'ok');
   } catch(err) {
     showErr('Failed to update password: ' + err.message);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
   }
 }
 
