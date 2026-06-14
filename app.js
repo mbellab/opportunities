@@ -310,9 +310,21 @@ function applyRoleRestrictions() {
   if(!style){ style = document.createElement('style'); style.id='role-restrictions-style'; document.head.appendChild(style); }
   var rules = [];
 
-  // Diagnostics & admin nav items: always admin-only regardless of permissions table
+  // Diagnostics nav buttons
   ['diag-nav-btn','diag-nav-btn2'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=canAccess('diagnostics')?'':'none';});
-  document.querySelectorAll('.nav-admin-only').forEach(function(el){el.style.display=isAdmin?'':'none';});
+  // Dynamically hide/show nav items based on permissions
+  var navFnMap = {
+    'showOpportunities':'opportunities','showVendors':'vendors','showDashboard':'dashboard',
+    'showContractors':'contractors','showSuppliers':'suppliers','showQualityObjectives':'quality',
+    'showEmployees':'employees','showRenewals':'renewals','showCompanyDocs':'company-docs',
+    'showPettyCash':'petty-cash','showPasswords':'passwords','showEmployeeLeave':'employee-leave',
+    'showLeaveRequests':'leave-requests','showDiagnostics':'diagnostics','showAdmin':'admin',
+  };
+  document.querySelectorAll('.nav-drop-item, .nav-admin-only').forEach(function(el){
+    var oc = el.getAttribute('onclick')||'';
+    var fn = Object.keys(navFnMap).find(function(f){ return oc.indexOf(f) !== -1; });
+    if(fn) el.style.display = canAccess(navFnMap[fn]) ? '' : 'none';
+  });
 
   // Home screen tiles: show/hide based on permissions
   var homeMap = {
@@ -927,6 +939,7 @@ function showHome() {
   updateRowCount();
 }
 function showOpportunities() {
+  if(!canAccess('opportunities')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','opportunities');
   setActivePage('opportunities');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
@@ -936,6 +949,7 @@ function showOpportunities() {
   loadAll();
 }
 function showVendors() {
+  if(!canAccess('vendors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','vendors');
   setActivePage('vendors');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
@@ -1290,6 +1304,7 @@ document.getElementById('vendor-modal').addEventListener('keydown', function(ev)
 // DASHBOARD
 // ================================================================
 function showDashboard() {
+  if(!canAccess('dashboard')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','dashboard');
   setActivePage('dashboard');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
@@ -1573,6 +1588,7 @@ var CTR_PER_PAGE = 50;
 var ctrEditId    = null;
 
 function showContractors() {
+  if(!canAccess('contractors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','contractors');
   setActivePage('contractors');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
@@ -1831,6 +1847,7 @@ var SUP_PER_PAGE = 50;
 var supEditId    = null;
 
 function showSuppliers() {
+  if(!canAccess('suppliers')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','suppliers');
   setActivePage('suppliers');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
@@ -3620,6 +3637,7 @@ var qoLoaded   = false;
 var qoEditId   = null;
 
 function showQualityObjectives() {
+  if(!canAccess('quality')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','quality');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
@@ -4212,6 +4230,7 @@ var renEditId      = null;
 var upcomingDays   = 30;
 
 function showRenewals() {
+  if(!canAccess('renewals')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','renewals');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading'].forEach(function(id){
@@ -4777,6 +4796,7 @@ var cdocLoaded  = false;
 var cdocEditId  = null;
 
 function showCompanyDocs() {
+  if(!canAccess('company-docs')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','company-docs');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
@@ -5451,6 +5471,7 @@ async function loadDiagnostics() {
 
 
 function showPettyCash() {
+  if(!canAccess('petty-cash')){ toast('Access restricted','err'); return; }
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen'].forEach(function(id){
@@ -5858,6 +5879,7 @@ function showEmployeeLeave() {
 // ── LEAVE REQUESTS ──────────────────────────────────────────────────────────────
 
 function showLeaveRequests() {
+  if(!canAccess('leave-requests')){ toast('Access restricted','err'); return; }
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
@@ -7222,15 +7244,16 @@ function renderAdminUsers() {
       '</td>'+
     '</tr>';
   }).join('');
-  body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:14px">'+
+  body.innerHTML = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bdr);border-radius:8px">'+
+    '<table style="width:100%;min-width:560px;border-collapse:collapse;font-size:14px">'+
     '<thead><tr style="border-bottom:2px solid var(--bdr2)">'+
       '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Name</th>'+
       '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Username</th>'+
       '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Password</th>'+
       '<th style="padding:8px 14px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Role</th>'+
       '<th style="padding:8px 14px;text-align:center;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Active</th>'+
-      '<th></th>'+
-    '</thead><tbody>'+rows+'</tbody></table>';
+      '<th style="padding:8px 14px;white-space:nowrap"></th>'+
+    '</thead><tbody>'+rows+'</tbody></table></div>';
   // Inject passwords into data-pwd after render (avoids escaping issues in onclick)
   adminUsers.forEach(function(r){
     var span = document.getElementById('upwd-'+r.id);
