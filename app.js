@@ -325,6 +325,32 @@ function applyRoleRestrictions() {
     var fn = Object.keys(navFnMap).find(function(f){ return oc.indexOf(f) !== -1; });
     if(fn) el.style.display = canAccess(navFnMap[fn]) ? '' : 'none';
   });
+  // Hide section headers whose nav items are all hidden; also hide their preceding separator
+  document.querySelectorAll('#nav-dropdown, .nav-dropdown-shared').forEach(function(dd){
+    var ch=Array.from(dd.children);
+    for(var i=0;i<ch.length;i++){
+      var el=ch[i],s=el.getAttribute('style')||'';
+      if(s.indexOf('text-transform')!==-1&&!el.getAttribute('onclick')){
+        var vis=false;
+        for(var j=i+1;j<ch.length;j++){
+          var nx=ch[j],ns=nx.getAttribute('style')||'';
+          if(ns.indexOf('text-transform')!==-1&&!nx.getAttribute('onclick'))break;
+          if(ns.indexOf('height:1px')!==-1)break;
+          if(nx.classList.contains('nav-drop-item')&&nx.style.display!=='none'){vis=true;break;}
+        }
+        el.style.display=vis?'':'none';
+      }
+    }
+    var prev=null;
+    ch.forEach(function(el){
+      var s=el.getAttribute('style')||'';
+      var isHdr=s.indexOf('text-transform')!==-1&&!el.getAttribute('onclick');
+      var isSep=s.indexOf('height:1px')!==-1&&!el.classList.contains('nav-drop-item');
+      if(isSep)el.style.display='';
+      if(isHdr&&el.style.display==='none'&&prev&&prev.isSep)prev.el.style.display='none';
+      prev={el:el,isSep:isSep};
+    });
+  });
 
   // Home screen tiles: show/hide based on permissions (match by onclick)
   document.querySelectorAll('.hs-tile').forEach(function(el){
@@ -7431,7 +7457,10 @@ document.addEventListener("DOMContentLoaded",async function(){
   });
   var vEl=document.getElementById('app-version');
   if(vEl) vEl.textContent=APP_VERSION;
+  var hv=document.getElementById('home-version');
+  if(hv) hv.textContent=APP_VERSION;
   document.querySelectorAll('.top-bar .app-nav-wrap').forEach(function(navWrap){
+    if(navWrap.closest('#home-screen')) return; // home screen uses #home-version instead
     var ver=document.createElement('span');
     ver.style.cssText='font-size:10px;color:rgba(255,255,255,0.45);font-family:monospace;letter-spacing:.4px;margin-right:8px;align-self:center;white-space:nowrap';
     ver.textContent=APP_VERSION;
