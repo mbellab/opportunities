@@ -2430,7 +2430,7 @@ function applyRoleRestrictions() {
     group.style.display = count ? '' : 'none';
     if(count) {
       var row = group.querySelector('.hs-row');
-      if(row) row.style.gridTemplateColumns = 'repeat('+count+',minmax(120px,1fr))';
+      if(row) row.style.gridTemplateColumns = count === 1 ? '220px' : 'repeat('+count+',minmax(120px,1fr))';
     }
   });
   if(!canAccess('employees') && !canAccess('employee-leave')) {
