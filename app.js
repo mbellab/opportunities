@@ -164,11 +164,23 @@ function renderDeadline(deadline) {
   return '<span class="dl-normal">'+lbl+'</span>';
 }
 
+var _SUN='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+var _MOON='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+function applyTheme(dark){
+  document.documentElement.classList.toggle('dark',dark);
+  var btn=document.getElementById('theme-toggle');
+  if(btn){btn.innerHTML=dark?_SUN:_MOON;btn.title=dark?'Switch to light mode':'Switch to dark mode';}
+}
+function toggleTheme(){
+  var dark=!document.documentElement.classList.contains('dark');
+  localStorage.setItem('mbb_theme',dark?'dark':'light');
+  applyTheme(dark);
+}
 function setSave(state) {
   var ind=document.getElementById('save-ind');
   var txt=document.getElementById('save-txt');
-  ind.className='save-ind'+(state==='saved'?' saved':state==='saving'?' saving':state==='err'?' err':'');
-  var msgs={loading:'loading\u2026',saving:'saving\u2026',saved:'saved \u2714',err:'save failed',ready:'connected'};
+  ind.className='save-ind'+(state==='ready'||state==='saved'?' saved':state==='saving'?' saving':state==='err'?' err':'');
+  var msgs={loading:'loading\u2026',saving:'saving\u2026',saved:'saved \u2714',err:'save failed',ready:'connected \u2714'};
   txt.textContent=msgs[state]||state;
 }
 async function updateRowCount() {
@@ -961,7 +973,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -5228,7 +5240,8 @@ var DIAG_TABLES = [
 function showDiagnostics() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
-   'company-docs-screen','home-screen','petty-cash-screen','diag-screen'].forEach(function(id){
+   'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
+   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('diag-screen').style.display='flex';
@@ -5505,7 +5518,8 @@ function showPettyCash() {
   if(!canAccess('petty-cash')){ toast('Access restricted','err'); return; }
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
-   'company-docs-screen','home-screen','petty-cash-screen'].forEach(function(id){
+   'company-docs-screen','home-screen','petty-cash-screen','passwords-screen',
+   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('petty-cash-screen').style.display='flex';
@@ -5760,7 +5774,8 @@ function showPasswords(){
   sessionStorage.setItem('mbb_screen','passwords');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
-   'loading','petty-cash-screen','passwords-screen'].forEach(function(id){
+   'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
+   'diag-screen','employees-leave-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('passwords-screen').style.display='flex';
@@ -7528,6 +7543,15 @@ document.addEventListener("DOMContentLoaded",async function(){
     ver.textContent=APP_VERSION;
     navWrap.parentNode.insertBefore(ver,navWrap);
   });
+  // Copy logo to screens that use nav-logo placeholder
+  var srcLogoEl = document.querySelector('#employees-leave-screen .top-bar img') || document.querySelector('#petty-cash-screen .top-bar img');
+  if(srcLogoEl) document.querySelectorAll('.nav-logo').forEach(function(img){ img.src = srcLogoEl.src; });
+  // Theme toggle button
+  var themeBtn=document.createElement('button');
+  themeBtn.id='theme-toggle';
+  themeBtn.onclick=toggleTheme;
+  document.body.appendChild(themeBtn);
+  applyTheme(localStorage.getItem('mbb_theme')==='dark');
   // Auto-login if cached — runs here so all global arrays are initialised before any show* call
   if(appPassword && currentUser) {
     HEADERS['X-App-Password']=appPassword;

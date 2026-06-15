@@ -1862,19 +1862,11 @@
           <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">ISO Quality</div>
           <div onclick="showQualityObjectives();closeNavMenu()" class="nav-drop-item nav-admin-only">Quality Objectives</div>
           <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
-          <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Compliance</div>
+          <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">People &amp; Compliance</div>
+          <div onclick="showEmployees();closeNavMenu()" class="nav-drop-item nav-admin-only">Employees</div>
+          <div onclick="showEmployeeLeave();closeNavMenu()" class="nav-drop-item nav-admin-only">Employee Leave</div>
           <div onclick="showRenewals();closeNavMenu()" class="nav-drop-item nav-admin-only">Renewals</div>
           <div onclick="showCompanyDocs();closeNavMenu()" class="nav-drop-item nav-admin-only">Company Docs</div>
-          <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
-          <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Employees</div>
-          <div onclick="showEmployees();closeNavMenu()" class="nav-drop-item nav-admin-only">Employees</div>
-          <div class="nav-drop-item nav-admin-only" onclick="toast('Employee Leave coming soon','ok')">Employee Leave</div>
-          <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
-          <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Security</div>
-          <div onclick="showPasswords();closeNavMenu()" class="nav-drop-item nav-admin-only">Passwords</div>
-          <div style="height:1px;background:var(--bdr);margin:4px 0" class="nav-admin-only"></div>
-          <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">System</div>
-          <div onclick="showAdmin();closeNavMenu()" class="nav-drop-item nav-admin-only">Admin</div><div style="height:1px;background:var(--bdr);margin:4px 0"></div><div onclick="openChangePwd();closeNavMenu()" class="nav-drop-item">Change Password</div>
           <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
           <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Finance</div>
           <div onclick="showPettyCash();closeNavMenu()" class="nav-drop-item nav-admin-only">Petty Cash</div>
@@ -1883,7 +1875,9 @@
           <div onclick="showPasswords();closeNavMenu()" class="nav-drop-item nav-admin-only">Passwords</div>
           <div style="height:1px;background:var(--bdr);margin:4px 0" class="nav-admin-only"></div>
           <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">System</div>
-          <div onclick="showAdmin();closeNavMenu()" class="nav-drop-item nav-admin-only">Admin</div><div style="height:1px;background:var(--bdr);margin:4px 0"></div><div onclick="openChangePwd();closeNavMenu()" class="nav-drop-item">Change Password</div>
+          <div onclick="showAdmin();closeNavMenu()" class="nav-drop-item nav-admin-only">Admin</div>
+          <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+          <div onclick="openChangePwd();closeNavMenu()" class="nav-drop-item">Change Password</div>
         </div>
       </div>
       <button class="btn-pri" onclick="showPasswordModal(null)">+ Add Password</button>
@@ -9669,11 +9663,46 @@ document.addEventListener("DOMContentLoaded",function(){
 <!-- DIAGNOSTICS -->
 <div id="diag-screen" style="display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;background:var(--bg)">
   <div class="top-bar">
+    <img class="nav-logo" onclick="showHome()" style="height:36px;width:auto;border-radius:5px;margin-right:10px;cursor:pointer">
     <div class="bname">mBELLAb</div>
     <div class="bsep"></div>
     <div class="page-title">Diagnostics</div>
     <div style="flex:1"></div>
-    <button class="btn-ghost" onclick="showHome()">Home</button>
+    <span class="hdr-user-label" style="font-size:11px;color:#8b949e;font-family:'IBM Plex Mono',monospace"></span>
+    <div class="app-nav-wrap" style="position:relative;display:inline-block">
+      <button class="btn-ghost" onclick="toggleNavMenu()" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect y="2" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="7.25" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="12.5" width="16" height="1.5" rx=".75" fill="currentColor"/></svg> Menu</button>
+      <div class="nav-dropdown-shared" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:200px;max-height:80vh;overflow-y:auto;z-index:200">
+        <div onclick="showHome();closeNavMenu()" class="nav-drop-item">Home</div>
+        <div onclick="showOpportunities();closeNavMenu()" class="nav-drop-item">Opportunities</div>
+        <div onclick="showDashboard();closeNavMenu()" class="nav-drop-item">Dashboard</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Operations</div>
+        <div onclick="showContractors();closeNavMenu()" class="nav-drop-item">Contractors</div>
+        <div onclick="showSuppliers();closeNavMenu()" class="nav-drop-item">Suppliers</div>
+        <div onclick="showVendors();closeNavMenu()" class="nav-drop-item">Supplier Pricing</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">ISO Quality</div>
+        <div onclick="showQualityObjectives();closeNavMenu()" class="nav-drop-item nav-admin-only">Quality Objectives</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">People &amp; Compliance</div>
+        <div onclick="showEmployees();closeNavMenu()" class="nav-drop-item nav-admin-only">Employees</div>
+        <div onclick="showEmployeeLeave();closeNavMenu()" class="nav-drop-item nav-admin-only">Employee Leave</div>
+        <div onclick="showRenewals();closeNavMenu()" class="nav-drop-item nav-admin-only">Renewals</div>
+        <div onclick="showCompanyDocs();closeNavMenu()" class="nav-drop-item nav-admin-only">Company Docs</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Finance</div>
+        <div onclick="showPettyCash();closeNavMenu()" class="nav-drop-item nav-admin-only">Petty Cash</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Security</div>
+        <div onclick="showPasswords();closeNavMenu()" class="nav-drop-item nav-admin-only">Passwords</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0" class="nav-admin-only"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">System</div>
+        <div onclick="showAdmin();closeNavMenu()" class="nav-drop-item nav-admin-only">Admin</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div onclick="openChangePwd();closeNavMenu()" class="nav-drop-item">Change Password</div>
+      </div>
+    </div>
+    <button class="btn-ghost" onclick="signOut()">Sign out</button>
   </div>
   <div class="body-wrap" style="padding:20px;max-width:760px;margin:0 auto;width:100%;overflow-y:auto">
 
@@ -9717,12 +9746,47 @@ document.addEventListener("DOMContentLoaded",function(){
 <!-- LEAVE REQUESTS SCREEN -->
 <div id="leave-requests-screen" style="display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;background:var(--bg)">
   <div class="top-bar">
+    <img class="nav-logo" onclick="showHome()" style="height:36px;width:auto;border-radius:5px;margin-right:10px;cursor:pointer">
     <div class="bname">mBELLAb</div>
     <div class="bsep"></div>
     <div class="page-title">Leave Requests</div>
     <div style="flex:1"></div>
+    <span class="hdr-user-label" style="font-size:11px;color:#8b949e;font-family:'IBM Plex Mono',monospace"></span>
+    <div class="app-nav-wrap" style="position:relative;display:inline-block">
+      <button class="btn-ghost" onclick="toggleNavMenu()" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect y="2" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="7.25" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="12.5" width="16" height="1.5" rx=".75" fill="currentColor"/></svg> Menu</button>
+      <div class="nav-dropdown-shared" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:200px;max-height:80vh;overflow-y:auto;z-index:200">
+        <div onclick="showHome();closeNavMenu()" class="nav-drop-item">Home</div>
+        <div onclick="showOpportunities();closeNavMenu()" class="nav-drop-item">Opportunities</div>
+        <div onclick="showDashboard();closeNavMenu()" class="nav-drop-item">Dashboard</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Operations</div>
+        <div onclick="showContractors();closeNavMenu()" class="nav-drop-item">Contractors</div>
+        <div onclick="showSuppliers();closeNavMenu()" class="nav-drop-item">Suppliers</div>
+        <div onclick="showVendors();closeNavMenu()" class="nav-drop-item">Supplier Pricing</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">ISO Quality</div>
+        <div onclick="showQualityObjectives();closeNavMenu()" class="nav-drop-item nav-admin-only">Quality Objectives</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">People &amp; Compliance</div>
+        <div onclick="showEmployees();closeNavMenu()" class="nav-drop-item nav-admin-only">Employees</div>
+        <div onclick="showEmployeeLeave();closeNavMenu()" class="nav-drop-item nav-admin-only">Employee Leave</div>
+        <div onclick="showRenewals();closeNavMenu()" class="nav-drop-item nav-admin-only">Renewals</div>
+        <div onclick="showCompanyDocs();closeNavMenu()" class="nav-drop-item nav-admin-only">Company Docs</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Finance</div>
+        <div onclick="showPettyCash();closeNavMenu()" class="nav-drop-item nav-admin-only">Petty Cash</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Security</div>
+        <div onclick="showPasswords();closeNavMenu()" class="nav-drop-item nav-admin-only">Passwords</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0" class="nav-admin-only"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">System</div>
+        <div onclick="showAdmin();closeNavMenu()" class="nav-drop-item nav-admin-only">Admin</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div onclick="openChangePwd();closeNavMenu()" class="nav-drop-item">Change Password</div>
+      </div>
+    </div>
     <button class="btn-pri" onclick="openLeaveRequestForm(null)" style="font-size:12px;margin-right:8px">+ New Request</button>
-    <button class="btn-ghost" onclick="showHome()">Home</button>
+    <button class="btn-ghost" onclick="signOut()">Sign out</button>
   </div>
   <div class="body-wrap" style="padding:20px;max-width:960px;margin:0 auto;width:100%;overflow-y:auto">
     <!-- Filter tabs -->
@@ -9816,11 +9880,46 @@ document.addEventListener("DOMContentLoaded",function(){
 <!-- ADMIN SCREEN -->
 <div id="admin-screen" style="display:none;position:fixed;inset:0;flex-direction:column;overflow:hidden;background:var(--bg)">
   <div class="top-bar">
+    <img class="nav-logo" onclick="showHome()" style="height:36px;width:auto;border-radius:5px;margin-right:10px;cursor:pointer">
     <div class="bname">mBELLAb</div>
     <div class="bsep"></div>
     <div class="page-title">Admin</div>
     <div style="flex:1"></div>
-    <button class="btn-ghost" onclick="showHome()">Home</button>
+    <span class="hdr-user-label" style="font-size:11px;color:#8b949e;font-family:'IBM Plex Mono',monospace"></span>
+    <div class="app-nav-wrap" style="position:relative;display:inline-block">
+      <button class="btn-ghost" onclick="toggleNavMenu()" style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect y="2" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="7.25" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="12.5" width="16" height="1.5" rx=".75" fill="currentColor"/></svg> Menu</button>
+      <div class="nav-dropdown-shared" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.15);min-width:200px;max-height:80vh;overflow-y:auto;z-index:200">
+        <div onclick="showHome();closeNavMenu()" class="nav-drop-item">Home</div>
+        <div onclick="showOpportunities();closeNavMenu()" class="nav-drop-item">Opportunities</div>
+        <div onclick="showDashboard();closeNavMenu()" class="nav-drop-item">Dashboard</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Operations</div>
+        <div onclick="showContractors();closeNavMenu()" class="nav-drop-item">Contractors</div>
+        <div onclick="showSuppliers();closeNavMenu()" class="nav-drop-item">Suppliers</div>
+        <div onclick="showVendors();closeNavMenu()" class="nav-drop-item">Supplier Pricing</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">ISO Quality</div>
+        <div onclick="showQualityObjectives();closeNavMenu()" class="nav-drop-item nav-admin-only">Quality Objectives</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">People &amp; Compliance</div>
+        <div onclick="showEmployees();closeNavMenu()" class="nav-drop-item nav-admin-only">Employees</div>
+        <div onclick="showEmployeeLeave();closeNavMenu()" class="nav-drop-item nav-admin-only">Employee Leave</div>
+        <div onclick="showRenewals();closeNavMenu()" class="nav-drop-item nav-admin-only">Renewals</div>
+        <div onclick="showCompanyDocs();closeNavMenu()" class="nav-drop-item nav-admin-only">Company Docs</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Finance</div>
+        <div onclick="showPettyCash();closeNavMenu()" class="nav-drop-item nav-admin-only">Petty Cash</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">Security</div>
+        <div onclick="showPasswords();closeNavMenu()" class="nav-drop-item nav-admin-only">Passwords</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0" class="nav-admin-only"></div>
+        <div class="nav-admin-only" style="padding:4px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">System</div>
+        <div onclick="showAdmin();closeNavMenu()" class="nav-drop-item nav-admin-only">Admin</div>
+        <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
+        <div onclick="openChangePwd();closeNavMenu()" class="nav-drop-item">Change Password</div>
+      </div>
+    </div>
+    <button class="btn-ghost" onclick="signOut()">Sign out</button>
   </div>
   <!-- Admin tabs -->
   <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr);padding:0 24px;background:var(--bg)">
