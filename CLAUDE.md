@@ -15,7 +15,7 @@ python3 -m http.server 8080
 
 - `index.html` — HTML skeleton. Contains an inline `<script>` fallback block immediately after `<script src="app.js">` so the app loads correctly when double-clicked (file:// protocol, where Chrome blocks external scripts). The fallback is guarded by `if(!window.APP_LOADED)` — skipped on HTTP since app.js sets that flag on load.
 - `app.css` — All styles. Loaded via `<link rel="stylesheet">` which works on both HTTP and file://.
-- `app.js` — All JavaScript (~7,500 lines). Current version: v1.7.0 (2026-06-14). First line is `window.APP_LOADED=1;`. Starts with the `CONFIG` block.
+- `app.js` — All JavaScript (~7,500 lines). Current version: v1.7.0 (2026-06-14). First line is `window.APP_LOADED=1;`. Starts with the `CONFIG` block. On `DOMContentLoaded`, sets `#app-version`, `#home-version`, `#login-title` (login subtitle — shows "Operations Portal vX.Y" derived from `APP_VERSION`), and injects the version into every `.top-bar .app-nav-wrap`.
 - `index.html.bak` — Backup of the original monolithic file before the split.
 
 ## Architecture

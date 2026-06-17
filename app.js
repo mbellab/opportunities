@@ -7534,6 +7534,8 @@ document.addEventListener("DOMContentLoaded",async function(){
   });
   var vEl=document.getElementById('app-version');
   if(vEl) vEl.textContent=APP_VERSION;
+  var lt=document.getElementById('login-title');
+  if(lt){var sv=(APP_VERSION.match(/v\d+\.\d+/)||[''])[0];lt.textContent='Operations Portal '+sv;}
   var hv=document.getElementById('home-version');
   if(hv) hv.textContent=APP_VERSION;
   document.querySelectorAll('.top-bar .app-nav-wrap').forEach(function(navWrap){
