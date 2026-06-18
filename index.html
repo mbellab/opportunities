@@ -685,6 +685,7 @@
       </select>
       <div style="flex:1"></div>
       <span id="qo-count" style="font-size:11px;color:var(--txt3);font-family:monospace"></span>
+      <button class="btn-ghost" onclick="exportQOtoExcel()">Export Excel</button>
       <button class="btn-pri" onclick="openQOModal(null)">+ New Objective</button>
     </div>
     <!-- Table -->
@@ -6284,6 +6285,155 @@ async function saveQOModal() {
   }
 }
 
+async function exportQOtoExcel() {
+  if(typeof XLSX==='undefined'){ toast('XLSX library not loaded — reload the page','err'); return; }
+  var filterYear   = document.getElementById('qo-filter-year').value;
+  var filterDept   = document.getElementById('qo-filter-dept').value;
+  var filterStatus = document.getElementById('qo-filter-status').value;
+
+  var recs = qoRecords.filter(function(r){
+    var f = r.fields;
+    if(filterYear   && f['Year']!==filterYear)       return false;
+    if(filterDept   && f['Department']!==filterDept) return false;
+    if(filterStatus && f['Status']!==filterStatus)   return false;
+    return true;
+  }).sort(function(a,b){
+    var ya=a.fields['Year']||'', yb=b.fields['Year']||'';
+    if(ya!==yb) return ya.localeCompare(yb);
+    return (a.fields['Objective Number']||0)-(b.fields['Objective Number']||0);
+  });
+
+  if(!recs.length){ toast('No objectives to export','err'); return; }
+  toast('Generating Excel…');
+
+  try {
+    var resp = await fetch('QO_Template.xlsx');
+    if(!resp.ok) throw new Error('Could not load template (HTTP '+resp.status+')');
+    var buf  = await resp.arrayBuffer();
+    var wb   = XLSX.read(new Uint8Array(buf), {type:'array', cellStyles:true, cellNF:true});
+    var wsName = wb.SheetNames[0];
+    var ws     = wb.Sheets[wsName];
+
+    // Remove all data rows (row index >= 2, preserve header rows 0-1)
+    Object.keys(ws).forEach(function(addr){
+      if(addr[0]==='!') return;
+      if(XLSX.utils.decode_cell(addr).r >= 2) delete ws[addr];
+    });
+
+    // ISO date → Excel serial number
+    function dateSerial(isoStr){
+      if(!isoStr) return null;
+      var d = new Date(isoStr);
+      if(isNaN(d)) return null;
+      return Math.round((d.getTime() - new Date(1899,11,30).getTime()) / 86400000);
+    }
+
+    // ── Palette ────────────────────────────────────────────────────
+    var WHITE='FFFFFF', STRIPE='F5F8FC', TXT='1A1A1A', BDR='C8D0DA';
+    var DEPT = {
+      'Management':         {bg:'DEEAF1', fg:'1F5C85'},
+      'Sales':              {bg:'E2EFDA', fg:'375623'},
+      'Project Management': {bg:'EDE7F6', fg:'5C35A0'},
+    };
+    var STATUS = {
+      'Achieved':     {bg:'E2EFDA', fg:'375623'},
+      'Under Process':{bg:'FFF2CC', fg:'7F6000'},
+    };
+
+    function thin(){ return {style:'thin', color:{rgb:BDR}}; }
+    function bdr(){  return {top:thin(), bottom:thin(), left:thin(), right:thin()}; }
+    function base(bg, halign, wrap){
+      return {
+        font:{sz:10, color:{rgb:TXT}},
+        fill:{patternType:'solid', fgColor:{rgb:bg||WHITE}},
+        alignment:{horizontal:halign||'left', vertical:'center', wrapText:!!wrap},
+        border:bdr()
+      };
+    }
+
+    // Override column widths for readability
+    ws['!cols'] = [
+      {wch:5},  // A SN
+      {wch:18}, // B Department
+      {wch:54}, // C Objective
+      {wch:14}, // D Status
+      {wch:12}, // E Start
+      {wch:12}, // F End
+      {wch:16}, // G Methodology
+      {wch:14}, // H Frequency
+      {wch:10}, // I %
+      {wch:28}, // J Steps
+      {wch:12}, // K Step %
+      {wch:14}, // L Step Status
+      {wch:22}, // M Responsibility
+    ];
+
+    recs.forEach(function(r, i){
+      var f      = r.fields;
+      var rowIdx = i + 2;
+      var rowBg  = i % 2 === 0 ? WHITE : STRIPE;
+      var pct    = parseFloat(f['Completion %'])||0;
+      var status = f['Status']||'Under Process';
+      var dept   = f['Department']||'';
+      var dc     = DEPT[dept]   || {bg:STRIPE, fg:TXT};
+      var sc     = STATUS[status] || {bg:STRIPE, fg:TXT};
+      var pctFg  = pct>=1 ? '375623' : pct>=0.5 ? '7F6000' : 'C00000';
+
+      function put(c, t, v, style, fmt){
+        var addr = XLSX.utils.encode_cell({c:c, r:rowIdx});
+        var cell = (v===null||v===undefined||v==='') ? {t:'s',v:''} : {t:t, v:v};
+        if(fmt) cell.z = fmt;
+        cell.s = style;
+        ws[addr] = cell;
+      }
+
+      var sd = dateSerial(f['Start Date']);
+      var ed = dateSerial(f['End Date']);
+
+      // A: SN
+      put(0,'n', f['Objective Number']||0,
+        Object.assign(base(rowBg,'center'), {font:{sz:10,bold:true,color:{rgb:TXT}}}));
+      // B: Department (coloured)
+      put(1,'s', dept,
+        Object.assign(base(dc.bg,'center'), {font:{sz:10,bold:true,color:{rgb:dc.fg}}}));
+      // C: Objective (wrap)
+      put(2,'s', f['Objective']||'', base(rowBg,'left',true));
+      // D: Status (coloured)
+      put(3,'s', status,
+        Object.assign(base(sc.bg,'center'), {font:{sz:10,bold:true,color:{rgb:sc.fg}}}));
+      // E: Start Date
+      put(4, sd?'n':'s', sd||'',
+        Object.assign(base(rowBg,'center'), {font:{sz:10,color:{rgb:TXT}}}), sd?'D-MMM-YY':undefined);
+      // F: End Date
+      put(5, ed?'n':'s', ed||'',
+        Object.assign(base(rowBg,'center'), {font:{sz:10,color:{rgb:TXT}}}), ed?'D-MMM-YY':undefined);
+      // G: Methodology (italic)
+      put(6,'s','Pareto Chart',
+        Object.assign(base(rowBg,'center'), {font:{sz:10,italic:true,color:{rgb:'666666'}}}));
+      // H: Frequency
+      put(7,'s', f['Monitoring Frequency']||'', base(rowBg,'center'));
+      // I: Completion % (coloured, bold)
+      put(8,'n', pct,
+        Object.assign(base(rowBg,'center'), {font:{sz:10,bold:true,color:{rgb:pctFg}}}), '0%');
+      // J, K, L: Steps (blank)
+      [9,10,11].forEach(function(c){ put(c,'s','', base(rowBg,'left')); });
+      // M: Responsibility (wrap)
+      put(12,'s', f['Responsibility']||'', base(rowBg,'left',true));
+    });
+
+    // Update sheet range
+    var decoded = XLSX.utils.decode_range(ws['!ref']||'A1:M15');
+    decoded.e.r = 1 + recs.length;
+    ws['!ref'] = XLSX.utils.encode_range(decoded);
+
+    var yearLabel = filterYear || (recs[0].fields['Year']||'export');
+    XLSX.writeFile(wb, 'Quality_Objectives_'+yearLabel+'.xlsx');
+    toast('Excel downloaded','ok');
+  } catch(err){
+    toast('Export failed: '+err.message,'err');
+  }
+}
+
 // ================================================================
 // EMPLOYEES
 // ================================================================
@@ -8004,7 +8154,7 @@ function renderPettyCash() {
       '</div>'+
       '<div style="'+S.amt+';color:'+amtColor+'">'+amtDisplay+'</div>'+
       '<div style="'+S.act+'">'+
-        (f['Document']?'<a href="'+e(f['Document'])+'" target="_blank" rel="noopener" title="View receipt" class="icon-btn" style="opacity:1;color:var(--txt3);text-decoration:none">'+IC_DOCS+'</a>':'')+
+        (f['Document']?'<a href="'+e(f['Document'])+'" target="_blank" rel="noopener" title="View receipt" class="icon-btn" style="opacity:1;color:var(--txt3);text-decoration:none">'+IC_DOCS+'</a>':'<span class="icon-btn" style="visibility:hidden">'+IC_DOCS+'</span>')+
         '<button style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px" data-pc-edit="'+r.id+'">&#9998; Edit</button>'+
         '<button style="background:none;border:1px solid #f8514933;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--red)" data-pc-del="'+r.id+'">&#128465;</button>'+
       '</div>'+
