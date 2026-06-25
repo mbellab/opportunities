@@ -433,9 +433,11 @@
           <div onclick="showPettyCash();closeNavMenu()" class="nav-drop-item nav-admin-only">Petty Cash</div>
           <div style="height:1px;background:var(--bdr);margin:4px 0"></div>
           <div onclick="exportReport();closeNavMenu()" class="nav-drop-item">Export CSV</div>
+          <div onclick="exportOpportunitiesExcel();closeNavMenu()" class="nav-drop-item">Export Excel</div>
           <div id="nav-diag-item" onclick="showDiagnostics();closeNavMenu()" class="nav-drop-item nav-admin-only">Diagnostics</div>
         </div>
       </div>
+      <button class="btn-ghost" onclick="exportOpportunitiesExcel()" style="font-size:13px">&#11015; Export Excel</button>
       <button class="btn-pri" onclick="showModal()">+ New Opportunity</button>
       <span class="hdr-user-label" style="font-size:11px;color:#8b949e;font-family:'IBM Plex Mono',monospace;white-space:nowrap" id="opp-user-label"></span>
       <button class="mob-menu-btn" onclick="openMobNav()" style="margin-right:4px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect y="2" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="7.25" width="16" height="1.5" rx=".75" fill="currentColor"/><rect y="12.5" width="16" height="1.5" rx=".75" fill="currentColor"/></svg> Menu</button>
@@ -471,16 +473,16 @@
           <th class="c-date sortable" data-col="c-date" data-sort="date">Enquiry Date<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-proj sortable" data-col="c-proj" data-sort="project">Project Name<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-mc sortable" data-col="c-mc" data-sort="main_cont">Main Contractor<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
-          <th class="c-client sortable" data-col="c-client" data-sort="client">Client<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-rtu ctr sortable" data-col="c-rtu" data-sort="rtu">RTU<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-status sortable" data-col="c-status" data-sort="status">Status<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-proposal sortable" data-col="c-proposal" data-sort="proposal" style="white-space:normal;line-height:1.3">Proposal Submitted On<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-chk ctr" data-col="c-chk-qtn">QTN<div class="col-resizer"></div></th>
           <th class="c-chk ctr" data-col="c-chk-tp">TP<div class="col-resizer"></div></th>
           <th class="c-chk ctr" data-col="c-chk-lpoc">LPO-C<div class="col-resizer"></div></th>
           <th class="c-chk ctr" data-col="c-chk-lpos">LPO-S<div class="col-resizer"></div></th>
-          <th class="c-active ctr" data-col="c-active">Active (working on)<div class="col-resizer"></div></th>
           <th class="c-deadline sortable" data-col="c-deadline" data-sort="deadline">Deadline<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-update sortable" data-col="c-update" data-sort="last_update">Last Update<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-active ctr" data-col="c-active" style="white-space:normal;line-height:1.3">Active (working on)<div class="col-resizer"></div></th>
           <th class="c-actions"><div class="col-resizer"></div></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -1310,7 +1312,7 @@
       <div class="field full"><label>Subject *</label><input id="ql-subject" placeholder="e.g. Quotation for RTU Integration — Tender D-114063"></div>
       <div class="field"><label>Valid Until</label><input id="ql-date-to" type="date"></div>
       <div class="field"><label>Date (defaults to today)</label><input id="ql-date" type="date"></div>
-      <div class="field full"><label>Payment Terms</label><input id="ql-payment" placeholder="e.g. 30% advance, 70% upon delivery"></div>
+      <div class="field full"><label>Payment Terms</label><select id="ql-payment"><option value="">— Select payment terms —</option></select></div>
       <div class="field full"><label>FAT (Factory Acceptance Test)</label><input id="ql-fat" placeholder="e.g. FAT shall be conducted at manufacturer's premises"></div>
     </div>
 
@@ -1401,7 +1403,7 @@
     <div class="modal-title">New Opportunity <span id="modal-sr-lbl"></span></div>
     <div class="form-grid">
       <div class="field"><label>SR Number</label><input id="f-sr" readonly></div>
-      <div class="field"><label>Enquiry Date</label><input id="f-date" placeholder="DD.MM.YYYY"></div>
+      <div class="field"><label>Enquiry Date</label><input id="f-date" type="date"></div>
       <div class="field full"><label>Project Name *</label><input id="f-proj" placeholder="Full project name or tender reference"></div>
       <div class="field"><label>Contractor Project Code</label><input id="f-cont" placeholder="e.g. NPC-2024-001"></div>
       <div class="field"><label>Main Contractor</label><select id="f-mc"><option value="">— Select Contractor —</option></select></div>
@@ -1416,7 +1418,7 @@
           <option value="CLOSED">CLOSED</option>
         </select>
       </div>
-      <div class="field"><label>Proposal Submitted On</label><input id="f-prop" placeholder="DD.MM.YYYY"></div>
+      <div class="field"><label>Proposal Submitted On</label><input id="f-prop" type="date"></div>
       <div class="field"><label>Upcoming Deadline</label><input id="f-deadline" type="date"></div>
     </div>
     <div class="modal-actions">
@@ -1440,7 +1442,7 @@
     <div id="tab-details" class="tab-pane active">
     <div class="form-grid">
       <div class="field"><label>SR Number</label><input id="ef-sr" readonly></div>
-      <div class="field"><label>Enquiry Date</label><input id="ef-date" placeholder="DD.MM.YYYY"></div>
+      <div class="field"><label>Enquiry Date</label><input id="ef-date" type="date"></div>
       <div class="field full"><label>Project Name *</label><input id="ef-proj" placeholder="Full project name or tender reference"></div>
       <div class="field"><label>Contractor Project Code</label><input id="ef-cont" placeholder="e.g. NPC-2024-001"></div>
       <div class="field"><label>Main Contractor</label><select id="ef-mc"><option value="">— Select Contractor —</option></select></div>
@@ -1455,7 +1457,7 @@
           <option value="CLOSED">CLOSED</option>
         </select>
       </div>
-      <div class="field"><label>Proposal Submitted On</label><input id="ef-prop" placeholder="DD.MM.YYYY"></div>
+      <div class="field"><label>Proposal Submitted On</label><input id="ef-prop" type="date"></div>
       <div class="field"><label>Upcoming Deadline</label><input id="ef-deadline" type="date"></div>
       <div class="field full"><label>SharePoint Docs Link</label><input id="ef-docs" type="url" placeholder="https://mbellab.sharepoint.com/&hellip;"></div>
     </div>
@@ -2055,7 +2057,7 @@
     <!-- Employee leave table -->
     <div style="background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--bdr)">
-        <span style="font-weight:600;font-size:14px">Leave Summary — <span id="el-period-label" style="color:var(--amber)"></span></span>
+        <span style="font-weight:600;font-size:14px">Leave Summary — Current Periods</span>
         <button class="btn-ghost" onclick="loadLeaveData()" style="font-size:12px">&#8635; Refresh</button>
       </div>
       <div id="el-table-wrap" style="overflow-x:auto">
@@ -2645,7 +2647,7 @@ function sortItems() {
   items.sort(function(a,b){
     var av=a[sortField]||'',bv=b[sortField]||'';
     if(sortField==='sr_no'){av=parseInt(av)||0;bv=parseInt(bv)||0;return sortDir==='asc'?av-bv:bv-av;}
-    if(sortField==='date'){var da=parseDMY(av),db=parseDMY(bv);if(!da&&!db)return 0;if(!da)return sortDir==='asc'?1:-1;if(!db)return sortDir==='asc'?-1:1;return sortDir==='asc'?da-db:db-da;}
+    if(sortField==='date'){var da=parseDateStr(av),db=parseDateStr(bv);if(!da&&!db)return 0;if(!da)return sortDir==='asc'?1:-1;if(!db)return sortDir==='asc'?-1:1;return sortDir==='asc'?da-db:db-da;}
     if(sortField==='deadline'){var da2=av?parseDateStr(av):null,db2=bv?parseDateStr(bv):null;if(!da2&&!db2)return 0;if(!da2)return 1;if(!db2)return -1;return sortDir==='asc'?da2-db2:db2-da2;}
     return sortDir==='asc'?av.localeCompare(bv,undefined,{sensitivity:'base'}):bv.localeCompare(av,undefined,{sensitivity:'base'});
   });
@@ -2745,16 +2747,17 @@ async function saveEditRow(){
   function gi(id){var el=document.getElementById(id);return el?el.value.trim():'';}
   var fields={};
   fields[F.DATE]=gi('ei-date'); fields[F.PROJECT]=gi('ei-proj');
-  fields[F.MAIN_CONT]=gi('ei-mc'); fields[F.CLIENT]=gi('ei-client');
+  fields[F.MAIN_CONT]=gi('ei-mc');
   fields[F.RTU]=gi('ei-rtu')||'--'; fields[F.STATUS]=gi('ei-status');
+  fields[F.PROPOSAL]=gi('ei-proposal')||null;
   fields[F.DEADLINE]=gi('ei-deadline')||null; // Last Update is driven by Activity tab only
   var item=items.find(function(i){return i._id===editingId;});
   if(item){
     item.date=fields[F.DATE]; item.project=fields[F.PROJECT]; item.main_cont=fields[F.MAIN_CONT];
-    item.client=fields[F.CLIENT]; item.rtu=fields[F.RTU]; item.status=normStatus(fields[F.STATUS]);
-    item.deadline=fields[F.DEADLINE];
+    item.rtu=fields[F.RTU]; item.status=normStatus(fields[F.STATUS]);
+    item.proposal=fields[F.PROPOSAL]; item.deadline=fields[F.DEADLINE];
     var rec=allRecords.find(function(r){return r.id===editingId;});
-    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.CLIENT]=fields[F.CLIENT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.DEADLINE]=fields[F.DEADLINE];}
+    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.PROPOSAL]=fields[F.PROPOSAL];rec.fields[F.DEADLINE]=fields[F.DEADLINE];}
   }
   var savedId=editingId; editingId=null;
   renderKPIs(); applyFilters();
@@ -2818,7 +2821,7 @@ function applyFilters(){
     var ms=currentStatus==='ALL'||(currentStatus==='ACTIVE_ONLY'?isActive:r.status===currentStatus);
     var mq=!q||[r.project,r.client,r.main_cont,r.sr_no,r.contractor].some(function(f){return (f||'').toLowerCase().indexOf(q)!==-1;});
     var inDate=true;
-    if(dateFrom||dateTo){var rd=parseDMY(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
+    if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
     var hideLost=currentStatus==='ALL'&&r.status==='LOST'&&!showLost;
     var hideCancelled=currentStatus==='ALL'&&r.status==='CANCELLED'&&!showCancelled;
     return ms&&mq&&inDate&&!hideLost&&!hideCancelled;
@@ -2834,17 +2837,16 @@ var STATUS_OPTS=['PIPELINE','WON','LOST','CANCELLED','CLOSED'];
 function mkDisplayRow(r){
   return '<tr data-id="'+r._id+'" style="cursor:pointer">'+
     '<td class="c-sr">'+e(r.sr_no)+'</td>'+
-    '<td class="c-date">'+e(r.date)+'</td>'+
+    '<td class="c-date">'+fmtDate(r.date)+'</td>'+
     '<td class="c-proj">'+e(r.project)+'</td>'+
     '<td class="c-mc">'+e(r.main_cont||'&mdash;')+'</td>'+
-    '<td class="c-client">'+e(r.client||'&mdash;')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
+    '<td class="c-proposal">'+(r.proposal ? fmtDate(r.proposal) : '')+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
-    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-deadline">'+(r.proposal ? '' : renderDeadline(r.deadline))+'</td>'+
     (function(){
       var lu = r.last_update || '';
@@ -2853,7 +2855,8 @@ function mkDisplayRow(r){
       var notePart = sep !== -1 ? lu.substring(sep + 3) : lu;
       return '<td class="c-update">'+(datePart ? '<div style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</div>' : '')+(notePart ? '<div style="font-size:10px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(notePart)+'</div>' : '')+'</td>';
     })()+
-      '<td class="c-actions"><div class="row-actions">'+
+    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
+    '<td class="c-actions"><div class="row-actions">'+
       (r.docs ? '<a class="icon-btn docs-link has-link" href="'+r.docs+'" target="_blank" rel="noopener">'+IC_DOCS+'</a>' : '<span class="icon-btn docs-link">'+IC_DOCS+'</span>')+
       '<button class="icon-btn" data-quote-id="'+r._id+'" style="color:var(--blue);opacity:1">&#128196;</button>'+
       '<button class="icon-btn edit" onclick="startEdit(\''+r._id+'\')">'+IC_PENCIL+'</button>'+
@@ -2866,19 +2869,19 @@ function mkEditRow(r){
   var opts=STATUS_OPTS.map(function(st){return '<option value="'+st+'"'+(r.status===st?' selected':'')+'>'+( st==='PIPELINE'?'Pipeline':st)+'</option>';}).join('');
   return '<tr class="editing" data-id="'+r._id+'">'+
     '<td class="c-sr" style="font-family:monospace;font-size:11px;color:var(--txt3)">'+e(r.sr_no)+'</td>'+
-    '<td class="c-date" style="overflow:visible"><input class="ei" id="ei-date" value="'+e(r.date)+'" placeholder="DD.MM.YYYY" style="width:88px"></td>'+
+    '<td class="c-date" style="overflow:visible"><input class="ei" id="ei-date" type="date" value="'+e(r.date||'')+'" style="width:130px"></td>'+
     '<td class="c-proj" style="overflow:visible"><input class="ei" id="ei-proj" value="'+e(r.project)+'" style="width:100%"></td>'+
     '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
-    '<td class="c-client" style="overflow:visible"><input class="ei" id="ei-client" value="'+e(r.client)+'" style="width:80px"></td>'+
     '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
+    '<td class="c-proposal" style="overflow:visible"><input class="ei" id="ei-proposal" type="date" value="'+e(r.proposal||'')+'" style="width:112px"></td>'+
     '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
-    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
     '<td class="c-update"><span style="font-size:12px;color:var(--txt3);font-style:italic">'+e(r.last_update||'—')+'</span></td>'+
+    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
       '<button class="icon-btn save" onclick="saveEditRow()">'+IC_SAVE+'</button>'+
       '<button class="icon-btn cancel-edit" onclick="cancelEdit()">'+IC_CANCEL+'</button>'+
@@ -3019,8 +3022,8 @@ function showModal(){
   var pad=function(n){return String(n).padStart(2,'0');};
   document.getElementById('f-sr').value=next;
   document.getElementById('modal-sr-lbl').textContent='SR-'+next;
-  document.getElementById('f-date').value=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear();
-  document.getElementById('f-cont').value='MBB';
+  document.getElementById('f-date').value=now.toISOString().substring(0,10);
+  document.getElementById('f-cont').value='';
   document.getElementById('f-status').value='PIPELINE';
   ['f-proj','f-mc','f-client','f-rtu','f-prop'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('f-deadline').value='';
@@ -3043,9 +3046,9 @@ function saveEntry(){
   closeModal();
   var fields={};
   fields[F.SR_NO]=g('f-sr'); fields[F.DATE]=g('f-date'); fields[F.PROJECT]=proj;
-  fields[F.CONTRACTOR]=g('f-cont')||'MBB'; fields[F.MAIN_CONT]=g('f-mc');
+  fields[F.CONTRACTOR]=g('f-cont'); fields[F.MAIN_CONT]=g('f-mc');
   fields[F.CLIENT]=g('f-client'); fields[F.RTU]=g('f-rtu')||'--';
-  fields[F.STATUS]=g('f-status'); fields[F.PROPOSAL]=g('f-prop')||'--';
+  fields[F.STATUS]=g('f-status'); fields[F.PROPOSAL]=g('f-prop')||null;
   var dlVal=document.getElementById('f-deadline').value; if(dlVal) fields[F.DEADLINE]=dlVal;
   fields[F.QUOTATION]=''; fields[F.TECH_PROP]=''; fields[F.LPO_CLIENT]=''; fields[F.LPO_SUPPLIER]='';
   postRecord(fields);
@@ -7717,6 +7720,111 @@ function exportReport(){
   w.document.close();
 }
 
+// ── Export Opportunities to Excel ────────────────────────────────
+function exportOpportunitiesExcel() {
+  if(typeof XLSX === 'undefined'){ toast('XLSX library not loaded — reload the page','err'); return; }
+  var now = new Date();
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  var todayStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  var genStr   = pad(now.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+
+  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','Proposal Submitted On','QTN','TP','LPO-C','LPO-S'];
+  var NC = COLS.length;
+
+  function yesNo(v){ return (v==='✔'||v==='Yes') ? 'Yes' : (v==='✖'||v==='No') ? 'No' : ''; }
+
+  var aoa = [
+    ['mBELLAb — Enquiry Log Export'],
+    ['Generated: '+genStr+'   |   Records: '+filtered.length],
+    [],
+    COLS
+  ];
+
+  filtered.forEach(function(r){
+    aoa.push([
+      r.sr_no     || '',
+      r.date      ? fmtDate(r.date)     : '',
+      r.project   || '',
+      r.main_cont || '',
+      r.client    || '',
+      r.rtu       || '',
+      r.status==='Under Process' ? 'Pipeline' : (r.status || ''),
+      r.proposal  ? fmtDate(r.proposal) : '',
+      yesNo(r.quotation),
+      yesNo(r.tech_prop),
+      yesNo(r.lpo_client),
+      yesNo(r.lpo_supplier)
+    ]);
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:NC-1}},
+    {s:{r:1,c:0},e:{r:1,c:NC-1}}
+  ];
+  ws['!cols'] = [
+    {wch:10},{wch:14},{wch:42},{wch:22},{wch:22},{wch:8},
+    {wch:14},{wch:18},{wch:7},{wch:7},{wch:8},{wch:8}
+  ];
+  ws['!rows'] = [{hpt:32},{hpt:18},{hpt:6},{hpt:22}];
+
+  var NAVY='17375E', BLUE='2E75B6', WHITE='FFFFFF', ALT='F0F4FB', TXT='1F2937', BDR='BFBFBF';
+  function thin(c){ return {style:'thin',color:{rgb:c||BDR}}; }
+  function bdr(){ return {top:thin(),bottom:thin(),left:thin(),right:thin()}; }
+  function cell(r,c){
+    var a = XLSX.utils.encode_cell({r:r,c:c});
+    if(!ws[a]) ws[a]={t:'s',v:''};
+    return ws[a];
+  }
+
+  // Title row
+  cell(0,0).s = {font:{bold:true,sz:14,color:{rgb:WHITE}},fill:{patternType:'solid',fgColor:{rgb:NAVY}},alignment:{horizontal:'left',vertical:'center'}};
+  // Subtitle row
+  cell(1,0).s = {font:{sz:9,italic:true,color:{rgb:WHITE}},fill:{patternType:'solid',fgColor:{rgb:NAVY}},alignment:{horizontal:'left',vertical:'center'}};
+  // Header row (row index 3)
+  for(var hc=0;hc<NC;hc++){
+    cell(3,hc).s = {
+      font:{bold:true,sz:10,color:{rgb:WHITE}},
+      fill:{patternType:'solid',fgColor:{rgb:BLUE}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:bdr()
+    };
+  }
+
+  // Data rows start at index 4
+  var tickCols = [8,9,10,11]; // QTN, TP, LPO-C, LPO-S
+  for(var di=0;di<filtered.length;di++){
+    var rowIdx = 4+di;
+    var rowBg  = di%2===0 ? WHITE : ALT;
+    for(var dc=0;dc<NC;dc++){
+      var isCenter = (dc===0||dc===5||tickCols.indexOf(dc)!==-1);
+      var isTickCol = tickCols.indexOf(dc)!==-1;
+      var c = cell(rowIdx,dc);
+      var tickVal = c.v;
+      c.s = {
+        font:{sz:10,color:{rgb: isTickCol?(tickVal==='Yes'?'065F46':(tickVal==='No'?'9B1C1C':TXT)):TXT},bold:isTickCol&&tickVal!==''},
+        fill:{patternType:'solid',fgColor:{rgb:rowBg}},
+        alignment:{horizontal:isCenter?'center':'left',vertical:'center',wrapText:dc===2},
+        border:bdr()
+      };
+    }
+  }
+
+  // Footer row
+  var footerRow = 4+filtered.length;
+  var footerText = 'mBELLAb · mBb-FM-13 · Exported '+genStr;
+  ws['!merges'].push({s:{r:footerRow,c:0},e:{r:footerRow,c:NC-1}});
+  var fa = XLSX.utils.encode_cell({r:footerRow,c:0});
+  ws[fa] = {t:'s',v:footerText,s:{font:{sz:8,italic:true,color:{rgb:'9CA3AF'}},alignment:{horizontal:'left'}}};
+  // Extend the sheet ref
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:footerRow,c:NC-1}});
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Enquiry Log');
+  XLSX.writeFile(wb, 'Enquiries_'+todayStr+'.xlsx');
+  toast('Export downloaded','ok');
+}
+
 
 // ================================================================
 // PETTY CASH
@@ -7964,6 +8072,29 @@ async function loadDiagnostics() {
   if(intEl) {
     var issues=[];
 
+    // Opportunities: QTN ticked but no Proposal Submitted On date
+    var qtnNoProposal = items.filter(function(r){
+      return r.quotation === '✔' && !r.proposal;
+    });
+    if(qtnNoProposal.length) issues.push({
+      sev:'amber', label:'Quotation submitted but no Proposal date set ('+qtnNoProposal.length+')',
+      detail:qtnNoProposal.slice(0,8).map(function(r){ return 'SR-'+r.sr_no+(r.project?' – '+r.project.substring(0,40):''); }).join('; ')+(qtnNoProposal.length>8?' …':'')
+    });
+
+    // Opportunities: missing SharePoint Docs link
+    var noDocs = items.filter(function(r){ return !r.docs; });
+    if(noDocs.length) issues.push({
+      sev:'amber', label:'Opportunities missing a SharePoint Docs link ('+noDocs.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        noDocs.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project ? ' <span>'+e(r.project)+'</span>' : '')+
+            '</div>';
+        }).join('')+
+        '</div>'
+    });
+
     // Leave records: unknown employee
     var orphanLeave=diagLeave.filter(function(r){
       var id=elEmpId(r.fields['Employee']);
@@ -8019,7 +8150,7 @@ async function loadDiagnostics() {
         var col=iss.sev==='red'?'var(--red)':'var(--amber)';
         it+='<div style="'+rowSt2+';border-left:3px solid '+col+'">'+
           '<div style="font-weight:600;color:'+col+';margin-bottom:3px">'+e(iss.label)+'</div>'+
-          '<div style="font-size:12px;color:var(--txt3)">'+e(iss.detail)+'</div>'+
+          (iss.detailHtml ? iss.detailHtml : '<div style="font-size:12px;color:var(--txt3)">'+e(iss.detail)+'</div>')+
           '</div>';
       });
     }
@@ -8896,7 +9027,6 @@ async function elFetchAll(path) {
 async function loadLeaveData() {
   try {
     var yr = new Date().getFullYear();
-    document.getElementById('el-period-label').textContent = yr + ' Leave Year';
     // Fetch all pages for records that can grow beyond 100
     var [lRecs, tRecs, hRecs, eRecs, entRecs] = await Promise.all([
       elFetchAll('/leave-records'),
@@ -9753,7 +9883,7 @@ async function saveSickLeave() {
 var adminUsers = [], adminEditId = null;
 
 function adminShowTab(tab) {
-  ['admin-tab-users','admin-tab-perms'].forEach(function(t){
+  ['admin-tab-users','admin-tab-perms','admin-tab-payment-terms'].forEach(function(t){
     var btn = document.getElementById('admintab-'+t.replace('admin-tab-',''));
     var pnl = document.getElementById(t);
     var active = t.replace('admin-tab-','') === tab;
@@ -9761,6 +9891,7 @@ function adminShowTab(tab) {
     if(pnl) pnl.style.display=active?'':'none';
   });
   if(tab==='perms') loadPermissionsGrid();
+  if(tab==='payment-terms') adminLoadPaymentTerms();
 }
 
 var PERM_ROLES = ['Engineer','Viewer','Finance'];
@@ -10028,7 +10159,7 @@ document.addEventListener("DOMContentLoaded",function(){
       <div class="field full"><label>Subject *</label><input id="ql-subject" placeholder="e.g. Quotation for RTU Integration — Tender D-114063"></div>
       <div class="field"><label>Valid Until</label><input id="ql-date-to" type="date"></div>
       <div class="field"><label>Date (defaults to today)</label><input id="ql-date" type="date"></div>
-      <div class="field full"><label>Payment Terms</label><input id="ql-payment" placeholder="e.g. 30% advance, 70% upon delivery"></div>
+      <div class="field full"><label>Payment Terms</label><select id="ql-payment"><option value="">— Select payment terms —</option></select></div>
       <div class="field full"><label>FAT (Factory Acceptance Test)</label><input id="ql-fat" placeholder="e.g. FAT shall be conducted at manufacturer's premises"></div>
     </div>
 
@@ -10319,6 +10450,7 @@ document.addEventListener("DOMContentLoaded",function(){
   <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr);padding:0 24px;background:var(--bg)">
     <button id="admintab-users" onclick="adminShowTab('users')" style="background:none;border:none;border-bottom:2px solid var(--blue);padding:12px 18px;font-size:13px;font-weight:700;color:var(--blue);cursor:pointer">Users</button>
     <button id="admintab-perms" onclick="adminShowTab('perms')" style="background:none;border:none;border-bottom:2px solid transparent;padding:12px 18px;font-size:13px;font-weight:400;color:var(--txt3);cursor:pointer">Permissions</button>
+    <button id="admintab-payment-terms" onclick="adminShowTab('payment-terms')" style="background:none;border:none;border-bottom:2px solid transparent;padding:12px 18px;font-size:13px;font-weight:400;color:var(--txt3);cursor:pointer">Payment Terms</button>
   </div>
   <div class="body-wrap" style="padding:20px;max-width:900px;margin:0 auto;width:100%;overflow-y:auto">
     <!-- Users tab -->
@@ -10336,6 +10468,20 @@ document.addEventListener("DOMContentLoaded",function(){
         <div style="font-size:12px;color:var(--txt3);margin-top:4px">Tick which screens each role can access. Admin always has full access.</div>
       </div>
       <div id="admin-perms-body"></div>
+    </div>
+    <!-- Payment Terms tab -->
+    <div id="admin-tab-payment-terms" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div>
+          <div style="font-size:18px;font-weight:700">Payment Terms</div>
+          <div style="font-size:12px;color:var(--txt3);margin-top:4px">These options appear in the Quote Letter payment terms dropdown.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <input id="admin-pt-input" class="form-input" type="text" placeholder="e.g. 30% advance, 70% upon delivery" style="flex:1" onkeydown="if(event.key==='Enter')addPaymentTerm()">
+        <button id="admin-pt-add-btn" class="btn-pri" onclick="addPaymentTerm()" style="white-space:nowrap;flex-shrink:0">Add</button>
+      </div>
+      <div id="admin-payment-terms-body"></div>
     </div>
   </div>
 </div>

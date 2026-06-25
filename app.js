@@ -475,7 +475,7 @@ function sortItems() {
   items.sort(function(a,b){
     var av=a[sortField]||'',bv=b[sortField]||'';
     if(sortField==='sr_no'){av=parseInt(av)||0;bv=parseInt(bv)||0;return sortDir==='asc'?av-bv:bv-av;}
-    if(sortField==='date'){var da=parseDMY(av),db=parseDMY(bv);if(!da&&!db)return 0;if(!da)return sortDir==='asc'?1:-1;if(!db)return sortDir==='asc'?-1:1;return sortDir==='asc'?da-db:db-da;}
+    if(sortField==='date'){var da=parseDateStr(av),db=parseDateStr(bv);if(!da&&!db)return 0;if(!da)return sortDir==='asc'?1:-1;if(!db)return sortDir==='asc'?-1:1;return sortDir==='asc'?da-db:db-da;}
     if(sortField==='deadline'){var da2=av?parseDateStr(av):null,db2=bv?parseDateStr(bv):null;if(!da2&&!db2)return 0;if(!da2)return 1;if(!db2)return -1;return sortDir==='asc'?da2-db2:db2-da2;}
     return sortDir==='asc'?av.localeCompare(bv,undefined,{sensitivity:'base'}):bv.localeCompare(av,undefined,{sensitivity:'base'});
   });
@@ -575,16 +575,17 @@ async function saveEditRow(){
   function gi(id){var el=document.getElementById(id);return el?el.value.trim():'';}
   var fields={};
   fields[F.DATE]=gi('ei-date'); fields[F.PROJECT]=gi('ei-proj');
-  fields[F.MAIN_CONT]=gi('ei-mc'); fields[F.CLIENT]=gi('ei-client');
+  fields[F.MAIN_CONT]=gi('ei-mc');
   fields[F.RTU]=gi('ei-rtu')||'--'; fields[F.STATUS]=gi('ei-status');
+  fields[F.PROPOSAL]=gi('ei-proposal')||null;
   fields[F.DEADLINE]=gi('ei-deadline')||null; // Last Update is driven by Activity tab only
   var item=items.find(function(i){return i._id===editingId;});
   if(item){
     item.date=fields[F.DATE]; item.project=fields[F.PROJECT]; item.main_cont=fields[F.MAIN_CONT];
-    item.client=fields[F.CLIENT]; item.rtu=fields[F.RTU]; item.status=normStatus(fields[F.STATUS]);
-    item.deadline=fields[F.DEADLINE];
+    item.rtu=fields[F.RTU]; item.status=normStatus(fields[F.STATUS]);
+    item.proposal=fields[F.PROPOSAL]; item.deadline=fields[F.DEADLINE];
     var rec=allRecords.find(function(r){return r.id===editingId;});
-    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.CLIENT]=fields[F.CLIENT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.DEADLINE]=fields[F.DEADLINE];}
+    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.PROPOSAL]=fields[F.PROPOSAL];rec.fields[F.DEADLINE]=fields[F.DEADLINE];}
   }
   var savedId=editingId; editingId=null;
   renderKPIs(); applyFilters();
@@ -610,6 +611,7 @@ function confirmDelete(){
   if(pendingBidderDeleteId)   { confirmDeleteBidder(); return; }
   if(pendingActivityDeleteId) { confirmDeleteActivityNote(); return; }
   if(pendingPCDeleteId)       { confirmDeletePCTransaction(); return; }
+  if(pendingPTDeleteId)       { confirmDeletePaymentTerm(); return; }
   if(!pendingDeleteId) return;
   var id=pendingDeleteId; pendingDeleteId=null;
   closeConfirm(); deleteRecord(id);
@@ -648,7 +650,7 @@ function applyFilters(){
     var ms=currentStatus==='ALL'||(currentStatus==='ACTIVE_ONLY'?isActive:r.status===currentStatus);
     var mq=!q||[r.project,r.client,r.main_cont,r.sr_no,r.contractor].some(function(f){return (f||'').toLowerCase().indexOf(q)!==-1;});
     var inDate=true;
-    if(dateFrom||dateTo){var rd=parseDMY(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
+    if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
     var hideLost=currentStatus==='ALL'&&r.status==='LOST'&&!showLost;
     var hideCancelled=currentStatus==='ALL'&&r.status==='CANCELLED'&&!showCancelled;
     return ms&&mq&&inDate&&!hideLost&&!hideCancelled;
@@ -664,17 +666,16 @@ var STATUS_OPTS=['PIPELINE','WON','LOST','CANCELLED','CLOSED'];
 function mkDisplayRow(r){
   return '<tr data-id="'+r._id+'" style="cursor:pointer">'+
     '<td class="c-sr">'+e(r.sr_no)+'</td>'+
-    '<td class="c-date">'+e(r.date)+'</td>'+
+    '<td class="c-date">'+fmtDate(r.date)+'</td>'+
     '<td class="c-proj">'+e(r.project)+'</td>'+
     '<td class="c-mc">'+e(r.main_cont||'&mdash;')+'</td>'+
-    '<td class="c-client">'+e(r.client||'&mdash;')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
+    '<td class="c-proposal">'+(r.proposal ? fmtDate(r.proposal) : '')+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
-    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-deadline">'+(r.proposal ? '' : renderDeadline(r.deadline))+'</td>'+
     (function(){
       var lu = r.last_update || '';
@@ -683,7 +684,8 @@ function mkDisplayRow(r){
       var notePart = sep !== -1 ? lu.substring(sep + 3) : lu;
       return '<td class="c-update">'+(datePart ? '<div style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</div>' : '')+(notePart ? '<div style="font-size:10px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(notePart)+'</div>' : '')+'</td>';
     })()+
-      '<td class="c-actions"><div class="row-actions">'+
+    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
+    '<td class="c-actions"><div class="row-actions">'+
       (r.docs ? '<a class="icon-btn docs-link has-link" href="'+r.docs+'" target="_blank" rel="noopener">'+IC_DOCS+'</a>' : '<span class="icon-btn docs-link">'+IC_DOCS+'</span>')+
       '<button class="icon-btn" data-quote-id="'+r._id+'" style="color:var(--blue);opacity:1">&#128196;</button>'+
       '<button class="icon-btn edit" onclick="startEdit(\''+r._id+'\')">'+IC_PENCIL+'</button>'+
@@ -696,19 +698,19 @@ function mkEditRow(r){
   var opts=STATUS_OPTS.map(function(st){return '<option value="'+st+'"'+(r.status===st?' selected':'')+'>'+( st==='PIPELINE'?'Pipeline':st)+'</option>';}).join('');
   return '<tr class="editing" data-id="'+r._id+'">'+
     '<td class="c-sr" style="font-family:monospace;font-size:11px;color:var(--txt3)">'+e(r.sr_no)+'</td>'+
-    '<td class="c-date" style="overflow:visible"><input class="ei" id="ei-date" value="'+e(r.date)+'" placeholder="DD.MM.YYYY" style="width:88px"></td>'+
+    '<td class="c-date" style="overflow:visible"><input class="ei" id="ei-date" type="date" value="'+e(r.date||'')+'" style="width:130px"></td>'+
     '<td class="c-proj" style="overflow:visible"><input class="ei" id="ei-proj" value="'+e(r.project)+'" style="width:100%"></td>'+
     '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
-    '<td class="c-client" style="overflow:visible"><input class="ei" id="ei-client" value="'+e(r.client)+'" style="width:80px"></td>'+
     '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
+    '<td class="c-proposal" style="overflow:visible"><input class="ei" id="ei-proposal" type="date" value="'+e(r.proposal||'')+'" style="width:112px"></td>'+
     '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
-    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
     '<td class="c-update"><span style="font-size:12px;color:var(--txt3);font-style:italic">'+e(r.last_update||'—')+'</span></td>'+
+    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
       '<button class="icon-btn save" onclick="saveEditRow()">'+IC_SAVE+'</button>'+
       '<button class="icon-btn cancel-edit" onclick="cancelEdit()">'+IC_CANCEL+'</button>'+
@@ -849,8 +851,8 @@ function showModal(){
   var pad=function(n){return String(n).padStart(2,'0');};
   document.getElementById('f-sr').value=next;
   document.getElementById('modal-sr-lbl').textContent='SR-'+next;
-  document.getElementById('f-date').value=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear();
-  document.getElementById('f-cont').value='MBB';
+  document.getElementById('f-date').value=now.toISOString().substring(0,10);
+  document.getElementById('f-cont').value='';
   document.getElementById('f-status').value='PIPELINE';
   ['f-proj','f-mc','f-client','f-rtu','f-prop'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('f-deadline').value='';
@@ -873,9 +875,9 @@ function saveEntry(){
   closeModal();
   var fields={};
   fields[F.SR_NO]=g('f-sr'); fields[F.DATE]=g('f-date'); fields[F.PROJECT]=proj;
-  fields[F.CONTRACTOR]=g('f-cont')||'MBB'; fields[F.MAIN_CONT]=g('f-mc');
+  fields[F.CONTRACTOR]=g('f-cont'); fields[F.MAIN_CONT]=g('f-mc');
   fields[F.CLIENT]=g('f-client'); fields[F.RTU]=g('f-rtu')||'--';
-  fields[F.STATUS]=g('f-status'); fields[F.PROPOSAL]=g('f-prop')||'--';
+  fields[F.STATUS]=g('f-status'); fields[F.PROPOSAL]=g('f-prop')||null;
   var dlVal=document.getElementById('f-deadline').value; if(dlVal) fields[F.DEADLINE]=dlVal;
   fields[F.QUOTATION]=''; fields[F.TECH_PROP]=''; fields[F.LPO_CLIENT]=''; fields[F.LPO_SUPPLIER]='';
   postRecord(fields);
@@ -2774,6 +2776,16 @@ function renderBiddersList(opportunityId) {
     list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No bidders added yet.<br>Use the button above to add one.</div>';
     return;
   }
+
+  records = records.slice().sort(function(a, b) {
+    var aId = (a.fields['Contractor']||[])[0] || null;
+    var bId = (b.fields['Contractor']||[])[0] || null;
+    var aRec = aId ? ctrRecords.find(function(r){ return r.id===aId; }) : null;
+    var bRec = bId ? ctrRecords.find(function(r){ return r.id===bId; }) : null;
+    var aName = (aRec ? (aRec.fields['Company Name']||'') : '').toLowerCase();
+    var bName = (bRec ? (bRec.fields['Company Name']||'') : '').toLowerCase();
+    return aName < bName ? -1 : aName > bName ? 1 : 0;
+  });
 
   var TH = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap';
   list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'+
@@ -5391,6 +5403,36 @@ function openQuoteFromRow(id) {
 }
 
 var qlQuoteId = null;
+var paymentTermsOptions = [];
+var paymentTermsRecords = [];
+
+async function loadPaymentTerms() {
+  var ptSel = document.getElementById('ql-payment');
+  if(ptSel) ptSel.innerHTML = '<option value="">Loading…</option>';
+  try {
+    var res = await fetch(WORKER_URL + '/payment-terms?pageSize=100', {headers: getHeaders()});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    paymentTermsRecords = (data.records || []).slice().sort(function(a, b) {
+      var at = (a.fields['Payment_Terms'] || '').toLowerCase();
+      var bt = (b.fields['Payment_Terms'] || '').toLowerCase();
+      return at < bt ? -1 : at > bt ? 1 : 0;
+    });
+    paymentTermsOptions = paymentTermsRecords.map(function(r) {
+      return r.fields['Payment_Terms'] || '';
+    }).filter(Boolean);
+  } catch(err) {
+    console.warn('Could not load payment terms:', err.message);
+    paymentTermsRecords = [];
+    paymentTermsOptions = [];
+  }
+  if(ptSel) {
+    ptSel.innerHTML = '<option value="">— Select payment terms —</option>' +
+      paymentTermsOptions.map(function(t) {
+        return '<option value="'+e(t)+'">'+e(t)+'</option>';
+      }).join('');
+  }
+}
 
 function showQuoteLetterModal(quoteId) {
   qlQuoteId = quoteId || null;
@@ -5443,6 +5485,7 @@ function showQuoteLetterModal(quoteId) {
     }
   }
   document.getElementById('quote-letter-modal').style.display='flex';
+  loadPaymentTerms();
   setTimeout(function(){document.getElementById('ql-company').focus();},50);
 }
 
@@ -5602,6 +5645,111 @@ function exportReport(){
   var w = window.open('', '_blank');
   w.document.write(html);
   w.document.close();
+}
+
+// ── Export Opportunities to Excel ────────────────────────────────
+function exportOpportunitiesExcel() {
+  if(typeof XLSX === 'undefined'){ toast('XLSX library not loaded — reload the page','err'); return; }
+  var now = new Date();
+  var pad = function(n){ return String(n).padStart(2,'0'); };
+  var todayStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
+  var genStr   = pad(now.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+
+  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','Proposal Submitted On','QTN','TP','LPO-C','LPO-S'];
+  var NC = COLS.length;
+
+  function yesNo(v){ return (v==='✔'||v==='Yes') ? 'Yes' : (v==='✖'||v==='No') ? 'No' : ''; }
+
+  var aoa = [
+    ['mBELLAb — Enquiry Log Export'],
+    ['Generated: '+genStr+'   |   Records: '+filtered.length],
+    [],
+    COLS
+  ];
+
+  filtered.forEach(function(r){
+    aoa.push([
+      r.sr_no     || '',
+      r.date      ? fmtDate(r.date)     : '',
+      r.project   || '',
+      r.main_cont || '',
+      r.client    || '',
+      r.rtu       || '',
+      r.status==='Under Process' ? 'Pipeline' : (r.status || ''),
+      r.proposal  ? fmtDate(r.proposal) : '',
+      yesNo(r.quotation),
+      yesNo(r.tech_prop),
+      yesNo(r.lpo_client),
+      yesNo(r.lpo_supplier)
+    ]);
+  });
+
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:NC-1}},
+    {s:{r:1,c:0},e:{r:1,c:NC-1}}
+  ];
+  ws['!cols'] = [
+    {wch:10},{wch:14},{wch:42},{wch:22},{wch:22},{wch:8},
+    {wch:14},{wch:18},{wch:7},{wch:7},{wch:8},{wch:8}
+  ];
+  ws['!rows'] = [{hpt:32},{hpt:18},{hpt:6},{hpt:22}];
+
+  var NAVY='17375E', BLUE='2E75B6', WHITE='FFFFFF', ALT='F0F4FB', TXT='1F2937', BDR='BFBFBF';
+  function thin(c){ return {style:'thin',color:{rgb:c||BDR}}; }
+  function bdr(){ return {top:thin(),bottom:thin(),left:thin(),right:thin()}; }
+  function cell(r,c){
+    var a = XLSX.utils.encode_cell({r:r,c:c});
+    if(!ws[a]) ws[a]={t:'s',v:''};
+    return ws[a];
+  }
+
+  // Title row
+  cell(0,0).s = {font:{bold:true,sz:14,color:{rgb:WHITE}},fill:{patternType:'solid',fgColor:{rgb:NAVY}},alignment:{horizontal:'left',vertical:'center'}};
+  // Subtitle row
+  cell(1,0).s = {font:{sz:9,italic:true,color:{rgb:WHITE}},fill:{patternType:'solid',fgColor:{rgb:NAVY}},alignment:{horizontal:'left',vertical:'center'}};
+  // Header row (row index 3)
+  for(var hc=0;hc<NC;hc++){
+    cell(3,hc).s = {
+      font:{bold:true,sz:10,color:{rgb:WHITE}},
+      fill:{patternType:'solid',fgColor:{rgb:BLUE}},
+      alignment:{horizontal:'center',vertical:'center',wrapText:true},
+      border:bdr()
+    };
+  }
+
+  // Data rows start at index 4
+  var tickCols = [8,9,10,11]; // QTN, TP, LPO-C, LPO-S
+  for(var di=0;di<filtered.length;di++){
+    var rowIdx = 4+di;
+    var rowBg  = di%2===0 ? WHITE : ALT;
+    for(var dc=0;dc<NC;dc++){
+      var isCenter = (dc===0||dc===5||tickCols.indexOf(dc)!==-1);
+      var isTickCol = tickCols.indexOf(dc)!==-1;
+      var c = cell(rowIdx,dc);
+      var tickVal = c.v;
+      c.s = {
+        font:{sz:10,color:{rgb: isTickCol?(tickVal==='Yes'?'065F46':(tickVal==='No'?'9B1C1C':TXT)):TXT},bold:isTickCol&&tickVal!==''},
+        fill:{patternType:'solid',fgColor:{rgb:rowBg}},
+        alignment:{horizontal:isCenter?'center':'left',vertical:'center',wrapText:dc===2},
+        border:bdr()
+      };
+    }
+  }
+
+  // Footer row
+  var footerRow = 4+filtered.length;
+  var footerText = 'mBELLAb · mBb-FM-13 · Exported '+genStr;
+  ws['!merges'].push({s:{r:footerRow,c:0},e:{r:footerRow,c:NC-1}});
+  var fa = XLSX.utils.encode_cell({r:footerRow,c:0});
+  ws[fa] = {t:'s',v:footerText,s:{font:{sz:8,italic:true,color:{rgb:'9CA3AF'}},alignment:{horizontal:'left'}}};
+  // Extend the sheet ref
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:footerRow,c:NC-1}});
+
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Enquiry Log');
+  XLSX.writeFile(wb, 'Enquiries_'+todayStr+'.xlsx');
+  toast('Export downloaded','ok');
 }
 
 
@@ -5852,6 +6000,29 @@ async function loadDiagnostics() {
   if(intEl) {
     var issues=[];
 
+    // Opportunities: QTN ticked but no Proposal Submitted On date
+    var qtnNoProposal = items.filter(function(r){
+      return r.quotation === '✔' && !r.proposal;
+    });
+    if(qtnNoProposal.length) issues.push({
+      sev:'amber', label:'Quotation submitted but no Proposal date set ('+qtnNoProposal.length+')',
+      detail:qtnNoProposal.slice(0,8).map(function(r){ return 'SR-'+r.sr_no+(r.project?' – '+r.project.substring(0,40):''); }).join('; ')+(qtnNoProposal.length>8?' …':'')
+    });
+
+    // Opportunities: missing SharePoint Docs link
+    var noDocs = items.filter(function(r){ return !r.docs; });
+    if(noDocs.length) issues.push({
+      sev:'amber', label:'Opportunities missing a SharePoint Docs link ('+noDocs.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        noDocs.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project ? ' <span>'+e(r.project)+'</span>' : '')+
+            '</div>';
+        }).join('')+
+        '</div>'
+    });
+
     // Leave records: unknown employee
     var orphanLeave=diagLeave.filter(function(r){
       var id=elEmpId(r.fields['Employee']);
@@ -5907,7 +6078,7 @@ async function loadDiagnostics() {
         var col=iss.sev==='red'?'var(--red)':'var(--amber)';
         it+='<div style="'+rowSt2+';border-left:3px solid '+col+'">'+
           '<div style="font-weight:600;color:'+col+';margin-bottom:3px">'+e(iss.label)+'</div>'+
-          '<div style="font-size:12px;color:var(--txt3)">'+e(iss.detail)+'</div>'+
+          (iss.detailHtml ? iss.detailHtml : '<div style="font-size:12px;color:var(--txt3)">'+e(iss.detail)+'</div>')+
           '</div>';
       });
     }
@@ -6785,8 +6956,6 @@ async function elFetchAll(path) {
 
 async function loadLeaveData() {
   try {
-    var yr = new Date().getFullYear();
-    document.getElementById('el-period-label').textContent = yr + ' Leave Year';
     // Fetch all pages for records that can grow beyond 100
     var [lRecs, tRecs, hRecs, eRecs, entRecs] = await Promise.all([
       elFetchAll('/leave-records'),
@@ -8040,7 +8209,7 @@ async function toggleUserActive(id, active) {
 
 // ── Admin tabs ────────────────────────────────────────────────────
 function adminShowTab(tab) {
-  ['admin-tab-users','admin-tab-perms'].forEach(function(t){
+  ['admin-tab-users','admin-tab-perms','admin-tab-payment-terms'].forEach(function(t){
     var btn = document.getElementById('admintab-'+t.replace('admin-tab-',''));
     var pnl = document.getElementById(t);
     var active = t.replace('admin-tab-','') === tab;
@@ -8048,6 +8217,81 @@ function adminShowTab(tab) {
     if(pnl) pnl.style.display=active?'':'none';
   });
   if(tab==='perms') loadPermissionsGrid();
+  if(tab==='payment-terms') adminLoadPaymentTerms();
+}
+
+// ── Payment Terms admin ───────────────────────────────────────────
+var pendingPTDeleteId = null;
+
+async function adminLoadPaymentTerms() {
+  var body = document.getElementById('admin-payment-terms-body');
+  if(body) body.innerHTML = '<div style="padding:20px;color:var(--txt3);font-size:13px">Loading…</div>';
+  await loadPaymentTerms();
+  renderPaymentTermsAdmin();
+}
+
+function renderPaymentTermsAdmin() {
+  var body = document.getElementById('admin-payment-terms-body');
+  if(!body) return;
+  if(!paymentTermsRecords.length) {
+    body.innerHTML = '<div style="padding:20px;color:var(--txt3);font-size:13px">No payment terms yet. Add one above.</div>';
+    return;
+  }
+  body.innerHTML = '<div style="border:1px solid var(--bdr);border-radius:8px;overflow:hidden">' +
+    paymentTermsRecords.map(function(r, i) {
+      var term = r.fields['Payment_Terms'] || '—';
+      var bdr  = i < paymentTermsRecords.length - 1 ? 'border-bottom:1px solid var(--bdr);' : '';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;'+bdr+'">' +
+        '<span style="font-size:14px;color:var(--txt)">'+e(term)+'</span>' +
+        '<button class="icon-btn del" onclick="deletePaymentTerm(\''+r.id+'\')" title="Remove" style="opacity:1;flex-shrink:0">'+IC_TRASH+'</button>' +
+        '</div>';
+    }).join('') +
+    '</div>';
+}
+
+async function addPaymentTerm() {
+  var input = document.getElementById('admin-pt-input');
+  var term  = input ? input.value.trim() : '';
+  if(!term) { toast('Enter a payment term', 'err'); return; }
+  var btn = document.getElementById('admin-pt-add-btn');
+  if(btn) { btn.disabled=true; btn.textContent='Adding…'; }
+  try {
+    var res = await fetch(WORKER_URL+'/payment-terms', {
+      method: 'POST', headers: getHeaders(),
+      body: JSON.stringify({fields: {'Payment_Terms': term}})
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    if(input) input.value = '';
+    toast('Payment term added', 'ok');
+    adminLoadPaymentTerms();
+  } catch(err) {
+    toast('Failed: '+err.message, 'err');
+  } finally {
+    if(btn) { btn.disabled=false; btn.textContent='Add'; }
+  }
+}
+
+function deletePaymentTerm(id) {
+  var rec = paymentTermsRecords.find(function(r){ return r.id===id; });
+  var term = rec ? (rec.fields['Payment_Terms']||'this payment term') : 'this payment term';
+  pendingPTDeleteId = id;
+  document.getElementById('confirm-title').textContent = 'Remove payment term?';
+  document.getElementById('confirm-body').innerHTML = 'This will remove <b>'+e(term)+'</b> from the list.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeletePaymentTerm() {
+  if(!pendingPTDeleteId) return;
+  var id = pendingPTDeleteId; pendingPTDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/payment-terms/'+id, {method:'DELETE', headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    toast('Payment term removed', 'ok');
+    adminLoadPaymentTerms();
+  } catch(err) {
+    toast('Failed: '+err.message, 'err');
+  }
 }
 
 // ── Permissions grid ──────────────────────────────────────────────
