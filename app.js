@@ -4945,7 +4945,7 @@ function exportPCtoExcel() {
     var f=r.fields, d=new Date(f['Date']);
     var ds=String(d.getDate()).padStart(2,'0')+' '+PC_MONTHS[d.getMonth()].substring(0,3);
     var amt=parseFloat(f['Amount'])||0;
-    aoa.push([ds,f['VU No']||'',f['Description']||'',f['Notes']||'',f['Type']||'',f['Type']==='In'?amt:-amt,f['Document']||'']);
+    aoa.push([ds,f['VU No']||'',f['Description']||'',f['Notes']||'',f['Type']||'',f['Type']==='In'?amt:-amt,f['Document']?'HERE':'']);
   });
   aoa.push([]);
   aoa.push(['','','','','Opening Balance',openingBal,'']);
@@ -5138,15 +5138,16 @@ async function loadUpcomingEvents() {
         bday.setHours(0,0,0,0);
         if(bday < today) bday = new Date(thisYear+1, d.getMonth(), d.getDate());
         var days = Math.round((bday-today)/(1000*60*60*24));
-        if(days >= 0 && days <= 30) {
+        if(days >= 0) {
           var age = bday.getFullYear() - d.getFullYear();
           bdays.push({name: r.fields['Employee Name']||'Unknown', days: days, date: bday, age: age, id: r.id});
         }
       });
       bdays.sort(function(a,b){return a.days-b.days;});
+      bdays = bdays.slice(0,3);
       if(bthEl) {
         if(bdays.length===0) {
-          bthEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--txt3)">No birthdays in the next 30 days</div>';
+          bthEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--txt3)">No upcoming birthdays</div>';
         } else {
           hasAny = true;
           bthEl.innerHTML = bdays.map(function(b){
