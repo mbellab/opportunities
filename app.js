@@ -29,6 +29,24 @@ window.APP_LOADED=1;
   });
 })();
 // ================================================================
+// API CALL TRACKER — wraps fetch to log every Worker request to localStorage
+// ================================================================
+(function(){
+  var _fetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (typeof url === 'string' && url.indexOf('mbb-enquiry-proxy') !== -1) {
+      try {
+        var log = JSON.parse(localStorage.getItem('mbb_api_log') || '[]');
+        var path = url.replace(/^https?:\/\/[^\/]+/, '').split('?')[0] || '/';
+        log.push([Date.now(), path]);
+        if (log.length > 20000) log = log.slice(log.length - 20000);
+        localStorage.setItem('mbb_api_log', JSON.stringify(log));
+      } catch(ex) {}
+    }
+    return _fetch.apply(this, arguments);
+  };
+})();
+// ================================================================
 // CONFIG
 // ================================================================
 var APP_VERSION = 'v1.7.0  ·  2026-06-14';
@@ -1382,11 +1400,6 @@ function showDashboard() {
 }
 
 async function loadDataForDashboard() {
-  // Load activity log for dashboard
-  try {
-    var aRes = await fetch(WORKER_URL+'/activity?pageSize=100', {headers:getHeaders()});
-    if(aRes.ok) { var aData=await aRes.json(); activityCache=(aData.records||[]); }
-  } catch(e2){}
   try {
     var records = [], offset = null, page = 0;
     do {
@@ -5800,7 +5813,97 @@ function showDiagnostics() {
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('diag-screen').style.display='flex';
+  renderApiUsage();
   loadDiagnostics();
+}
+
+function renderApiUsage(fromTs, toTs) {
+  var el = document.getElementById('diag-api-usage');
+  if (!el) return;
+
+  var log = [];
+  try { log = JSON.parse(localStorage.getItem('mbb_api_log') || '[]'); } catch(ex) {}
+
+  var now = Date.now();
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var weekStart  = now - 7 * 86400000;
+  var monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+
+  var today = 0, week = 0, month = 0, pathCounts = {}, rangeCounts = {}, rangeTotal = 0;
+  var hasRange = (fromTs !== undefined && toTs !== undefined);
+
+  for (var i = 0; i < log.length; i++) {
+    var ts = log[i][0], path = log[i][1] || '/';
+    if (ts >= todayStart) today++;
+    if (ts >= weekStart)  week++;
+    if (ts >= monthStart) {
+      month++;
+      pathCounts[path] = (pathCounts[path] || 0) + 1;
+    }
+    if (hasRange && ts >= fromTs && ts <= toTs) {
+      rangeTotal++;
+      rangeCounts[path] = (rangeCounts[path] || 0) + 1;
+    }
+  }
+
+  var LIMIT = 100000;
+  var pct = Math.min(Math.round(month / LIMIT * 100), 100);
+  var barCol = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : 'var(--green)';
+
+  var chipSt = 'display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:4px 12px;font-size:12px;margin:2px 3px';
+
+  var topPaths = Object.keys(pathCounts).sort(function(a,b){ return pathCounts[b]-pathCounts[a]; }).slice(0,8);
+
+  var rangeHtml = '';
+  if (hasRange) {
+    var topRange = Object.keys(rangeCounts).sort(function(a,b){ return rangeCounts[b]-rangeCounts[a]; }).slice(0,8);
+    rangeHtml =
+      '<div style="margin-top:14px;padding:12px 14px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r)">' +
+        '<div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Custom range result</div>' +
+        '<div style="font-size:22px;font-weight:700;color:var(--txt);margin-bottom:8px">' + rangeTotal.toLocaleString() + ' <span style="font-size:13px;font-weight:400;color:var(--txt3)">API calls</span></div>' +
+        (topRange.length ?
+          '<div style="display:flex;flex-wrap:wrap">' +
+            topRange.map(function(p){ return '<span style="'+chipSt+'">'+e(p)+': <b>'+rangeCounts[p]+'</b></span>'; }).join('') +
+          '</div>'
+        : '') +
+      '</div>';
+  }
+
+  el.innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;margin-bottom:12px">' +
+      '<span style="'+chipSt+'">Today: <b>'+today+'</b></span>' +
+      '<span style="'+chipSt+'">Last 7 days: <b>'+week+'</b></span>' +
+      '<span style="'+chipSt+'">This month: <b>'+month.toLocaleString()+'</b></span>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">' +
+      '<div style="flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden">' +
+        '<div style="height:100%;background:'+barCol+';border-radius:4px;width:'+pct+'%;transition:width .4s"></div>' +
+      '</div>' +
+      '<span style="font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap">'+month.toLocaleString()+' / 100,000</span>' +
+    '</div>' +
+    (topPaths.length ?
+      '<div style="font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Top endpoints this month</div>' +
+      '<div style="display:flex;flex-wrap:wrap;margin-bottom:14px">' +
+        topPaths.map(function(p){ return '<span style="'+chipSt+'">'+e(p)+': <b>'+pathCounts[p]+'</b></span>'; }).join('') +
+      '</div>'
+    : '<div style="color:var(--txt3);font-size:12px;margin-bottom:14px">No calls logged yet — data accumulates as you use the app.</div>') +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+      '<span style="font-size:12px;color:var(--txt3)">Custom range:</span>' +
+      '<input type="date" id="diag-api-from" style="font-size:12px;padding:3px 7px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--bg);color:var(--txt)"> ' +
+      '<span style="font-size:12px;color:var(--txt3)">to</span> ' +
+      '<input type="date" id="diag-api-to" style="font-size:12px;padding:3px 7px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--bg);color:var(--txt)">' +
+      '<button class="btn-ghost" onclick="(function(){' +
+        'var f=document.getElementById(\'diag-api-from\').value;' +
+        'var t=document.getElementById(\'diag-api-to\').value;' +
+        'if(!f||!t){toast(\'Select both dates\',\'err\');return;}' +
+        'renderApiUsage(new Date(f).getTime(), new Date(t).getTime()+86399999);' +
+      '})()" style="font-size:12px">Show</button>' +
+    '</div>' +
+    rangeHtml +
+    '<div style="margin-top:12px;display:flex;align-items:center;gap:10px">' +
+      '<button class="btn-ghost" onclick="localStorage.removeItem(\'mbb_api_log\');renderApiUsage()" style="font-size:12px">Clear log</button>' +
+      '<span style="font-size:11px;color:var(--txt3)">'+log.length.toLocaleString()+' entries stored locally</span>' +
+    '</div>';
 }
 
 async function countTableFull(path) {
@@ -5816,7 +5919,7 @@ async function countTableFull(path) {
   return total;
 }
 
-async function loadDiagnostics() {
+function loadDiagnostics() {
   var sessionEl = document.getElementById('diag-session');
   var body      = document.getElementById('diag-table-body');
   var bar       = document.getElementById('diag-bar');
@@ -5824,9 +5927,8 @@ async function loadDiagnostics() {
   var intEl     = document.getElementById('diag-integrity');
   var lvEl      = document.getElementById('diag-leave-health');
   var tsEl      = document.getElementById('diag-timestamp');
-  if(!body) return;
 
-  // ── 1. Session info (instant, no fetch) ─────────────────────────
+  // ── Session info (no API calls) ──────────────────────────────────
   if(sessionEl) {
     var chipSt = 'display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:3px 10px;font-size:12px;margin:2px 3px';
     var memRows = [
@@ -5852,7 +5954,38 @@ async function loadDiagnostics() {
       '</div>';
   }
 
-  // ── 2. Table row counts ──────────────────────────────────────────
+  // Row counts: idle state (run by button)
+  if(body) body.innerHTML='<div style="padding:14px 16px;color:var(--txt3);font-size:13px">Click <b>Run Row Counts</b> to check Airtable table sizes.</div>';
+  if(bar){ bar.style.width='0%'; bar.style.background='var(--green)'; }
+  if(tot) tot.textContent='';
+
+  // Integrity / leave health: idle state (run by button)
+  var idleSt='padding:12px 16px;color:var(--txt3);font-size:13px';
+  if(intEl) intEl.innerHTML='<div style="'+idleSt+'">Click <b>Run Checks</b> below to inspect data integrity.</div>';
+  if(lvEl)  lvEl.innerHTML ='<div style="'+idleSt+'">Click <b>Run Checks</b> below to inspect leave health.</div>';
+
+  if(tsEl) tsEl.textContent='Last refreshed: '+new Date().toLocaleTimeString();
+}
+
+async function runRowCounts() {
+  var body = document.getElementById('diag-table-body');
+  var bar  = document.getElementById('diag-bar');
+  var tot  = document.getElementById('diag-total');
+  var btn  = document.getElementById('diag-rowcount-btn');
+  if(!body) return;
+  if(btn){ btn.disabled=true; btn.textContent='Running…'; }
+
+  async function countTimed(baseUrl) {
+    var count=0, offset=null, t0=performance.now();
+    do {
+      var u = offset ? baseUrl+'&offset='+offset : baseUrl;
+      var d = await fetch(u,{headers:getHeaders()}).then(function(r){return r.json();}).catch(function(){return {};});
+      count += (d.records||[]).length;
+      offset = d.offset||null;
+    } while(offset);
+    return {count:count, ms:Math.round(performance.now()-t0)};
+  }
+
   var cellSt = 'display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 10px;border-right:1px solid var(--bdr);border-bottom:1px solid var(--bdr)';
   body.innerHTML =
     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--bdr2);border-radius:var(--r);overflow:hidden">'+
@@ -5865,19 +5998,6 @@ async function loadDiagnostics() {
     '</div>';
   if(bar){ bar.style.width='0%'; bar.style.background='var(--green)'; }
   if(tot) tot.textContent='';
-  if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Running after table counts…</div>';
-  if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Running after table counts…</div>';
-
-  async function countTimed(baseUrl) {
-    var count=0, offset=null, t0=performance.now();
-    do {
-      var u = offset ? baseUrl+'&offset='+offset : baseUrl;
-      var d = await fetch(u,{headers:getHeaders()}).then(function(r){return r.json();}).catch(function(){return {};});
-      count += (d.records||[]).length;
-      offset = d.offset||null;
-    } while(offset);
-    return {count:count, ms:Math.round(performance.now()-t0)};
-  }
 
   var grand = 0;
   for(var i=0; i<DIAG_TABLES.length; i++){
@@ -5898,9 +6018,17 @@ async function loadDiagnostics() {
     if(bar){ bar.style.width=pct+'%'; bar.style.background=pct>=90?'var(--red)':pct>=75?'var(--amber)':'var(--green)'; }
     if(tot) tot.textContent=grand+' / 1,000 rows';
   }
-  if(tsEl) tsEl.textContent='Last refreshed: '+new Date().toLocaleTimeString();
+  if(btn){ btn.disabled=false; btn.textContent='↻ Re-run Row Counts'; }
+}
 
-  // ── 3. Fetch data for checks (always fresh) ──────────────────────
+async function runIntegrityChecks() {
+  var intEl = document.getElementById('diag-integrity');
+  var lvEl  = document.getElementById('diag-leave-health');
+  var btn   = document.getElementById('diag-checks-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Running…'; }
+  if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Fetching data…</div>';
+  if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Fetching data…</div>';
+
   async function fetchAll(path) {
     var recs=[],offset=null;
     do {
@@ -5915,30 +6043,30 @@ async function loadDiagnostics() {
   var diagEmps, diagLeave, diagEnts, diagTickets, diagHols;
   try {
     var fetched = await Promise.all([
-      fetchAll('/employees'),
-      fetchAll('/leave-records'),
-      fetchAll('/annual-entitlements'),
-      fetchAll('/annual-tickets'),
-      fetchAll('/bank-holidays'),
+      empRecords.length   ? Promise.resolve(empRecords)     : fetchAll('/employees'),
+      elRecords.length    ? Promise.resolve(elRecords)      : fetchAll('/leave-records'),
+      elEntitlements.length ? Promise.resolve(elEntitlements) : fetchAll('/annual-entitlements'),
+      elTickets.length    ? Promise.resolve(elTickets)      : fetchAll('/annual-tickets'),
+      elHolidays.length   ? Promise.resolve(elHolidays)     : fetchAll('/bank-holidays'),
     ]);
     diagEmps=fetched[0]; diagLeave=fetched[1]; diagEnts=fetched[2]; diagTickets=fetched[3]; diagHols=fetched[4];
   } catch(err) {
     if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
     if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
+    if(btn){ btn.disabled=false; btn.textContent='↻ Re-run Checks'; }
     return;
   }
 
   var empIds = {};
   diagEmps.forEach(function(e2){ empIds[e2.id]=e2; });
 
-  // ── 4. Leave health ──────────────────────────────────────────────
+  // ── Leave health ─────────────────────────────────────────────────
   if(lvEl) {
     var today=new Date(); today.setHours(0,0,0,0);
     var noEnt=[], negBal=[];
 
     var activeEmps = diagEmps.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
     activeEmps.forEach(function(emp){
-      // Find active entitlement
       var empEnts = diagEnts
         .filter(function(r){ return elEmpId(r.fields['Employee'])===emp.id; })
         .sort(function(a,b){ return new Date(b.fields['Period_Start'])-new Date(a.fields['Period_Start']); });
@@ -5971,7 +6099,6 @@ async function loadDiagnostics() {
     var lv='';
     var okSt='display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--bdr);font-size:13px';
 
-    // Summary row
     lv+='<div style="'+okSt+';background:var(--bg2)">'+
       '<span style="font-weight:600;color:var(--txt)">Active employees: '+activeEmps.length+'</span>'+
       '<span style="margin-left:auto;color:'+(noEnt.length?'var(--amber)':'var(--green)')+'">'+
@@ -5997,11 +6124,10 @@ async function loadDiagnostics() {
     lvEl.innerHTML=lv;
   }
 
-  // ── 5. Data integrity ────────────────────────────────────────────
+  // ── Data integrity ────────────────────────────────────────────────
   if(intEl) {
     var issues=[];
 
-    // Opportunities: QTN ticked but no Proposal Submitted On date
     var qtnNoProposal = items.filter(function(r){
       return r.quotation === '✔' && !r.proposal;
     });
@@ -6010,7 +6136,6 @@ async function loadDiagnostics() {
       detail:qtnNoProposal.slice(0,8).map(function(r){ return 'SR-'+r.sr_no+(r.project?' – '+r.project.substring(0,40):''); }).join('; ')+(qtnNoProposal.length>8?' …':'')
     });
 
-    // Opportunities: missing SharePoint Docs link
     var noDocs = items.filter(function(r){ return !r.docs; });
     if(noDocs.length) issues.push({
       sev:'amber', label:'Opportunities missing a SharePoint Docs link ('+noDocs.length+')',
@@ -6024,7 +6149,6 @@ async function loadDiagnostics() {
         '</div>'
     });
 
-    // Leave records: unknown employee
     var orphanLeave=diagLeave.filter(function(r){
       var id=elEmpId(r.fields['Employee']);
       return !id||!empIds[id];
@@ -6034,7 +6158,6 @@ async function loadDiagnostics() {
       detail:orphanLeave.slice(0,5).map(function(r){return r.fields['Start_Date']||r.id;}).join(', ')+(orphanLeave.length>5?' …':'')
     });
 
-    // Annual tickets: unknown employee
     var orphanTix=diagTickets.filter(function(r){
       var id=elEmpId(r.fields['Employee']);
       return !id||!empIds[id];
@@ -6044,7 +6167,6 @@ async function loadDiagnostics() {
       detail:orphanTix.slice(0,5).map(function(r){return r.fields['Period']||r.id;}).join(', ')+(orphanTix.length>5?' …':'')
     });
 
-    // Bank holidays: missing date
     var missingDate=diagHols.filter(function(h){ return !h.fields['Date']; });
     if(missingDate.length) issues.push({
       sev:'amber', label:'Bank holidays missing a date ('+missingDate.length+')',
@@ -6085,6 +6207,7 @@ async function loadDiagnostics() {
     }
     intEl.innerHTML=it;
   }
+  if(btn){ btn.disabled=false; btn.textContent='↻ Re-run Checks'; }
 }
 
 
