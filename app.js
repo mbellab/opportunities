@@ -708,7 +708,7 @@ function mkDisplayRow(r){
     '<td class="c-sr">'+e(r.sr_no)+'</td>'+
     '<td class="c-date">'+fmtDate(r.date)+'</td>'+
     '<td class="c-proj">'+e(r.project)+'</td>'+
-    '<td class="c-mc">'+e(r.main_cont||'&mdash;')+'</td>'+
+    '<td class="c-mc">'+e(r.main_cont||'—')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
     '<td class="c-proposal">'+(r.proposal ? fmtDate(r.proposal) : '')+'</td>'+
@@ -2487,10 +2487,14 @@ async function loadActivityForOpportunity(opportunityId) {
       offset = data.offset || null;
     } while(offset);
 
-    // Filter client-side by opportunity ID
+    // Filter client-side by opportunity ID, then sort newest first
     var records = allRecs.filter(function(r) {
       var opp = r.fields['Opportunity'] || [];
       return opp.indexOf(opportunityId) !== -1;
+    }).sort(function(a, b) {
+      var da = a.fields['Date'] || '';
+      var db = b.fields['Date'] || '';
+      return db < da ? -1 : db > da ? 1 : 0;
     });
     actRecords[opportunityId] = records;
 
@@ -2500,7 +2504,7 @@ async function loadActivityForOpportunity(opportunityId) {
 
     // Set last_update_date on item from most recent activity
     if(records.length > 0) {
-      var latestDate = records[0].fields['Date'] || ''; // already sorted desc
+      var latestDate = records[0].fields['Date'] || ''; // sorted desc, so first is most recent
       var item = items.find(function(i){return i._id===opportunityId;});
       if(item) item.last_update_date = latestDate;
     }

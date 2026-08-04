@@ -476,10 +476,10 @@
           <th class="c-rtu ctr sortable" data-col="c-rtu" data-sort="rtu">RTU<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-status sortable" data-col="c-status" data-sort="status">Status<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-proposal sortable" data-col="c-proposal" data-sort="proposal" style="white-space:normal;line-height:1.3">Proposal Submitted On<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
-          <th class="c-chk ctr" data-col="c-chk-qtn">QTN<div class="col-resizer"></div></th>
-          <th class="c-chk ctr" data-col="c-chk-tp">TP<div class="col-resizer"></div></th>
-          <th class="c-chk ctr" data-col="c-chk-lpoc">LPO-C<div class="col-resizer"></div></th>
-          <th class="c-chk ctr" data-col="c-chk-lpos">LPO-S<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-qtn" title="Quotation Sent">QTN<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-tp" title="Technical Proposal Sent">TP<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-lpoc" title="Purchase Order Issued by Client">LPO-C<div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-lpos" title="Purchase Order Issued by mBELLAb">LPO-S<div class="col-resizer"></div></th>
           <th class="c-deadline sortable" data-col="c-deadline" data-sort="deadline">Deadline<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-update sortable" data-col="c-update" data-sort="last_update">Last Update<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-active ctr" data-col="c-active" style="white-space:normal;line-height:1.3">Active (working on)<div class="col-resizer"></div></th>
@@ -2938,7 +2938,7 @@ function mkDisplayRow(r){
     '<td class="c-sr">'+e(r.sr_no)+'</td>'+
     '<td class="c-date">'+fmtDate(r.date)+'</td>'+
     '<td class="c-proj">'+e(r.project)+'</td>'+
-    '<td class="c-mc">'+e(r.main_cont||'&mdash;')+'</td>'+
+    '<td class="c-mc">'+e(r.main_cont||'—')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
     '<td class="c-proposal">'+(r.proposal ? fmtDate(r.proposal) : '')+'</td>'+
@@ -4705,10 +4705,14 @@ async function loadActivityForOpportunity(opportunityId) {
       offset = data.offset || null;
     } while(offset);
 
-    // Filter client-side by opportunity ID
+    // Filter client-side by opportunity ID, then sort newest first
     var records = allRecs.filter(function(r) {
       var opp = r.fields['Opportunity'] || [];
       return opp.indexOf(opportunityId) !== -1;
+    }).sort(function(a, b) {
+      var da = a.fields['Date'] || '';
+      var db = b.fields['Date'] || '';
+      return db < da ? -1 : db > da ? 1 : 0;
     });
     actRecords[opportunityId] = records;
 
@@ -4718,7 +4722,7 @@ async function loadActivityForOpportunity(opportunityId) {
 
     // Set last_update_date on item from most recent activity
     if(records.length > 0) {
-      var latestDate = records[0].fields['Date'] || ''; // already sorted desc
+      var latestDate = records[0].fields['Date'] || ''; // sorted desc, so first is most recent
       var item = items.find(function(i){return i._id===opportunityId;});
       if(item) item.last_update_date = latestDate;
     }
