@@ -25,6 +25,11 @@ html.dark{
 html.dark .cal-cell.other-month{background:var(--bg2)}
 #theme-toggle{position:fixed;bottom:20px;right:20px;z-index:9999;width:36px;height:36px;border-radius:50%;background:var(--header);border:1px solid rgba(255,255,255,.15);color:#8b949e;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:color .15s,border-color .15s;padding:0}
 #theme-toggle:hover{border-color:rgba(255,255,255,.3);color:#c9d1d9}
+#font-size-ctrl{position:fixed;bottom:64px;right:14px;z-index:9999;display:flex;align-items:center;gap:0;background:var(--header);border:1px solid rgba(255,255,255,.15);border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.3);overflow:hidden}
+#font-size-ctrl button{background:none;border:none;color:#8b949e;cursor:pointer;font-size:11px;font-weight:600;padding:5px 8px;font-family:'IBM Plex Mono',monospace;transition:color .15s,background .15s;line-height:1}
+#font-size-ctrl button:hover:not(:disabled){color:#c9d1d9;background:rgba(255,255,255,.08)}
+#font-size-ctrl button:disabled{opacity:.35;cursor:default}
+#font-size-ctrl .fs-label{font-size:10px;color:rgba(255,255,255,.4);font-family:'IBM Plex Mono',monospace;min-width:32px;text-align:center;pointer-events:none}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans',sans-serif}
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -232,10 +237,16 @@ tbody tr:hover .icon-btn{opacity:1}
 .pag-ellipsis{padding:0 4px;font-size:12px;color:var(--txt3)}
 
 /* ── Modals ── */
-.modal-bg{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
-.modal{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:26px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.modal-bg{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--rl);padding:26px;width:100%;max-width:900px;max-height:92vh;overflow-y:auto;box-shadow:0 16px 56px rgba(0,0,0,.2)}
 .modal-title{font-size:15px;font-weight:600;margin-bottom:20px;display:flex;align-items:center;gap:8px}
 .modal-title span{font-size:11px;color:var(--txt3);font-weight:400;font-family:'IBM Plex Mono',monospace}
+/* Opportunity modal header */
+.opp-modal-header{margin:-26px -26px 0;border-top:3px solid var(--amber);background:var(--bg2);border-bottom:1px solid var(--bdr);padding:16px 26px 14px}
+.opp-modal-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.opp-modal-sr{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--txt3);letter-spacing:.5px}
+.opp-modal-status-pill{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.opp-modal-name{font-size:15px;font-weight:600;color:var(--txt);line-height:1.35}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field.full{grid-column:1/-1}
@@ -244,6 +255,11 @@ tbody tr:hover .icon-btn{opacity:1}
 .field input:focus,.field select:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
 .field input::placeholder{color:var(--txt3)}
 .field input[readonly]{background:var(--bg2);color:var(--txt3);cursor:default}
+.ctr-contact-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.ctr-contact-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:8px 10px;font-size:13px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none}
+.ctr-contact-row input:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
+.ctr-contact-row input::placeholder{color:var(--txt3)}
+.ctr-contact-row .icon-btn{flex-shrink:0}
 .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
 .btn-cancel{background:transparent;border:1px solid var(--bdr2);color:var(--txt2);padding:8px 16px;border-radius:var(--r);font-size:13px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif}
 .btn-cancel:hover{background:var(--bg2)}
@@ -288,10 +304,11 @@ tbody tr:hover .icon-btn{opacity:1}
 
 
 /* Activity Log */
-.modal-tabs{display:flex;gap:0;border-bottom:1px solid var(--bdr);margin:-26px -26px 20px;padding:0 26px}
-.modal-tab{padding:12px 18px;font-size:13px;font-weight:500;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap}
+.modal-tabs{display:flex;gap:0;border-bottom:1px solid var(--bdr);margin:0 -26px 20px;padding:0 26px;overflow-x:auto;scrollbar-width:none;-webkit-mask-image:linear-gradient(to right,black 90%,transparent 100%);mask-image:linear-gradient(to right,black 90%,transparent 100%)}
+.modal-tabs::-webkit-scrollbar{display:none}
+.modal-tab{padding:10px 14px;font-size:12px;font-weight:500;color:var(--txt3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap;flex-shrink:0}
 .modal-tab:hover{color:var(--txt)}
-.modal-tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+.modal-tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:600}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
 .activity-list{display:flex;flex-direction:column;gap:0}
@@ -488,9 +505,10 @@ table.vnd-table td{padding:5px 10px}
   .dash-grid-2,.dash-grid-3{grid-template-columns:1fr!important}
   /* Modal */
   .modal{padding:16px;border-radius:10px}
+  .opp-modal-header{margin:-16px -16px 0;padding:14px 16px 12px}
   .form-grid{grid-template-columns:1fr!important}
   .field.full{grid-column:1}
-  .modal-tabs{overflow-x:auto;margin:-16px -16px 16px;padding:0 16px}
+  .modal-tabs{overflow-x:auto;margin:0 -16px 16px;padding:0 16px}
   /* Cal */
   .cal-cell{min-height:56px}
   .cal-event{font-size:9px;padding:1px 4px}

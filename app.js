@@ -194,6 +194,19 @@ function toggleTheme(){
   localStorage.setItem('mbb_theme',dark?'dark':'light');
   applyTheme(dark);
 }
+var ZOOM_MIN=0.75,ZOOM_MAX=1.30,ZOOM_STEP=0.05;
+function applyZoom(z){
+  z=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,z));
+  document.body.style.zoom=z;
+  localStorage.setItem('mbb_zoom',z);
+  var ctrl=document.getElementById('font-size-ctrl');
+  if(ctrl){
+    ctrl.querySelector('.fs-minus').disabled=(z<=ZOOM_MIN);
+    ctrl.querySelector('.fs-plus').disabled=(z>=ZOOM_MAX);
+    ctrl.querySelector('.fs-label').textContent=Math.round(z*100)+'%';
+  }
+}
+function changeFontSize(delta){applyZoom(+(parseFloat(document.body.style.zoom||1)+delta).toFixed(2));}
 function setSave(state) {
   var ind=document.getElementById('save-ind');
   var txt=document.getElementById('save-txt');
@@ -418,10 +431,16 @@ function applyRoleRestrictions() {
       'button[onclick*="showVendorModal"]{display:none!important}',
     ]);
   }
-  // Non-admin: hide quotes/invoices tabs
+  // Non-admin: hide commercial tabs
   if(!isAdmin) {
     rules.push('.modal-tab[data-tab="tab-quotes"]{display:none!important}');
     rules.push('#tab-quotes{display:none!important}');
+    rules.push('.modal-tab[data-tab="tab-po-received"]{display:none!important}');
+    rules.push('#tab-po-received{display:none!important}');
+    rules.push('.modal-tab[data-tab="tab-po-sent"]{display:none!important}');
+    rules.push('#tab-po-sent{display:none!important}');
+    rules.push('.modal-tab[data-tab="tab-inv-received"]{display:none!important}');
+    rules.push('#tab-inv-received{display:none!important}');
     rules.push('.modal-tab[data-tab="tab-invoices"]{display:none!important}');
     rules.push('#tab-invoices{display:none!important}');
   }
@@ -625,6 +644,9 @@ function confirmDelete(){
   if(pendingEmpDeleteId)      { confirmDeleteEmployee(); return; }
   if(pendingQODeleteId)       { confirmDeleteQO(); return; }
   if(pendingInvoiceDeleteId)  { confirmDeleteInvoice(); return; }
+  if(pendingPORDeleteId)      { confirmDeletePOR(); return; }
+  if(pendingPOSDeleteId)      { confirmDeletePOS(); return; }
+  if(pendingIRDeleteId)       { confirmDeleteIR(); return; }
   if(pendingQuoteDeleteId)    { confirmDeleteQuote(); return; }
   if(pendingBidderDeleteId)   { confirmDeleteBidder(); return; }
   if(pendingActivityDeleteId) { confirmDeleteActivityNote(); return; }
@@ -918,6 +940,14 @@ function openEditModal(id) {
   if(!item) return;
   document.getElementById('edit-modal').dataset.id = id;
   document.getElementById('edit-sr-lbl').textContent = 'SR-' + item.sr_no;
+  var projNameEl = document.getElementById('edit-proj-name');
+  if(projNameEl) projNameEl.textContent = item.project || 'Opportunity';
+  var statusBadgeEl = document.getElementById('edit-status-badge');
+  if(statusBadgeEl) {
+    statusBadgeEl.textContent = item.status || '';
+    var sc = {WON:'background:var(--green-bg);color:var(--green)',LOST:'background:var(--red-bg);color:var(--red)',PIPELINE:'background:var(--amber-bg);color:var(--amber)',CANCELLED:'background:var(--grey-bg);color:var(--txt3)',CLOSED:'background:var(--grey-bg);color:var(--txt3)'};
+    statusBadgeEl.style.cssText = sc[item.status] || sc['PIPELINE'];
+  }
   document.getElementById('ef-sr').value       = item.sr_no;
   document.getElementById('ef-date').value     = item.date;
   document.getElementById('ef-proj').value     = item.project;
@@ -1656,6 +1686,7 @@ var ctrSortDir   = 'asc';
 var ctrPage      = 1;
 var CTR_PER_PAGE = 50;
 var ctrEditId    = null;
+var ctrContacts  = [];
 
 function showContractors() {
   if(!canAccess('contractors')){ toast('Access restricted','err'); return; }
@@ -1706,7 +1737,10 @@ async function loadContractors() {
 function renderContractorKPIs() {
   var el=document.getElementById('ctr-kpis');
   if(!el) return;
-  var withEmail=ctrRecords.filter(function(r){return r.fields['Contact Email'];}).length;
+  var withEmail=ctrRecords.filter(function(r){
+    if(r.fields['Contact Email']) return true;
+    try{var cs=JSON.parse(r.fields['Contacts JSON']||'[]');return cs.some(function(c){return c.email;});}catch(e2){return false;}
+  }).length;
   el.innerHTML=[
     {label:'Total Contractors', val:ctrRecords.length, cls:''},
     {label:'With Email',        val:withEmail,          cls:'process'},
@@ -1720,8 +1754,17 @@ function renderContractorsTable() {
   var q=(document.getElementById('ctr-search')||{value:''}).value.toLowerCase();
   var rows=ctrRecords.filter(function(r){
     var f=r.fields;
-    return !q||['Company Name','Contact Name','Contact Email','Comments'].some(function(k){
-      return (f[k]||'').toLowerCase().indexOf(q)!==-1;
+    if(!q) return true;
+    if(['Company Name','Comments'].some(function(k){return (f[k]||'').toLowerCase().indexOf(q)!==-1;})) return true;
+    var contacts=[];
+    try{contacts=JSON.parse(f['Contacts JSON']||'[]');}catch(ex){}
+    if(!contacts.length && (f['Contact Name']||f['Contact Email'])){
+      contacts=[{name:f['Contact Name']||'',phone:f['Contact Number']||'',email:f['Contact Email']||''}];
+    }
+    return contacts.some(function(c){
+      return (c.name||'').toLowerCase().indexOf(q)!==-1||
+             (c.email||'').toLowerCase().indexOf(q)!==-1||
+             (c.phone||'').toLowerCase().indexOf(q)!==-1;
     });
   });
 
@@ -1743,13 +1786,20 @@ function renderContractorsTable() {
 
   tbody.innerHTML=page.map(function(r){
     var f=r.fields;
-    var email=f['Contact Email']||'';
+    var contacts=[];
+    try{contacts=JSON.parse(f['Contacts JSON']||'[]');}catch(ex){}
+    if(!contacts.length && (f['Contact Name']||f['Contact Number']||f['Contact Email'])){
+      contacts=[{name:f['Contact Name']||'',phone:f['Contact Number']||'',email:f['Contact Email']||''}];
+    }
+    var primary=contacts[0]||{};
+    var extraBadge=contacts.length>1?'<span style="margin-left:5px;background:var(--amber-bg);color:var(--amber);border-radius:10px;font-size:10px;padding:1px 6px;font-family:monospace">+' +(contacts.length-1)+'</span>':'';
+    var email=primary.email||'';
     var emailCell=email?'<a href="mailto:'+e(email)+'" style="color:var(--blue);text-decoration:none">'+e(email)+'</a>':'<span style="color:var(--txt3)">—</span>';
-    var phone=f['Contact Number']||'';
+    var phone=primary.phone||'';
     var phoneCell=phone?'<a href="tel:'+e(phone)+'" style="color:var(--txt);text-decoration:none">'+e(phone)+'</a>':'<span style="color:var(--txt3)">—</span>';
     return '<tr data-ctr-id="'+r.id+'" style="cursor:pointer">'+
       '<td class="c-company">'+e(f['Company Name']||'')+'</td>'+
-      '<td class="c-contact">'+e(f['Contact Name']||'—')+'</td>'+
+      '<td class="c-contact">'+e(primary.name||'—')+extraBadge+'</td>'+
       '<td class="c-phone">'+phoneCell+'</td>'+
       '<td class="c-email">'+emailCell+'</td>'+
       '<td class="c-website">'+ (f['Website'] ? '<a href="'+e(f['Website'])+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-size:11px">'+e(f['Website'].replace(/^https?:\/\//,''))+'</a>' : '<span style="color:var(--txt3)">—</span>') +'</td>'+
@@ -1813,12 +1863,52 @@ function renderCtrPagination(total) {
 function ctrGoPage(p){ctrPage=p;renderContractorsTable();}
 
 // ── Contractor Modal ──────────────────────────────────────────────
+function ctrSyncContacts() {
+  var rows=document.querySelectorAll('#ctr-contacts-list .ctr-contact-row');
+  ctrContacts=Array.from(rows).map(function(row){
+    return {
+      name:  (row.querySelector('.ctr-c-name')||{value:''}).value.trim(),
+      phone: (row.querySelector('.ctr-c-phone')||{value:''}).value.trim(),
+      email: (row.querySelector('.ctr-c-email')||{value:''}).value.trim()
+    };
+  });
+}
+
+function ctrRenderContacts() {
+  var list=document.getElementById('ctr-contacts-list');
+  if(!list) return;
+  if(!ctrContacts.length) ctrContacts=[{name:'',phone:'',email:''}];
+  list.innerHTML=ctrContacts.map(function(c,i){
+    var del=ctrContacts.length>1?'<button type="button" class="icon-btn del" onclick="ctrRemoveContact('+i+')">'+IC_TRASH+'</button>':'<span style="width:26px;flex-shrink:0"></span>';
+    return '<div class="ctr-contact-row" data-i="'+i+'">'+
+      '<input class="ctr-c-name" placeholder="Full name" value="'+e(c.name||'')+'">'+
+      '<input class="ctr-c-phone" placeholder="+971 XX XXX XXXX" type="tel" value="'+e(c.phone||'')+'">'+
+      '<input class="ctr-c-email" placeholder="email@company.com" type="email" value="'+e(c.email||'')+'">'+
+      del+
+    '</div>';
+  }).join('');
+}
+
+function ctrAddContact() {
+  ctrSyncContacts();
+  ctrContacts.push({name:'',phone:'',email:''});
+  ctrRenderContacts();
+  var rows=document.querySelectorAll('#ctr-contacts-list .ctr-contact-row');
+  if(rows.length){var inp=rows[rows.length-1].querySelector('.ctr-c-name');if(inp)inp.focus();}
+}
+
+function ctrRemoveContact(i) {
+  ctrSyncContacts();
+  ctrContacts.splice(i,1);
+  ctrRenderContacts();
+}
+
 function showContractorModal() {
   ctrEditId=null;
+  ctrContacts=[];
   document.getElementById('ctr-modal-title').textContent='Add Contractor';
-  ['cf-company','cf-contact','cf-phone','cf-email','cf-website','cf-comments'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.value='';
-  });
+  ['cf-website','cf-comments'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ctrRenderContacts();
   document.getElementById('contractor-modal').style.display='flex';
   setTimeout(function(){var el=document.getElementById('cf-company');if(el)el.focus();},50);
 }
@@ -1830,11 +1920,13 @@ function openContractorModal(id) {
   var f=rec.fields;
   document.getElementById('ctr-modal-title').textContent='Edit Contractor';
   document.getElementById('cf-company').value  = f['Company Name']||'';
-  document.getElementById('cf-contact').value  = f['Contact Name']||'';
-  document.getElementById('cf-phone').value    = f['Contact Number']||'';
-  document.getElementById('cf-email').value    = f['Contact Email']||'';
   document.getElementById('cf-website').value  = f['Website']||'';
   document.getElementById('cf-comments').value = f['Comments']||'';
+  try { ctrContacts=JSON.parse(f['Contacts JSON']||'[]'); } catch(ex){ ctrContacts=[]; }
+  if(!ctrContacts.length && (f['Contact Name']||f['Contact Number']||f['Contact Email'])){
+    ctrContacts=[{name:f['Contact Name']||'',phone:f['Contact Number']||'',email:f['Contact Email']||''}];
+  }
+  ctrRenderContacts();
   document.getElementById('contractor-modal').style.display='flex';
   setTimeout(function(){var el=document.getElementById('cf-company');if(el)el.focus();},50);
 }
@@ -1847,20 +1939,17 @@ function closeContractorModal() {
 async function saveContractor() {
   var company=document.getElementById('cf-company').value.trim();
   if(!company){document.getElementById('cf-company').focus();return;}
+  ctrSyncContacts();
+  var contacts=ctrContacts.filter(function(c){return c.name||c.phone||c.email;});
   var savedId=ctrEditId;
   closeContractorModal();
   setCtrSave('saving');
   var fields={};
-  fields['Company Name']  = company;
-  var contact=document.getElementById('cf-contact').value.trim();
-  var phone  =document.getElementById('cf-phone').value.trim();
-  var email  =document.getElementById('cf-email').value.trim();
-  var comments=document.getElementById('cf-comments').value.trim();
-  fields['Contact Name'] = contact || null;
-  fields['Contact Number'] = phone || null;
-  fields['Contact Email'] = email || null;
+  fields['Company Name']    = company;
+  fields['Contacts JSON']   = contacts.length ? JSON.stringify(contacts) : null;
   var website =document.getElementById('cf-website').value.trim();
-  fields['Website'] = website || null;
+  var comments=document.getElementById('cf-comments').value.trim();
+  fields['Website']  = website  || null;
   fields['Comments'] = comments || null;
   try {
     var url    = savedId ? WORKER_URL+'/contractors/'+savedId : WORKER_URL+'/contractors';
@@ -2338,17 +2427,19 @@ var noteAuthorCache = localStorage.getItem('mbb_author') || '';
 
 function switchTab(tabId) {
   activeTabId = tabId;
-  // Tab buttons: details=0, quotes=1, bidders=2, activity=3
-  var order = ['tab-details','tab-invoices','tab-quotes','tab-bidders','tab-activity'];
-  document.querySelectorAll('.modal-tab').forEach(function(t, i) {
-    t.classList.toggle('active', order[i] === tabId);
+  document.querySelectorAll('.modal-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tabId);
   });
   document.querySelectorAll('.tab-pane').forEach(function(p) {
     p.classList.toggle('active', p.id === tabId);
   });
-  if(tabId === 'tab-activity' && currentEditId) loadActivityForOpportunity(currentEditId);
-  if(tabId === 'tab-bidders'  && currentEditId) loadBidders(currentEditId);
-  if(tabId === 'tab-quotes'   && currentEditId) loadQuotes(currentEditId);
+  if(tabId === 'tab-activity'     && currentEditId) loadActivityForOpportunity(currentEditId);
+  if(tabId === 'tab-bidders'      && currentEditId) loadBidders(currentEditId);
+  if(tabId === 'tab-quotes'       && currentEditId) loadQuotes(currentEditId);
+  if(tabId === 'tab-po-received'  && currentEditId) loadPOReceived(currentEditId);
+  if(tabId === 'tab-po-sent'      && currentEditId) loadPOSent(currentEditId);
+  if(tabId === 'tab-inv-received' && currentEditId) loadInvReceived(currentEditId);
+  if(tabId === 'tab-invoices'     && currentEditId) loadInvoices(currentEditId);
 }
 
 function typeIcon(type) {
@@ -2613,25 +2704,33 @@ openEditModal = function(id) {
   document.querySelectorAll('.modal-tab').forEach(function(t,i){t.classList.toggle('active',i===0);});
   document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.toggle('active',p.id==='tab-details');});
   // Clear stale data from previous opportunity
-  ['activity-list','bidders-list','quotes-list','invoices-list'].forEach(function(elId){
+  ['activity-list','bidders-list','quotes-list','invoices-list','po-received-list','po-sent-list','inv-received-list'].forEach(function(elId){
     var el = document.getElementById(elId);
     if(el) el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--txt3);font-size:13px">Loading…</div>';
   });
   var sumEls = ['quotes-summary','invoices-summary'];
   sumEls.forEach(function(elId){ var el=document.getElementById(elId); if(el) el.style.display='none'; });
+  // Hide add forms from any previous modal session
+  ['add-por-form','add-pos-form','add-ir-form'].forEach(function(fid){
+    var el = document.getElementById(fid); if(el) el.style.display='none';
+  });
+  poReceivedEditId = null; poSentEditId = null; invReceivedEditId = null;
   // Clear caches for this opportunity so fresh data is always fetched
   delete actRecords[id];
   delete bidderRecords[id];
   delete quoteRecords[id];
   delete invoiceRecords[id];
+  delete poReceivedRecords[id];
+  delete poSentRecords[id];
+  delete invReceivedRecords[id];
   // Reset badges
-  ['activity-count-badge','bidders-count-badge','quotes-count-badge','invoices-count-badge'].forEach(function(bid){
+  ['activity-count-badge','bidders-count-badge','quotes-count-badge','invoices-count-badge','po-received-count-badge','po-sent-count-badge','inv-received-count-badge'].forEach(function(bid){
     var el=document.getElementById(bid); if(el) el.textContent='';
   });
   loadActivityForOpportunity(id).then(function(){});
   loadBidders(id);
   if(userRole !== 'engineer' && userRole !== 'viewer') loadQuotes(id);
-  if(userRole === 'admin') loadInvoices(id);
+  if(userRole === 'admin') { loadInvoices(id); loadPOReceived(id); loadPOSent(id); loadInvReceived(id); }
 };
 
 // Also patch closeEditModal to reset currentEditId
@@ -2662,11 +2761,26 @@ document.getElementById('edit-modal').addEventListener('click', function(ev) {
   if(qteEdit) { openEditQuote(qteEdit.dataset.qteEdit); return; }
   var qteDel  = ev.target.closest('[data-qte-del]');
   if(qteDel)  { deleteQuote(qteDel.dataset.qteDel); return; }
-  // Invoices
+  // Invoices (Sent)
   var invEdit = ev.target.closest('[data-inv-edit]');
   if(invEdit) { openEditInvoice(invEdit.dataset.invEdit); return; }
   var invDel  = ev.target.closest('[data-inv-del]');
   if(invDel)  { deleteInvoice(invDel.dataset.invDel); return; }
+  // PO Received
+  var porEdit = ev.target.closest('[data-por-edit]');
+  if(porEdit) { openEditPOR(porEdit.dataset.porEdit); return; }
+  var porDel  = ev.target.closest('[data-por-del]');
+  if(porDel)  { deletePOR(porDel.dataset.porDel); return; }
+  // PO Sent
+  var posEdit = ev.target.closest('[data-pos-edit]');
+  if(posEdit) { openEditPOS(posEdit.dataset.posEdit); return; }
+  var posDel  = ev.target.closest('[data-pos-del]');
+  if(posDel)  { deletePOS(posDel.dataset.posDel); return; }
+  // Invoice Received
+  var irEdit  = ev.target.closest('[data-ir-edit]');
+  if(irEdit)  { openEditIR(irEdit.dataset.irEdit); return; }
+  var irDel   = ev.target.closest('[data-ir-del]');
+  if(irDel)   { deleteIR(irDel.dataset.irDel); return; }
 });
 
 // ── Contractors Export ────────────────────────────────────────────
@@ -2692,15 +2806,25 @@ function exportContractors() {
     '<h1>mBELLAb &mdash; Contractors</h1>'+
     '<div class="sub">Exported '+dateStr+' &nbsp;&middot;&nbsp; '+rows.length+' contractors</div>'+
     '<table><thead><tr>'+
-      '<th>Company Name</th><th>Contact Name</th><th>Contact Number</th><th>Email</th><th>Website</th><th>Comments</th>'+
+      '<th>Company Name</th><th>Contacts</th><th>Website</th><th>Comments</th>'+
     '</tr></thead><tbody>'+
     rows.map(function(r){
       var f=r.fields;
+      var contacts=[];
+      try{contacts=JSON.parse(f['Contacts JSON']||'[]');}catch(ex){}
+      if(!contacts.length && (f['Contact Name']||f['Contact Number']||f['Contact Email'])){
+        contacts=[{name:f['Contact Name']||'',phone:f['Contact Number']||'',email:f['Contact Email']||''}];
+      }
+      var contactsHtml=contacts.length?contacts.map(function(c){
+        var parts=[];
+        if(c.name) parts.push('<b>'+e(c.name)+'</b>');
+        if(c.phone) parts.push(e(c.phone));
+        if(c.email) parts.push('<a href="mailto:'+e(c.email)+'">'+e(c.email)+'</a>');
+        return parts.join(' &middot; ');
+      }).join('<br>'):'—';
       return '<tr>'+
         '<td><b>'+e(f['Company Name']||'')+'</b></td>'+
-        '<td>'+e(f['Contact Name']||'—')+'</td>'+
-        '<td>'+e(f['Contact Number']||'—')+'</td>'+
-        '<td>'+(f['Contact Email']?'<a href="mailto:'+e(f['Contact Email'])+'">'+e(f['Contact Email'])+'</a>':'—')+'</td>'+
+        '<td>'+contactsHtml+'</td>'+
         '<td>'+(f['Website']?'<a href="'+e(f['Website'])+'" target="_blank">'+e((f['Website']||'').replace(/^https?:\/\//,''))+'</a>':'—')+'</td>'+
         '<td>'+e(f['Comments']||'')+'</td>'+
       '</tr>'+notesRow;
@@ -2979,6 +3103,7 @@ function showAddQuoteForm() {
   document.getElementById('qf-desc').value    = '';
   document.getElementById('qf-awarded').value = '';
   document.getElementById('qf-notes').value   = '';
+  document.getElementById('qf-link').value    = '';
   document.getElementById('qf-date').value    = new Date().toISOString().substring(0,10);
   document.getElementById('qf-status').value  = 'Submitted';
   addQuoteFormItem();
@@ -3134,6 +3259,7 @@ function renderQuotesList(opportunityId) {
         '<span style="font-size:12px;font-family:monospace;color:var(--txt2)">Total: <b>'+fmtAED(parseFloat(f['Quote Amount'])||0)+'</b></span>'+
         (parseFloat(f['Awarded Amount'])>0?'<span style="font-size:12px;font-family:monospace;color:var(--green)">Awarded: <b>'+fmtAED(parseFloat(f['Awarded Amount']))+'</b></span>':'')+
         '<span style="font-size:11px;color:var(--txt3)">'+dateStr+'</span>'+
+        (f['SharePoint Link']?'<a href="'+e(f['SharePoint Link'])+'" target="_blank" rel="noopener" style="color:var(--blue);display:inline-flex;align-items:center" title="SharePoint">'+IC_DOCS+'</a>':'')+
         '<button class="btn-ghost" data-q-letter="'+r.id+'" style="font-size:11px;padding:3px 9px;margin-left:auto">&#128196; Quote Letter</button>'+
       '</div>'+
     '</div>';
@@ -3162,6 +3288,7 @@ function openEditQuote(recordId) {
   document.getElementById('qf-date').value    = (f['Date Submitted']||'').substring(0,10);
   document.getElementById('qf-status').value  = f['Status']||'Pending';
   document.getElementById('qf-notes').value   = f['Notes']||'';
+  document.getElementById('qf-link').value    = f['SharePoint Link']||'';
   var existing = (quoteItemRecords[recordId]||[]).slice().sort(function(a,b){
     return (a.fields['SortOrder']||0)-(b.fields['SortOrder']||0);
   });
@@ -3192,6 +3319,7 @@ async function saveQuote() {
     'Awarded Amount': (!isNaN(a) && a > 0) ? a : null,
     'Date Submitted': d || null,
     'Notes':          n || null,
+    'SharePoint Link': document.getElementById('qf-link').value.trim() || null,
   };
   try {
     var url    = savedId ? WORKER_URL+'/quotes/'+savedId : WORKER_URL+'/quotes';
@@ -3642,6 +3770,423 @@ async function confirmDeleteInvoice() {
     var res = await fetch(WORKER_URL+'/invoices/'+id,{method:'DELETE',headers:getHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
     await loadInvoices(currentEditId);
+    toast('Invoice deleted','ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+// ================================================================
+// PO RECEIVED
+// ================================================================
+var poReceivedRecords = {};
+var poReceivedEditId  = null;
+
+function showAddPORForm() {
+  poReceivedEditId = null;
+  ['por-number','por-notes'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('por-amount').value = '';
+  document.getElementById('por-link').value   = '';
+  document.getElementById('por-date').value   = new Date().toISOString().substring(0,10);
+  document.getElementById('por-status').value = 'Pending';
+  document.getElementById('add-por-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('por-number').focus(); }, 50);
+}
+
+function hideAddPORForm() {
+  document.getElementById('add-por-form').style.display = 'none';
+  poReceivedEditId = null;
+}
+
+async function loadPOReceived(opportunityId) {
+  var list = document.getElementById('po-received-list');
+  if(!list) return;
+  try {
+    var res  = await fetch(WORKER_URL+'/po-received?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var recs = (data.records||[]).filter(function(r){
+      return (r.fields['Opportunity']||[]).indexOf(opportunityId) !== -1;
+    });
+    poReceivedRecords[opportunityId] = recs;
+    var badge = document.getElementById('po-received-count-badge');
+    if(badge) badge.textContent = recs.length > 0 ? recs.length : '';
+    renderPORList(opportunityId);
+  } catch(err) {
+    if(list) list.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px 0">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function porStatusStyle(s) {
+  var map = {
+    'Pending':  'background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)',
+    'Received': 'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
+    'Approved': 'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
+  };
+  return map[s]||map['Pending'];
+}
+
+function renderPORList(opportunityId) {
+  var list = document.getElementById('po-received-list');
+  if(!list) return;
+  var recs = poReceivedRecords[opportunityId]||[];
+  if(recs.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No purchase orders received yet. Use the button above to add one.</div>';
+    return;
+  }
+  list.innerHTML = recs.map(function(r){
+    var f      = r.fields;
+    var status = f['Status']||'Pending';
+    var dated  = f['Date'] ? new Date(f['Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    var docBtn = f['SharePoint Link']
+      ? '<a href="'+e(f['SharePoint Link'])+'" target="_blank" rel="noopener" style="color:var(--blue);display:inline-flex;align-items:center">'+IC_DOCS+'</a>'
+      : '<span style="opacity:.25;display:inline-flex;align-items:center">'+IC_DOCS+'</span>';
+    return '<div style="border-bottom:1px solid var(--bdr);padding:10px 0">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">'+
+        '<div style="font-weight:600;font-size:13px;color:var(--txt);min-width:80px;flex-shrink:0">'+e(f['PO Number']||'—')+'</div>'+
+        '<div style="font-size:12px;font-family:monospace;color:var(--txt2);white-space:nowrap;flex-shrink:0">'+fmtAED(f['Amount'])+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3);white-space:nowrap;flex-shrink:0">'+dated+'</div>'+
+        '<span style="font-size:10px;font-family:monospace;padding:2px 6px;border-radius:20px;font-weight:600;flex-shrink:0;'+porStatusStyle(status)+'">'+status+'</span>'+
+        '<div style="flex:1"></div>'+
+        '<div style="flex-shrink:0">'+docBtn+'</div>'+
+        '<button class="icon-btn edit" data-por-edit="'+r.id+'" style="opacity:1;flex-shrink:0">'+IC_PENCIL+'</button>'+
+        '<button class="icon-btn del" data-por-del="'+r.id+'" style="opacity:1;flex-shrink:0">'+IC_TRASH+'</button>'+
+      '</div>'+
+      (f['Notes'] ? '<div style="font-size:11px;color:var(--txt3);font-style:italic;margin-top:4px;padding-left:2px">'+e(f['Notes'])+'</div>' : '')+
+    '</div>';
+  }).join('');
+}
+
+function openEditPOR(recordId) {
+  var rec = (poReceivedRecords[currentEditId]||[]).find(function(r){ return r.id===recordId; });
+  if(!rec) return;
+  poReceivedEditId = recordId;
+  var f = rec.fields;
+  document.getElementById('por-number').value = f['PO Number']||'';
+  document.getElementById('por-amount').value = f['Amount']||'';
+  document.getElementById('por-date').value   = (f['Date']||'').substring(0,10);
+  document.getElementById('por-status').value = f['Status']||'Pending';
+  document.getElementById('por-link').value   = f['SharePoint Link']||'';
+  document.getElementById('por-notes').value  = f['Notes']||'';
+  document.getElementById('add-por-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('por-number').focus(); }, 50);
+}
+
+async function savePOR() {
+  var num = document.getElementById('por-number').value.trim();
+  if(!num){ document.getElementById('por-number').focus(); return; }
+  var savedId = poReceivedEditId;
+  hideAddPORForm();
+  var fields = { 'Opportunity': [currentEditId], 'PO Number': num, 'Status': document.getElementById('por-status').value };
+  var amt = parseFloat(document.getElementById('por-amount').value);
+  fields['Amount']          = (!isNaN(amt) && amt > 0) ? amt : null;
+  fields['Date']            = document.getElementById('por-date').value || null;
+  fields['SharePoint Link'] = document.getElementById('por-link').value.trim() || null;
+  fields['Notes']           = document.getElementById('por-notes').value.trim() || null;
+  try {
+    var url    = savedId ? WORKER_URL+'/po-received/'+savedId : WORKER_URL+'/po-received';
+    var method = savedId ? 'PATCH' : 'POST';
+    var res    = await fetch(url,{method:method,headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    await loadPOReceived(currentEditId);
+    toast((savedId?'PO updated':'PO added'),'ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+var pendingPORDeleteId = null;
+
+function deletePOR(recordId) {
+  pendingPORDeleteId = recordId;
+  document.getElementById('confirm-title').textContent = 'Delete PO?';
+  document.getElementById('confirm-body').innerHTML    = 'This will permanently delete this purchase order.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeletePOR() {
+  if(!pendingPORDeleteId) return;
+  var id = pendingPORDeleteId; pendingPORDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/po-received/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadPOReceived(currentEditId);
+    toast('PO deleted','ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+// ================================================================
+// PO SENT
+// ================================================================
+var poSentRecords  = {};
+var poSentEditId   = null;
+
+function showAddPOSForm() {
+  poSentEditId = null;
+  ['pos-number','pos-notes'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('pos-amount').value = '';
+  document.getElementById('pos-link').value   = '';
+  document.getElementById('pos-date').value   = new Date().toISOString().substring(0,10);
+  document.getElementById('pos-status').value = 'Draft';
+  document.getElementById('add-pos-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('pos-number').focus(); }, 50);
+}
+
+function hideAddPOSForm() {
+  document.getElementById('add-pos-form').style.display = 'none';
+  poSentEditId = null;
+}
+
+async function loadPOSent(opportunityId) {
+  var list = document.getElementById('po-sent-list');
+  if(!list) return;
+  try {
+    var res  = await fetch(WORKER_URL+'/po-sent?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var recs = (data.records||[]).filter(function(r){
+      return (r.fields['Opportunity']||[]).indexOf(opportunityId) !== -1;
+    });
+    poSentRecords[opportunityId] = recs;
+    var badge = document.getElementById('po-sent-count-badge');
+    if(badge) badge.textContent = recs.length > 0 ? recs.length : '';
+    renderPOSList(opportunityId);
+  } catch(err) {
+    if(list) list.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px 0">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function posStatusStyle(s) {
+  var map = {
+    'Draft':        'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
+    'Sent':         'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
+    'Acknowledged': 'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
+  };
+  return map[s]||map['Draft'];
+}
+
+function renderPOSList(opportunityId) {
+  var list = document.getElementById('po-sent-list');
+  if(!list) return;
+  var recs = poSentRecords[opportunityId]||[];
+  if(recs.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No purchase orders sent yet. Use the button above to add one.</div>';
+    return;
+  }
+  list.innerHTML = recs.map(function(r){
+    var f      = r.fields;
+    var status = f['Status']||'Draft';
+    var dated  = f['Date'] ? new Date(f['Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    var docBtn = f['SharePoint Link']
+      ? '<a href="'+e(f['SharePoint Link'])+'" target="_blank" rel="noopener" style="color:var(--blue);display:inline-flex;align-items:center">'+IC_DOCS+'</a>'
+      : '<span style="opacity:.25;display:inline-flex;align-items:center">'+IC_DOCS+'</span>';
+    return '<div style="border-bottom:1px solid var(--bdr);padding:10px 0">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">'+
+        '<div style="font-weight:600;font-size:13px;color:var(--txt);min-width:80px;flex-shrink:0">'+e(f['PO Number']||'—')+'</div>'+
+        '<div style="font-size:12px;font-family:monospace;color:var(--txt2);white-space:nowrap;flex-shrink:0">'+fmtAED(f['Amount'])+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3);white-space:nowrap;flex-shrink:0">'+dated+'</div>'+
+        '<span style="font-size:10px;font-family:monospace;padding:2px 6px;border-radius:20px;font-weight:600;flex-shrink:0;'+posStatusStyle(status)+'">'+status+'</span>'+
+        '<div style="flex:1"></div>'+
+        '<div style="flex-shrink:0">'+docBtn+'</div>'+
+        '<button class="icon-btn edit" data-pos-edit="'+r.id+'" style="opacity:1;flex-shrink:0">'+IC_PENCIL+'</button>'+
+        '<button class="icon-btn del" data-pos-del="'+r.id+'" style="opacity:1;flex-shrink:0">'+IC_TRASH+'</button>'+
+      '</div>'+
+      (f['Notes'] ? '<div style="font-size:11px;color:var(--txt3);font-style:italic;margin-top:4px;padding-left:2px">'+e(f['Notes'])+'</div>' : '')+
+    '</div>';
+  }).join('');
+}
+
+function openEditPOS(recordId) {
+  var rec = (poSentRecords[currentEditId]||[]).find(function(r){ return r.id===recordId; });
+  if(!rec) return;
+  poSentEditId = recordId;
+  var f = rec.fields;
+  document.getElementById('pos-number').value = f['PO Number']||'';
+  document.getElementById('pos-amount').value = f['Amount']||'';
+  document.getElementById('pos-date').value   = (f['Date']||'').substring(0,10);
+  document.getElementById('pos-status').value = f['Status']||'Draft';
+  document.getElementById('pos-link').value   = f['SharePoint Link']||'';
+  document.getElementById('pos-notes').value  = f['Notes']||'';
+  document.getElementById('add-pos-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('pos-number').focus(); }, 50);
+}
+
+async function savePOS() {
+  var num = document.getElementById('pos-number').value.trim();
+  if(!num){ document.getElementById('pos-number').focus(); return; }
+  var savedId = poSentEditId;
+  hideAddPOSForm();
+  var fields = { 'Opportunity': [currentEditId], 'PO Number': num, 'Status': document.getElementById('pos-status').value };
+  var amt = parseFloat(document.getElementById('pos-amount').value);
+  fields['Amount']          = (!isNaN(amt) && amt > 0) ? amt : null;
+  fields['Date']            = document.getElementById('pos-date').value || null;
+  fields['SharePoint Link'] = document.getElementById('pos-link').value.trim() || null;
+  fields['Notes']           = document.getElementById('pos-notes').value.trim() || null;
+  try {
+    var url    = savedId ? WORKER_URL+'/po-sent/'+savedId : WORKER_URL+'/po-sent';
+    var method = savedId ? 'PATCH' : 'POST';
+    var res    = await fetch(url,{method:method,headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    await loadPOSent(currentEditId);
+    toast((savedId?'PO updated':'PO added'),'ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+var pendingPOSDeleteId = null;
+
+function deletePOS(recordId) {
+  pendingPOSDeleteId = recordId;
+  document.getElementById('confirm-title').textContent = 'Delete PO?';
+  document.getElementById('confirm-body').innerHTML    = 'This will permanently delete this purchase order.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeletePOS() {
+  if(!pendingPOSDeleteId) return;
+  var id = pendingPOSDeleteId; pendingPOSDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/po-sent/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadPOSent(currentEditId);
+    toast('PO deleted','ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+// ================================================================
+// INVOICES RECEIVED
+// ================================================================
+var invReceivedRecords = {};
+var invReceivedEditId  = null;
+
+function showAddIRForm() {
+  invReceivedEditId = null;
+  ['ir-number','ir-notes'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('ir-amount').value = '';
+  document.getElementById('ir-link').value   = '';
+  document.getElementById('ir-date').value   = new Date().toISOString().substring(0,10);
+  document.getElementById('ir-status').value = 'Received';
+  document.getElementById('add-ir-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('ir-number').focus(); }, 50);
+}
+
+function hideAddIRForm() {
+  document.getElementById('add-ir-form').style.display = 'none';
+  invReceivedEditId = null;
+}
+
+async function loadInvReceived(opportunityId) {
+  var list = document.getElementById('inv-received-list');
+  if(!list) return;
+  try {
+    var res  = await fetch(WORKER_URL+'/invoices-received?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var recs = (data.records||[]).filter(function(r){
+      return (r.fields['Opportunity']||[]).indexOf(opportunityId) !== -1;
+    });
+    invReceivedRecords[opportunityId] = recs;
+    var badge = document.getElementById('inv-received-count-badge');
+    if(badge) badge.textContent = recs.length > 0 ? recs.length : '';
+    renderIRList(opportunityId);
+  } catch(err) {
+    if(list) list.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px 0">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function irStatusStyle(s) {
+  var map = {
+    'Received': 'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
+    'Approved': 'background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)',
+    'Paid':     'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
+  };
+  return map[s]||map['Received'];
+}
+
+function renderIRList(opportunityId) {
+  var list = document.getElementById('inv-received-list');
+  if(!list) return;
+  var recs = invReceivedRecords[opportunityId]||[];
+  if(recs.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No invoices received yet. Use the button above to add one.</div>';
+    return;
+  }
+  list.innerHTML = recs.map(function(r){
+    var f      = r.fields;
+    var status = f['Status']||'Received';
+    var dated  = f['Date'] ? new Date(f['Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    var docBtn = f['SharePoint Link']
+      ? '<a href="'+e(f['SharePoint Link'])+'" target="_blank" rel="noopener" style="color:var(--blue);display:inline-flex;align-items:center">'+IC_DOCS+'</a>'
+      : '<span style="opacity:.25;display:inline-flex;align-items:center">'+IC_DOCS+'</span>';
+    return '<div style="border-bottom:1px solid var(--bdr);padding:10px 0">'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap">'+
+        '<div style="font-weight:600;font-size:13px;color:var(--txt);min-width:80px;flex-shrink:0">'+e(f['Invoice Number']||'—')+'</div>'+
+        '<div style="font-size:12px;font-family:monospace;color:var(--txt2);white-space:nowrap;flex-shrink:0">'+fmtAED(f['Amount'])+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3);white-space:nowrap;flex-shrink:0">'+dated+'</div>'+
+        '<span style="font-size:10px;font-family:monospace;padding:2px 6px;border-radius:20px;font-weight:600;flex-shrink:0;'+irStatusStyle(status)+'">'+status+'</span>'+
+        '<div style="flex:1"></div>'+
+        '<div style="flex-shrink:0">'+docBtn+'</div>'+
+        '<button class="icon-btn edit" data-ir-edit="'+r.id+'" style="opacity:1;flex-shrink:0">'+IC_PENCIL+'</button>'+
+        '<button class="icon-btn del" data-ir-del="'+r.id+'" style="opacity:1;flex-shrink:0">'+IC_TRASH+'</button>'+
+      '</div>'+
+      (f['Notes'] ? '<div style="font-size:11px;color:var(--txt3);font-style:italic;margin-top:4px;padding-left:2px">'+e(f['Notes'])+'</div>' : '')+
+    '</div>';
+  }).join('');
+}
+
+function openEditIR(recordId) {
+  var rec = (invReceivedRecords[currentEditId]||[]).find(function(r){ return r.id===recordId; });
+  if(!rec) return;
+  invReceivedEditId = recordId;
+  var f = rec.fields;
+  document.getElementById('ir-number').value = f['Invoice Number']||'';
+  document.getElementById('ir-amount').value = f['Amount']||'';
+  document.getElementById('ir-date').value   = (f['Date']||'').substring(0,10);
+  document.getElementById('ir-status').value = f['Status']||'Received';
+  document.getElementById('ir-link').value   = f['SharePoint Link']||'';
+  document.getElementById('ir-notes').value  = f['Notes']||'';
+  document.getElementById('add-ir-form').style.display = 'block';
+  setTimeout(function(){ document.getElementById('ir-number').focus(); }, 50);
+}
+
+async function saveIR() {
+  var num = document.getElementById('ir-number').value.trim();
+  if(!num){ document.getElementById('ir-number').focus(); return; }
+  var savedId = invReceivedEditId;
+  hideAddIRForm();
+  var fields = { 'Opportunity': [currentEditId], 'Invoice Number': num, 'Status': document.getElementById('ir-status').value };
+  var amt = parseFloat(document.getElementById('ir-amount').value);
+  fields['Amount']          = (!isNaN(amt) && amt > 0) ? amt : null;
+  fields['Date']            = document.getElementById('ir-date').value || null;
+  fields['SharePoint Link'] = document.getElementById('ir-link').value.trim() || null;
+  fields['Notes']           = document.getElementById('ir-notes').value.trim() || null;
+  try {
+    var url    = savedId ? WORKER_URL+'/invoices-received/'+savedId : WORKER_URL+'/invoices-received';
+    var method = savedId ? 'PATCH' : 'POST';
+    var res    = await fetch(url,{method:method,headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    await loadInvReceived(currentEditId);
+    toast((savedId?'Invoice updated':'Invoice added'),'ok');
+  } catch(err) { toast('Failed: '+err.message,'err'); }
+}
+
+var pendingIRDeleteId = null;
+
+function deleteIR(recordId) {
+  pendingIRDeleteId = recordId;
+  document.getElementById('confirm-title').textContent = 'Delete invoice?';
+  document.getElementById('confirm-body').innerHTML    = 'This will permanently delete this invoice record.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeleteIR() {
+  if(!pendingIRDeleteId) return;
+  var id = pendingIRDeleteId; pendingIRDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/invoices-received/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadInvReceived(currentEditId);
     toast('Invoice deleted','ok');
   } catch(err) { toast('Failed: '+err.message,'err'); }
 }
@@ -8521,6 +9066,11 @@ document.addEventListener("DOMContentLoaded",async function(){
   themeBtn.onclick=toggleTheme;
   document.body.appendChild(themeBtn);
   applyTheme(localStorage.getItem('mbb_theme')==='dark');
+  var fsCtrl=document.createElement('div');
+  fsCtrl.id='font-size-ctrl';
+  fsCtrl.innerHTML='<button class="fs-minus" onclick="changeFontSize(-'+ZOOM_STEP+')" title="Decrease text size">A−</button><span class="fs-label">100%</span><button class="fs-plus" onclick="changeFontSize('+ZOOM_STEP+')" title="Increase text size">A+</button>';
+  document.body.appendChild(fsCtrl);
+  applyZoom(parseFloat(localStorage.getItem('mbb_zoom')||'1'));
   // Auto-login if cached — runs here so all global arrays are initialised before any show* call
   if(appPassword && currentUser) {
     HEADERS['X-App-Password']=appPassword;
