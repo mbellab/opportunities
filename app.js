@@ -6762,6 +6762,8 @@ async function runIntegrityChecks() {
 
 function showPettyCash() {
   if(!canAccess('petty-cash')){ toast('Access restricted','err'); return; }
+  pcMonth = new Date().getMonth();
+  pcYear  = new Date().getFullYear();
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','passwords-screen',
@@ -6809,12 +6811,39 @@ function pcNextMonth() {
   renderPettyCash();
 }
 
+function pcPickMonth() {
+  var mSel = document.getElementById('pc-month-sel');
+  var ySel = document.getElementById('pc-year-sel');
+  if(mSel) pcMonth = parseInt(mSel.value, 10);
+  if(ySel) pcYear  = parseInt(ySel.value, 10);
+  renderPettyCash();
+}
+
+function pcPopulateSelects() {
+  var mSel = document.getElementById('pc-month-sel');
+  var ySel = document.getElementById('pc-year-sel');
+  if(!mSel || !ySel) return;
+  if(mSel.options.length === 0) {
+    PC_MONTHS.forEach(function(m, i) {
+      var o = document.createElement('option'); o.value = i; o.textContent = m; mSel.appendChild(o);
+    });
+  }
+  if(ySel.options.length === 0) {
+    var curY = new Date().getFullYear();
+    for(var y = curY - 5; y <= curY + 1; y++) {
+      var o = document.createElement('option'); o.value = y; o.textContent = y; ySel.appendChild(o);
+    }
+  }
+  mSel.value = pcMonth;
+  ySel.value = pcYear;
+}
+
 function fmtPCAED(n) {
   return 'AED '+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 
 function renderPettyCash() {
-    document.getElementById('pc-month-label').textContent = PC_MONTHS[pcMonth]+' '+pcYear;
+    pcPopulateSelects();
     var openingBal=0;
     pcRecords.forEach(function(r){
       var d=r.fields['Date']?new Date(r.fields['Date']):null; if(!d) return;
