@@ -722,7 +722,8 @@ function mkDisplayRow(r){
       var sep = lu.indexOf(' - ');
       var datePart = sep !== -1 ? lu.substring(0, sep) : '';
       var notePart = sep !== -1 ? lu.substring(sep + 3) : lu;
-      return '<td class="c-update">'+(datePart ? '<div style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</div>' : '')+(notePart ? '<div style="font-size:10px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(notePart)+'</div>' : '')+'</td>';
+      var tooltipText = r.last_update_full_note || lu;
+      return '<td class="c-update" title="'+e(tooltipText)+'">'+(datePart ? '<div style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</div>' : '')+(notePart ? '<div style="font-size:10px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(notePart)+'</div>' : '')+'</td>';
     })()+
     '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
@@ -2502,11 +2503,14 @@ async function loadActivityForOpportunity(opportunityId) {
     var badge = document.getElementById('activity-count-badge');
     if(badge) badge.textContent = records.length > 0 ? records.length : '';
 
-    // Set last_update_date on item from most recent activity
+    // Set last_update_date and full note on item from most recent activity
     if(records.length > 0) {
       var latestDate = records[0].fields['Date'] || ''; // sorted desc, so first is most recent
       var item = items.find(function(i){return i._id===opportunityId;});
-      if(item) item.last_update_date = latestDate;
+      if(item) {
+        item.last_update_date = latestDate;
+        item.last_update_full_note = records[0].fields['Note'] || '';
+      }
     }
 
     if(records.length === 0) {
@@ -2529,7 +2533,11 @@ async function loadActivityForOpportunity(opportunityId) {
           '<div class="activity-note" id="act-note-'+r.id+'">'+e(f['Note']||'')+'</div>'+
           '<div class="act-edit-form" id="act-edit-'+r.id+'" style="display:none;margin-top:8px">'+
             '<textarea style="width:100%;min-height:60px;margin:0;padding:8px 10px;font-size:13px;border:1px solid var(--amber);border-radius:var(--r);outline:none;resize:vertical;background:var(--bg);color:var(--txt);font-family:sans-serif" id="act-edit-text-'+r.id+'">'+e(f['Note']||'')+'</textarea>'+
-            '<div style="display:flex;gap:8px;margin-top:8px;align-items:center">'+
+            '<div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">'+
+              '<label style="font-size:11px;color:var(--txt3);white-space:nowrap">Type:</label>'+
+              '<select id="act-edit-type-'+r.id+'" style="background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:5px 8px;font-size:12px;color:var(--txt);outline:none">'+
+                ['Update','Call','Meeting','Email','Site Visit','Other'].map(function(t){return '<option value="'+t+'"'+(t===type?' selected':'')+'>'+t+'</option>';}).join('')+
+              '</select>'+
               '<label style="font-size:11px;color:var(--txt3);white-space:nowrap">Date:</label>'+
               '<input type="date" id="act-edit-date-'+r.id+'" value="'+((f['Date']||'').substring(0,10))+'" style="background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:5px 8px;font-size:12px;color:var(--txt);outline:none;flex:1">'+
               '<button class="btn-pri" style="font-size:12px;padding:5px 12px" data-act-save="'+r.id+'">Save</button>'+
@@ -2570,8 +2578,10 @@ async function saveActivityEdit(recordId) {
 
   try {
     var dateEl = document.getElementById('act-edit-date-'+recordId);
+    var typeEl = document.getElementById('act-edit-type-'+recordId);
     var editFields = {'Note': newNote};
     if(dateEl && dateEl.value) editFields['Date'] = new Date(dateEl.value).toISOString();
+    if(typeEl && typeEl.value) editFields['Type'] = typeEl.value;
     var res  = await fetch(WORKER_URL+'/activity/'+recordId, {method:'PATCH', headers:getHeaders(), body:JSON.stringify({fields:editFields})});
     var data = await res.json();
     if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
@@ -2582,6 +2592,7 @@ async function saveActivityEdit(recordId) {
       if(rec) {
         rec.fields['Note'] = newNote;
         if(dateEl && dateEl.value) rec.fields['Date'] = new Date(dateEl.value).toISOString();
+        if(typeEl && typeEl.value) rec.fields['Type'] = typeEl.value;
       }
     }
 
@@ -2608,12 +2619,13 @@ function updateLastUpdateFromActivity(opportunityId) {
   var latest = sorted[0].fields;
   var latestDate = latest['Date'] || '';
   var friendlyDate = latestDate ? fmtFriendlyDate(latestDate) : '';
-  var noteText = (latest['Note']||'').substring(0,80) + ((latest['Note']||'').length>80?'…':'');
+  var noteText = latest['Note'] || '';
   var preview = friendlyDate ? friendlyDate + ' - ' + noteText : noteText;
   var item = items.find(function(i){return i._id===opportunityId;});
   if(item){
     item.last_update = preview;
     item.last_update_date = latestDate;
+    item.last_update_full_note = latest['Note'] || '';
     var rec = allRecords.find(function(r){return r.id===opportunityId;});
     if(rec) rec.fields[F.LAST_UPDATE] = preview;
   }
