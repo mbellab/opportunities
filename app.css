@@ -186,7 +186,7 @@ td{padding:8px 11px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis
 .c-chk{width:44px;text-align:center}
 .c-active{width:72px;text-align:center}
 .c-deadline{width:110px}
-.c-update{width:90px;font-size:12px;color:var(--txt2)}
+.c-update{width:62px;font-size:12px;color:var(--txt2);text-align:center}
 .c-actions{width:68px;text-align:right}
 
 /* ── Badges ── */

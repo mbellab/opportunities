@@ -720,10 +720,9 @@ function mkDisplayRow(r){
     (function(){
       var lu = r.last_update || '';
       var sep = lu.indexOf(' - ');
-      var datePart = sep !== -1 ? lu.substring(0, sep) : '';
-      var notePart = sep !== -1 ? lu.substring(sep + 3) : lu;
+      var datePart = sep !== -1 ? lu.substring(0, sep) : lu;
       var tooltipText = r.last_update_full_note || lu;
-      return '<td class="c-update" title="'+e(tooltipText)+'">'+(datePart ? '<div style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</div>' : '')+(notePart ? '<div style="font-size:10px;color:var(--txt3);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(notePart)+'</div>' : '')+'</td>';
+      return '<td class="c-update" title="'+e(tooltipText)+'">'+(datePart ? '<span style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</span>' : '<span style="color:var(--txt3)">—</span>')+'</td>';
     })()+
     '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
