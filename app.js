@@ -988,6 +988,8 @@ async function saveEditModal() {
   function g(eid){ var el=document.getElementById(eid); return el?el.value.trim():''; }
   var proj = g('ef-proj');
   if(!proj){ document.getElementById('ef-proj').focus(); return; }
+  var saveBtn = document.getElementById('ef-save-btn');
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; saveBtn.textContent = 'Saving…'; }
   var fields = {};
   fields[F.DATE]        = g('ef-date');
   fields[F.PROJECT]     = proj;
@@ -1030,6 +1032,7 @@ async function saveEditModal() {
   }
   renderKPIs(); applyFilters();
   await patchRecord(id, fields);
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.style.opacity = ''; saveBtn.textContent = 'Save Changes'; }
   toast('Changes saved','ok');
 }
 // edit-modal click-outside disabled
