@@ -1028,7 +1028,6 @@ async function saveEditModal() {
       Object.keys(fields).forEach(function(k){ rec.fields[k]=fields[k]; });
     }
   }
-  closeEditModal();
   renderKPIs(); applyFilters();
   await patchRecord(id, fields);
   toast('Changes saved','ok');
