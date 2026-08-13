@@ -68,7 +68,10 @@ var F = {
   LAST_UPDATE:  'Last_Update',
   DEADLINE:     'Deadline',
   ACTIVE:       'Active',
-  DOCS:         'Docs'
+  DOCS:         'Docs',
+  AWARDED_TO:    'Awarded To',
+  AWARDED_PRICE: 'Awarded Price',
+  LOSS_REASON:   'Loss Reason'
 };
 // ================================================================
 
@@ -503,7 +506,8 @@ function parseItems() {
       quotation:s(f[F.QUOTATION]), tech_prop:s(f[F.TECH_PROP]),
       lpo_client:s(f[F.LPO_CLIENT]), lpo_supplier:s(f[F.LPO_SUPPLIER]),
       last_update:s(f[F.LAST_UPDATE]), last_update_date:'', deadline:s(f[F.DEADLINE]), active:s(f[F.ACTIVE]),
-      docs:s(f[F.DOCS])
+      docs:s(f[F.DOCS]),
+      awarded_to:s(f[F.AWARDED_TO]), awarded_price:f[F.AWARDED_PRICE]||null, loss_reason:s(f[F.LOSS_REASON])
     };
   });
   sortItems();
@@ -627,7 +631,12 @@ async function saveEditRow(){
   var savedId=editingId; editingId=null;
   renderKPIs(); applyFilters();
   await patchRecord(savedId,fields);
-  toast('Changes saved','ok');
+  var lostItem = items.find(function(i){ return i._id===savedId; });
+  if(fields[F.STATUS]==='LOST' && lostItem && !lostItem.awarded_to) {
+    toast('Marked as LOST — open the modal to record who won and at what price','');
+  } else {
+    toast('Changes saved','ok');
+  }
 }
 
 // ── Delete ───────────────────────────────────────────────────────
@@ -963,6 +972,10 @@ function openEditModal(id) {
   document.getElementById('ef-prop').value     = item.proposal;
   document.getElementById('ef-deadline').value = item.deadline || '';
   document.getElementById('ef-docs').value     = item.docs || '';
+  document.getElementById('ef-awarded-to').value    = item.awarded_to || '';
+  document.getElementById('ef-awarded-price').value = item.awarded_price != null ? item.awarded_price : '';
+  document.getElementById('ef-loss-reason').value   = item.loss_reason || '';
+  updateLossSection();
   document.getElementById('edit-modal').style.display = 'flex';
   setTimeout(function(){ document.getElementById('ef-proj').focus(); }, 50);
 }
@@ -987,6 +1000,16 @@ async function saveEditModal() {
   var docsVal = g('ef-docs'); if(docsVal) fields[F.DOCS] = docsVal;
   var dlVal = document.getElementById('ef-deadline').value;
   fields[F.DEADLINE] = dlVal || null;
+  if(fields[F.STATUS] === 'LOST') {
+    fields[F.AWARDED_TO]    = g('ef-awarded-to') || null;
+    var apVal = document.getElementById('ef-awarded-price').value;
+    fields[F.AWARDED_PRICE] = apVal !== '' ? parseFloat(apVal) : null;
+    fields[F.LOSS_REASON]   = g('ef-loss-reason') || null;
+  } else {
+    fields[F.AWARDED_TO]    = null;
+    fields[F.AWARDED_PRICE] = null;
+    fields[F.LOSS_REASON]   = null;
+  }
   // Update local item
   var item = items.find(function(i){ return i._id === id; });
   if(item){
@@ -997,6 +1020,9 @@ async function saveEditModal() {
     // Preserve last_update (driven by activity log, not edited directly)
     if(docsVal) item.docs=docsVal;
     item.deadline = dlVal || '';
+    item.awarded_to = fields[F.AWARDED_TO] || '';
+    item.awarded_price = fields[F.AWARDED_PRICE];
+    item.loss_reason = fields[F.LOSS_REASON] || '';
     var rec=allRecords.find(function(r){return r.id===id;});
     if(rec){
       Object.keys(fields).forEach(function(k){ rec.fields[k]=fields[k]; });
@@ -1008,6 +1034,31 @@ async function saveEditModal() {
   toast('Changes saved','ok');
 }
 // edit-modal click-outside disabled
+
+function updateLossSection() {
+  var status = (document.getElementById('ef-status') || {}).value;
+  var sec = document.getElementById('loss-details-section');
+  if(!sec) return;
+  sec.style.display = status === 'LOST' ? 'block' : 'none';
+  if(status === 'LOST') updatePriceGap();
+}
+
+function updatePriceGap() {
+  var id   = (document.getElementById('edit-modal') || {}).dataset.id;
+  var item = id ? items.find(function(i){ return i._id === id; }) : null;
+  var apEl = document.getElementById('ef-awarded-price');
+  var gapWrap = document.getElementById('ef-price-gap-wrap');
+  var gapEl   = document.getElementById('ef-price-gap');
+  if(!apEl || !gapWrap || !gapEl) return;
+  var awardedPrice = parseFloat(apEl.value);
+  if(!item || !awardedPrice || awardedPrice <= 0) { gapWrap.style.display = 'none'; return; }
+  var ourPrice = parseFloat((item.quotation || '').replace(/[^0-9.]/g, ''));
+  if(!ourPrice || ourPrice <= 0) { gapWrap.style.display = 'none'; return; }
+  var pct  = ((ourPrice - awardedPrice) / awardedPrice * 100).toFixed(0);
+  var times = (ourPrice / awardedPrice).toFixed(1);
+  gapEl.textContent = 'Our quote was ' + times + 'x the winner (' + (pct > 0 ? '+' : '') + pct + '% higher)';
+  gapWrap.style.display = '';
+}
 
 
 // ================================================================

@@ -1461,7 +1461,7 @@
       <div class="field"><label>Client</label><input id="ef-client" placeholder="e.g. ADDC, TAQA, NEDC"></div>
       <div class="field"><label>RTU / Substations</label><input id="ef-rtu" placeholder="e.g. 5"></div>
       <div class="field"><label>Status</label>
-        <select id="ef-status">
+        <select id="ef-status" onchange="updateLossSection()">
           <option value="PIPELINE">Pipeline</option>
           <option value="WON">WON</option>
           <option value="LOST">LOST</option>
@@ -1472,6 +1472,27 @@
       <div class="field"><label>Proposal Submitted On</label><input id="ef-prop" type="date"></div>
       <div class="field"><label>Upcoming Deadline</label><input id="ef-deadline" type="date"></div>
       <div class="field full"><label>SharePoint Docs Link</label><input id="ef-docs" type="url" placeholder="https://mbellab.sharepoint.com/&hellip;"></div>
+    </div>
+    <div id="loss-details-section" style="display:none;margin-top:12px;background:var(--red-bg);border:1px solid var(--red-bdr);border-radius:var(--r);padding:14px 16px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--red);margin-bottom:10px">Loss Details</div>
+      <div class="form-grid">
+        <div class="field"><label>Awarded To</label><input id="ef-awarded-to" placeholder="Company name&hellip;"></div>
+        <div class="field"><label>Awarded Price (AED)</label><input id="ef-awarded-price" type="number" step="1" min="0" placeholder="0" oninput="updatePriceGap()"></div>
+        <div class="field"><label>Loss Reason</label>
+          <select id="ef-loss-reason">
+            <option value="">— Select reason —</option>
+            <option value="Price">Price</option>
+            <option value="Technical">Technical</option>
+            <option value="Relationship">Relationship</option>
+            <option value="Late Submission">Late Submission</option>
+            <option value="Unknown">Unknown</option>
+          </select>
+        </div>
+        <div class="field" id="ef-price-gap-wrap" style="display:none">
+          <label>Price Gap vs Winner</label>
+          <div id="ef-price-gap" style="font-size:13px;padding:7px 0;color:var(--red);font-weight:600"></div>
+        </div>
+      </div>
     </div>
     </div><!-- /tab-details -->
     <div id="tab-invoices" class="tab-pane">
