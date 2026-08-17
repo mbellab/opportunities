@@ -2477,6 +2477,34 @@ var actRecords  = {};   // keyed by opportunity record ID
 var activeTabId = 'tab-details';
 var currentEditId = null;  // track which opportunity is open in edit modal
 var noteAuthorCache = localStorage.getItem('mbb_author') || '';
+var allUserNames = [];
+
+function populateAuthorSelect(sel) {
+  if(!sel || !allUserNames.length) return;
+  var current = sel.value || userName || '';
+  sel.innerHTML = '';
+  allUserNames.forEach(function(n){
+    var o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    sel.appendChild(o);
+  });
+  if(current) sel.value = current;
+}
+
+async function loadUserNamesForSelect() {
+  if(allUserNames.length) return;
+  try {
+    var res = await fetch(WORKER_URL+'/users?pageSize=100', {headers:getHeaders()});
+    if(!res.ok) return;
+    var data = await res.json();
+    allUserNames = (data.records||[])
+      .filter(function(r){ return r.fields.Active !== false; })
+      .map(function(r){ return r.fields.Name||''; })
+      .filter(Boolean)
+      .sort();
+    populateAuthorSelect(document.getElementById('note-author'));
+  } catch(e) {}
+}
 
 function switchTab(tabId) {
   activeTabId = tabId;
@@ -2528,6 +2556,8 @@ async function loadActivityForOpportunity(opportunityId) {
   if(!list) return;
   list.innerHTML = '<div class="activity-empty">Loading…</div>';
 
+  await loadUserNamesForSelect();
+
   try {
     // Paginate through all activity records
     var allRecs = [], offset = null;
@@ -2578,7 +2608,7 @@ async function loadActivityForOpportunity(opportunityId) {
         '<div class="activity-body">'+
           '<div class="activity-header">'+
             '<span class="activity-type '+typeCls(type)+'">'+type+'</span>'+
-            (f['Author'] ? '<span class="activity-author">'+e(f['Author'])+'</span>' : '')+
+            '<span class="activity-author" id="act-author-display-'+r.id+'"'+(f['Author']?'':' style="display:none"')+'>'+e(f['Author']||'')+'</span>'+
             '<span class="activity-meta">'+fmtActivityDate(f['Date'])+'</span>'+
             '<button class="icon-btn edit" data-act-edit="'+r.id+'" style="opacity:1;margin-left:auto;color:var(--txt3)">'+IC_PENCIL+'</button>'+'<button class="icon-btn del" data-act-del="'+r.id+'" style="opacity:1;color:var(--txt3)">'+IC_TRASH+'</button>'+
           '</div>'+
@@ -2592,6 +2622,8 @@ async function loadActivityForOpportunity(opportunityId) {
               '</select>'+
               '<label style="font-size:11px;color:var(--txt3);white-space:nowrap">Date:</label>'+
               '<input type="date" id="act-edit-date-'+r.id+'" value="'+((f['Date']||'').substring(0,10))+'" style="background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:5px 8px;font-size:12px;color:var(--txt);outline:none;flex:1">'+
+              '<label style="font-size:11px;color:var(--txt3);white-space:nowrap">By:</label>'+
+              (function(){ var ca=f['Author']||''; var ns=allUserNames.length?allUserNames.slice():[]; if(ca&&ns.indexOf(ca)===-1)ns.unshift(ca); return '<select id="act-edit-author-'+r.id+'" style="background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:5px 8px;font-size:12px;color:var(--txt);outline:none;flex:1;min-width:100px">'+ns.map(function(n){return '<option value="'+e(n)+'"'+(n===ca?' selected':'')+'>'+e(n)+'</option>';}).join('')+'</select>'; })()+
               '<button class="btn-pri" style="font-size:12px;padding:5px 12px" data-act-save="'+r.id+'">Save</button>'+
               '<button class="btn-cancel" style="font-size:12px;padding:5px 12px" data-act-cancel="'+r.id+'">Cancel</button>'+
             '</div>'+
@@ -2629,11 +2661,13 @@ async function saveActivityEdit(recordId) {
   if(saveBtn) { saveBtn.textContent = 'Saving…'; saveBtn.disabled = true; }
 
   try {
-    var dateEl = document.getElementById('act-edit-date-'+recordId);
-    var typeEl = document.getElementById('act-edit-type-'+recordId);
+    var dateEl   = document.getElementById('act-edit-date-'+recordId);
+    var typeEl   = document.getElementById('act-edit-type-'+recordId);
+    var authorEl = document.getElementById('act-edit-author-'+recordId);
     var editFields = {'Note': newNote};
     if(dateEl && dateEl.value) editFields['Date'] = new Date(dateEl.value).toISOString();
     if(typeEl && typeEl.value) editFields['Type'] = typeEl.value;
+    if(authorEl) editFields['Author'] = authorEl.value || null;
     var res  = await fetch(WORKER_URL+'/activity/'+recordId, {method:'PATCH', headers:getHeaders(), body:JSON.stringify({fields:editFields})});
     var data = await res.json();
     if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
@@ -2645,6 +2679,7 @@ async function saveActivityEdit(recordId) {
         rec.fields['Note'] = newNote;
         if(dateEl && dateEl.value) rec.fields['Date'] = new Date(dateEl.value).toISOString();
         if(typeEl && typeEl.value) rec.fields['Type'] = typeEl.value;
+        if(authorEl) rec.fields['Author'] = authorEl.value || null;
       }
     }
 
@@ -2652,6 +2687,11 @@ async function saveActivityEdit(recordId) {
     toggleActivityEdit(recordId, false);
     var noteEl = document.getElementById('act-note-'+recordId);
     if(noteEl) noteEl.textContent = newNote;
+    var authorDisplayEl = document.getElementById('act-author-display-'+recordId);
+    if(authorDisplayEl && authorEl) {
+      authorDisplayEl.textContent = authorEl.value || '';
+      authorDisplayEl.style.display = authorEl.value ? '' : 'none';
+    }
 
     // Update Last Update in main table with latest note (silently)
     updateLastUpdateFromActivity(currentEditId);
@@ -2723,9 +2763,6 @@ async function saveNote() {
   if(!note) { document.getElementById('note-text').focus(); return; }
   if(!currentEditId) return;
 
-  // Cache author name
-  if(author) localStorage.setItem('mbb_author', author);
-
   var btn = document.querySelector('#tab-activity .btn-pri');
   if(btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
 
@@ -2765,9 +2802,11 @@ openEditModal = function(id) {
   currentEditId = id;
   activeTabId   = 'tab-details';
   _origOpenEditModal(id);
-  // Pre-fill author from cache
   var authorEl = document.getElementById('note-author');
-  if(authorEl) authorEl.value = userName || noteAuthorCache || '';
+  if(authorEl) {
+    if(allUserNames.length) populateAuthorSelect(authorEl);
+    else loadUserNamesForSelect();
+  }
   // Reset tabs
   document.querySelectorAll('.modal-tab').forEach(function(t,i){t.classList.toggle('active',i===0);});
   document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.toggle('active',p.id==='tab-details');});
@@ -3554,9 +3593,7 @@ function signOut() {
 function updateAllUserLabels() {
   var label = document.getElementById('home-user-label');
   if(label && userName) label.textContent = userName + (userRole==='viewer' ? ' (viewer)' : '');
-  // Also auto-fill note author
-  var authorEl = document.getElementById('note-author');
-  if(authorEl && userName && !authorEl.value) authorEl.value = userName;
+  loadUserNamesForSelect();
 }
 
 // Call after login and on screen show
@@ -9174,6 +9211,7 @@ document.addEventListener("DOMContentLoaded",async function(){
     document.getElementById('login-screen').style.display='none';
     // Fetch permissions if not cached from a previous session load
     if(!rolePermissions) { await loadPermissions(); }
+    loadUserNamesForSelect();
     applyRoleRestrictions();
     var lastScreen = sessionStorage.getItem('mbb_screen') || 'home';
     if(lastScreen === 'opportunities')  showOpportunities();
