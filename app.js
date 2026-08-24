@@ -3788,8 +3788,12 @@ function renderInvoicesList(opportunityId) {
     return;
   }
 
+  var sorted = recs.slice().sort(function(a,b){
+    return (new Date(b.fields['Date']||0)) - (new Date(a.fields['Date']||0));
+  });
+
   // Card-style rows — no table, everything fits
-  list.innerHTML = recs.map(function(r){
+  list.innerHTML = sorted.map(function(r){
     var f      = r.fields;
     var status = f['Status']||'Draft';
     var dated  = f['Date'] ? new Date(f['Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
