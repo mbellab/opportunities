@@ -3,8 +3,8 @@
 
 const SUPABASE_URL = 'https://wflcmaygrbpuxerikijm.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmbGNtYXlncmJwdXhlcmlraWptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzU2MjA1MywiZXhwIjoyMTAzMTM4MDUzfQ.1_Ziz05z7A0sB_IZENdKLjq8YAu-NKx-EnVQcBtRzmA';
-const RESEND_API_KEY  = 'PASTE_YOUR_RESEND_API_KEY_HERE';
-const NOTIFY_EMAIL    = 'paul.winick@mbellab.com';
+// RESEND_API_KEY is set as a Cloudflare Worker Secret (not hardcoded)
+const NOTIFY_EMAIL = 'paul.winick@mbellab.com';
 
 const CORS = {
   'Access-Control-Allow-Origin':  '*',
@@ -471,10 +471,82 @@ const ROUTES = [
   { prefix: '/payment-terms',       sbTable: 'payment_terms'            },
 ];
 
+// ── Renewals report ───────────────────────────────────────────────
+
+async function sendRenewalsReport(RESEND_API_KEY) {
+  const today  = new Date();
+  const in90   = new Date(today); in90.setDate(today.getDate() + 90);
+  const fmt    = d => d.toISOString().slice(0, 10);
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/renewals?renewal_date=gte.${fmt(today)}&renewal_date=lte.${fmt(in90)}&order=renewal_date.asc`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
+  );
+  const rows = res.ok ? await res.json() : [];
+
+  if (!rows.length) {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from:    'mBELLAb Portal <onboarding@resend.dev>',
+        to:      [NOTIFY_EMAIL],
+        subject: 'Daily Renewals Report — No upcoming renewals in next 90 days',
+        html:    '<p>No renewals are due in the next 90 days.</p>',
+      }),
+    });
+    return;
+  }
+
+  const daysDiff = d => Math.ceil((new Date(d) - today) / 86400000);
+
+  const urgencyColor = days =>
+    days <= 14 ? '#c0392b' : days <= 30 ? '#e67e22' : '#2980b9';
+
+  const rows_html = rows.map(r => {
+    const days  = daysDiff(r.renewal_date);
+    const color = urgencyColor(days);
+    const dateStr = r.renewal_date
+      ? new Date(r.renewal_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+      : '—';
+    return `<tr>
+      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.item_name || '—'}</td>
+      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.supplier || '—'}</td>
+      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${dateStr}</td>
+      <td style="padding:6px 0 6px 0;border-bottom:1px solid #eee;font-weight:700;color:${color}">${days}d</td>
+    </tr>`;
+  }).join('');
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from:    'mBELLAb Portal <onboarding@resend.dev>',
+      to:      [NOTIFY_EMAIL],
+      subject: `Daily Renewals Report — ${rows.length} renewal${rows.length > 1 ? 's' : ''} due in next 90 days`,
+      html: `
+        <p style="font-family:sans-serif">Good morning. Here are the renewals due in the next <strong>90 days</strong>.</p>
+        <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px;width:100%;max-width:600px">
+          <thead>
+            <tr style="color:#666;font-size:12px;text-transform:uppercase;letter-spacing:.5px">
+              <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Item</th>
+              <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Supplier</th>
+              <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Due Date</th>
+              <th style="padding:4px 0 8px 0;text-align:left;font-weight:600">Days</th>
+            </tr>
+          </thead>
+          <tbody>${rows_html}</tbody>
+        </table>
+        <p style="margin-top:16px"><a href="https://mbellab.github.io" style="color:#5c1f25;font-family:sans-serif">Open Portal →</a></p>
+      `,
+    }),
+  });
+}
+
 // ── Main ──────────────────────────────────────────────────────────
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const method = request.method;
     if (method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
@@ -527,18 +599,18 @@ export default {
       return handleTable(method, 'role_permissions', recordId, body, search);
     }
 
-    // ── /suppliers — with email notification on POST ──────────────
+    // ── /suppliers — with email notification on POST ─────────────
     if (path === '/suppliers' || path.startsWith('/suppliers/')) {
       const recordId = path.startsWith('/suppliers/') ? path.slice('/suppliers/'.length) : null;
       const result   = await handleTable(method, 'suppliers', recordId, body, search);
-      if (method === 'POST' && result.status === 200 && RESEND_API_KEY !== 'PASTE_YOUR_RESEND_API_KEY_HERE') {
+      if (method === 'POST' && result.status === 200 && env.RESEND_API_KEY) {
         const fields       = body?.fields || {};
         const supplierName = fields['Supplier Name'] || 'New Supplier';
         const contact      = fields['Contact Person'] || '';
         const products     = fields['Approved Products/Services'] || '';
         fetch('https://api.resend.com/emails', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             from:    'mBELLAb Portal <onboarding@resend.dev>',
             to:      [NOTIFY_EMAIL],
@@ -567,8 +639,40 @@ export default {
       }
     }
 
-    // ── Root → projects ───────────────────────────────────────────
+    // ── Root → projects — with email notification on POST ────────
     const recordId = path.length > 1 ? path.slice(1) : null;
-    return handleTable(method, 'projects', recordId, body, search);
+    const result   = await handleTable(method, 'projects', recordId, body, search);
+    if (method === 'POST' && result.status === 200 && env.RESEND_API_KEY) {
+      const fields  = body?.fields || {};
+      const srNo    = fields['SR. No.']      || '';
+      const client  = fields['Client']        || '';
+      const desc    = fields['Description']   || '';
+      const status  = fields['Status']        || '';
+      fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from:    'mBELLAb Portal <onboarding@resend.dev>',
+          to:      [NOTIFY_EMAIL],
+          subject: `New Project Added${srNo ? ' — ' + srNo : ''}${client ? ' — ' + client : ''}`,
+          html: `
+            <p>A new project has been added to the <strong>mBELLAb Operations Portal</strong>.</p>
+            <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
+              ${srNo   ? `<tr><td style="padding:4px 12px 4px 0;color:#666">SR No.</td><td><strong>${srNo}</strong></td></tr>` : ''}
+              ${client ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Client</td><td>${client}</td></tr>` : ''}
+              ${desc   ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Description</td><td>${desc}</td></tr>` : ''}
+              ${status ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Status</td><td>${status}</td></tr>` : ''}
+            </table>
+            <p><a href="https://mbellab.github.io" style="color:#5c1f25">Open Portal →</a></p>
+          `,
+        }),
+      }).catch(() => {});
+    }
+    return result;
+  },
+
+  // ── Cron: daily renewals report ─────────────────────────────────
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(sendRenewalsReport(env.RESEND_API_KEY));
   },
 };
