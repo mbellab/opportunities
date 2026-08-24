@@ -608,7 +608,7 @@ export default {
         const supplierName = fields['Supplier Name'] || 'New Supplier';
         const contact      = fields['Contact Person'] || '';
         const products     = fields['Approved Products/Services'] || '';
-        fetch('https://api.resend.com/emails', {
+        await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -626,7 +626,7 @@ export default {
               <p><a href="https://mbellab.github.io" style="color:#e36209">Open Portal →</a></p>
             `,
           }),
-        }).catch(() => {});
+        });
       }
       return result;
     }
@@ -648,7 +648,7 @@ export default {
       const client  = fields['Client']        || '';
       const desc    = fields['Description']   || '';
       const status  = fields['Status']        || '';
-      fetch('https://api.resend.com/emails', {
+      await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
