@@ -10694,30 +10694,14 @@ document.addEventListener("DOMContentLoaded",function(){
   </div>
   <div class="body-wrap" style="padding:20px;max-width:760px;margin:0 auto;width:100%;overflow-y:auto">
 
-    <!-- API Call Usage -->
-    <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">API Call Usage</div>
-    <div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Team plan limit is <b style="color:var(--txt)">100,000 calls / month</b>. Tracked locally in your browser as you use the app.</div>
+    <!-- Backend Connection -->
+    <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Backend Connection</div>
+    <div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Data is stored in <b style="color:var(--txt)">Supabase</b> and served via Cloudflare Worker. Call counts are tracked locally in your browser.</div>
     <div id="diag-api-usage" style="border:1px solid var(--bdr2);border-radius:var(--r);padding:14px 16px;margin-bottom:24px;font-size:13px;color:var(--txt3)">Loading…</div>
 
     <!-- Session -->
     <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Session</div>
     <div id="diag-session" style="border:1px solid var(--bdr2);border-radius:var(--r);padding:14px 16px;margin-bottom:24px;font-size:13px;color:var(--txt3)">Loading…</div>
-
-    <!-- Table Row Counts -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-      <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Airtable Row Counts</div>
-      <button id="diag-rowcount-btn" class="btn-ghost" onclick="runRowCounts()" style="font-size:12px;padding:3px 10px">Run Row Counts</button>
-    </div>
-    <div style="font-size:12px;color:var(--txt3);margin-bottom:10px">Rows ≥ 100 shown in amber, ≥ 500 in red. Response time ≥ 1 s amber, ≥ 2 s red.</div>
-    <div id="diag-table-body" style="border:1px solid var(--bdr2);border-radius:var(--r);overflow:hidden">
-      <div style="padding:14px 16px;color:var(--txt3);font-size:13px">Click <b>Run Row Counts</b> to check Airtable table sizes.</div>
-    </div>
-    <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden">
-        <div id="diag-bar" style="height:100%;background:var(--green);border-radius:4px;transition:width .4s;width:0%"></div>
-      </div>
-      <span id="diag-total" style="font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap"></span>
-    </div>
 
     <!-- Leave Health -->
     <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-top:28px;margin-bottom:8px">Leave Health</div>

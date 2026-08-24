@@ -50,7 +50,7 @@ window.APP_LOADED=1;
 // CONFIG
 // ================================================================
 var APP_VERSION = 'v1.7.0  ·  2026-06-14';
-var WORKER_URL = 'https://mbb-enquiry-proxy.paul-winick.workers.dev';
+var WORKER_URL = 'https://mbb-enquiry-proxy-v2.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
   DATE:         'Enquiry Date',
@@ -6500,10 +6500,6 @@ function renderApiUsage(fromTs, toTs) {
     }
   }
 
-  var LIMIT = 100000;
-  var pct = Math.min(Math.round(month / LIMIT * 100), 100);
-  var barCol = pct >= 90 ? 'var(--red)' : pct >= 70 ? 'var(--amber)' : 'var(--green)';
-
   var chipSt = 'display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:4px 12px;font-size:12px;margin:2px 3px';
 
   var topPaths = Object.keys(pathCounts).sort(function(a,b){ return pathCounts[b]-pathCounts[a]; }).slice(0,8);
@@ -6524,16 +6520,15 @@ function renderApiUsage(fromTs, toTs) {
   }
 
   el.innerHTML =
-    '<div style="display:flex;flex-wrap:wrap;margin-bottom:12px">' +
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--bdr)">' +
+      '<span style="'+chipSt+'">Supabase: <b>wflcmaygrbpuxerikijm</b></span>' +
+      '<span style="'+chipSt+'">Worker: <b>mbb-enquiry-proxy-v2</b></span>' +
+      '<span id="diag-conn-status" style="'+chipSt+'">Testing…</span>' +
+    '</div>' +
+    '<div style="display:flex;flex-wrap:wrap;margin-bottom:14px">' +
       '<span style="'+chipSt+'">Today: <b>'+today+'</b></span>' +
       '<span style="'+chipSt+'">Last 7 days: <b>'+week+'</b></span>' +
       '<span style="'+chipSt+'">This month: <b>'+month.toLocaleString()+'</b></span>' +
-    '</div>' +
-    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">' +
-      '<div style="flex:1;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden">' +
-        '<div style="height:100%;background:'+barCol+';border-radius:4px;width:'+pct+'%;transition:width .4s"></div>' +
-      '</div>' +
-      '<span style="font-size:13px;font-weight:600;color:var(--txt);white-space:nowrap">'+month.toLocaleString()+' / 100,000</span>' +
     '</div>' +
     (topPaths.length ?
       '<div style="font-size:11px;color:var(--txt3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Top endpoints this month</div>' +
@@ -6558,26 +6553,30 @@ function renderApiUsage(fromTs, toTs) {
       '<button class="btn-ghost" onclick="localStorage.removeItem(\'mbb_api_log\');renderApiUsage()" style="font-size:12px">Clear log</button>' +
       '<span style="font-size:11px;color:var(--txt3)">'+log.length.toLocaleString()+' entries stored locally</span>' +
     '</div>';
-}
 
-async function countTableFull(path) {
-  var total=0, offset=null;
-  do {
-    var url = WORKER_URL+path+'?pageSize=100'+(offset?'&offset='+offset:'');
-    try {
-      var d = await fetch(url,{headers:getHeaders()}).then(function(r){return r.json();});
-      total += (d.records||[]).length;
-      offset = d.offset||null;
-    } catch(e2){ offset=null; }
-  } while(offset);
-  return total;
+  // Live connection ping
+  fetch(WORKER_URL+'?maxRecords=1', {headers: getHeaders()})
+    .then(function(r) {
+      var cs = document.getElementById('diag-conn-status');
+      if (!cs) return;
+      if (r.ok) {
+        cs.textContent = '✓ Connected';
+        cs.style.color = 'var(--green)';
+        cs.style.background = 'var(--green-bg)';
+        cs.style.borderColor = 'var(--green-bdr)';
+      } else {
+        cs.textContent = '✗ Error ' + r.status;
+        cs.style.color = 'var(--red)';
+      }
+    })
+    .catch(function() {
+      var cs = document.getElementById('diag-conn-status');
+      if (cs) { cs.textContent = '✗ Unreachable'; cs.style.color = 'var(--red)'; }
+    });
 }
 
 function loadDiagnostics() {
   var sessionEl = document.getElementById('diag-session');
-  var body      = document.getElementById('diag-table-body');
-  var bar       = document.getElementById('diag-bar');
-  var tot       = document.getElementById('diag-total');
   var intEl     = document.getElementById('diag-integrity');
   var lvEl      = document.getElementById('diag-leave-health');
   var tsEl      = document.getElementById('diag-timestamp');
@@ -6608,71 +6607,12 @@ function loadDiagnostics() {
       '</div>';
   }
 
-  // Row counts: idle state (run by button)
-  if(body) body.innerHTML='<div style="padding:14px 16px;color:var(--txt3);font-size:13px">Click <b>Run Row Counts</b> to check Airtable table sizes.</div>';
-  if(bar){ bar.style.width='0%'; bar.style.background='var(--green)'; }
-  if(tot) tot.textContent='';
-
   // Integrity / leave health: idle state (run by button)
   var idleSt='padding:12px 16px;color:var(--txt3);font-size:13px';
   if(intEl) intEl.innerHTML='<div style="'+idleSt+'">Click <b>Run Checks</b> below to inspect data integrity.</div>';
   if(lvEl)  lvEl.innerHTML ='<div style="'+idleSt+'">Click <b>Run Checks</b> below to inspect leave health.</div>';
 
   if(tsEl) tsEl.textContent='Last refreshed: '+new Date().toLocaleTimeString();
-}
-
-async function runRowCounts() {
-  var body = document.getElementById('diag-table-body');
-  var bar  = document.getElementById('diag-bar');
-  var tot  = document.getElementById('diag-total');
-  var btn  = document.getElementById('diag-rowcount-btn');
-  if(!body) return;
-  if(btn){ btn.disabled=true; btn.textContent='Running…'; }
-
-  async function countTimed(baseUrl) {
-    var count=0, offset=null, t0=performance.now();
-    do {
-      var u = offset ? baseUrl+'&offset='+offset : baseUrl;
-      var d = await fetch(u,{headers:getHeaders()}).then(function(r){return r.json();}).catch(function(){return {};});
-      count += (d.records||[]).length;
-      offset = d.offset||null;
-    } while(offset);
-    return {count:count, ms:Math.round(performance.now()-t0)};
-  }
-
-  var cellSt = 'display:flex;justify-content:space-between;align-items:center;gap:6px;padding:5px 10px;border-right:1px solid var(--bdr);border-bottom:1px solid var(--bdr)';
-  body.innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid var(--bdr2);border-radius:var(--r);overflow:hidden">'+
-    DIAG_TABLES.map(function(dt,i){
-      return '<div id="diag-row-'+i+'" style="'+cellSt+'">'+
-        '<span style="font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+e(dt.name)+'</span>'+
-        '<span style="font-family:monospace;font-size:11px;color:var(--txt3);white-space:nowrap">…</span>'+
-      '</div>';
-    }).join('')+
-    '</div>';
-  if(bar){ bar.style.width='0%'; bar.style.background='var(--green)'; }
-  if(tot) tot.textContent='';
-
-  var grand = 0;
-  for(var i=0; i<DIAG_TABLES.length; i++){
-    var dt   = DIAG_TABLES[i];
-    var base = dt.url==='/' ? WORKER_URL+'?pageSize=100' : WORKER_URL+dt.url+'?pageSize=100';
-    var res  = await countTimed(base).catch(function(){return {count:0,ms:0};});
-    grand += res.count;
-    var rowEl = document.getElementById('diag-row-'+i);
-    if(rowEl){
-      var rc = res.count>=500?'var(--red)':res.count>=100?'var(--amber)':'var(--txt)';
-      var mc = res.ms>=2000?'var(--red)':res.ms>=1000?'var(--amber)':'var(--txt3)';
-      rowEl.innerHTML =
-        '<span style="font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">'+e(dt.name)+'</span>'+
-        '<span style="font-family:monospace;font-size:12px;font-weight:700;color:'+rc+';white-space:nowrap">'+res.count+'</span>'+
-        '<span style="font-family:monospace;font-size:10px;color:'+mc+';white-space:nowrap;margin-left:4px">'+res.ms+'ms</span>';
-    }
-    var pct = Math.round(grand/1000*100);
-    if(bar){ bar.style.width=pct+'%'; bar.style.background=pct>=90?'var(--red)':pct>=75?'var(--amber)':'var(--green)'; }
-    if(tot) tot.textContent=grand+' / 1,000 rows';
-  }
-  if(btn){ btn.disabled=false; btn.textContent='↻ Re-run Row Counts'; }
 }
 
 async function runIntegrityChecks() {
