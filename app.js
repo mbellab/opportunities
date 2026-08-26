@@ -3003,10 +3003,12 @@ async function loadBidders(opportunityId) {
 
 function statusBadgeStyle(status) {
   var map = {
-    'Bidding':   'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
-    'Won':       'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
-    'Lost':      'background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)',
-    'Withdrawn': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
+    'Bidding':     'background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bdr)',
+    'Won':         'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
+    'Lost':        'background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)',
+    'Withdrawn':   'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
+    'Asked':       'background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)',
+    'Not Bidding': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
   };
   return map[status] || map['Bidding'];
 }
@@ -3031,41 +3033,36 @@ function renderBiddersList(opportunityId) {
     return aName < bName ? -1 : aName > bName ? 1 : 0;
   });
 
-  var TH = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap';
-  list.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed">'+
-    '<colgroup>'+
-      '<col style="width:130px">'+
-      '<col style="width:76px">'+
-      '<col style="">'+
-      '<col style="width:56px">'+
-    '</colgroup>'+
-    '<thead><tr>'+
-      '<th style="'+TH+'">Contractor</th>'+
-      '<th style="'+TH+'">Status</th>'+
-      '<th style="'+TH+'">Comments</th>'+
-      '<th style="border-bottom:2px solid var(--bdr2)"></th>'+
-    '</tr></thead><tbody>'+
+  var COLS = 'display:grid;grid-template-columns:1.2fr 1fr 2fr 80px;align-items:center';
+  var TH   = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace';
+  var ROW  = COLS+';border-bottom:1px solid var(--bdr)';
+  var CELL = 'padding:10px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+  list.innerHTML = '<div style="width:100%;font-size:12px">'+
+    '<div style="'+COLS+';border-bottom:2px solid var(--bdr2)">'+
+      '<div style="'+TH+'">Contractor</div>'+
+      '<div style="'+TH+'">Status</div>'+
+      '<div style="'+TH+'">Comments</div>'+
+      '<div></div>'+
+    '</div>'+
     records.map(function(r){
       var f = r.fields;
-      // Contractor name comes from lookup field
-      // Look up contractor name from local ctrRecords by linked ID
       var ctrId  = (f['Contractor']||[])[0] || null;
       var ctrRec = ctrId ? ctrRecords.find(function(r){ return r.id===ctrId; }) : null;
       var cName  = ctrRec ? (ctrRec.fields['Company Name']||'Unknown') : (f['Contractor']||'—');
       var status = f['Status']||'Bidding';
-      return '<tr data-bid-id="'+r.id+'">'+
-        '<td style="padding:10px;font-weight:500;color:var(--txt);border-bottom:1px solid var(--bdr)">'+e(cName)+'</td>'+
-        '<td style="padding:10px;border-bottom:1px solid var(--bdr)">'+
+      return '<div style="'+ROW+'" data-bid-id="'+r.id+'">'+
+        '<div style="'+CELL+';font-weight:500;color:var(--txt)" title="'+e(cName)+'">'+e(cName)+'</div>'+
+        '<div style="padding:10px 8px">'+
           '<span style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;font-weight:600;'+statusBadgeStyle(status)+'">'+status+'</span>'+
-        '</td>'+
-        '<td style="padding:10px;color:var(--txt2);border-bottom:1px solid var(--bdr)">'+e(f['Comments']||'')+'</td>'+
-        '<td style="padding:10px;border-bottom:1px solid var(--bdr);white-space:nowrap;text-align:right">'+
+        '</div>'+
+        '<div style="'+CELL+';color:var(--txt2)" title="'+e(f['Comments']||'')+'">'+e(f['Comments']||'')+'</div>'+
+        '<div style="padding:10px 8px;text-align:right;white-space:nowrap">'+
           '<button class="icon-btn edit" data-bid-edit="'+r.id+'" style="opacity:1">'+IC_PENCIL+'</button>'+
           '<button class="icon-btn del" data-bid-del="'+r.id+'" style="opacity:1">'+IC_TRASH+'</button>'+
-        '</td>'+
-      '</tr>';
+        '</div>'+
+      '</div>';
     }).join('')+
-    '</tbody></table>';
+  '</div>';
 
   // Delegation handled by global edit-modal listener below
 }

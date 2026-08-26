@@ -250,10 +250,10 @@ tbody tr:hover .icon-btn{opacity:1}
 .opp-modal-status-pill{font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
 .opp-modal-name{font-size:15px;font-weight:600;color:var(--txt);line-height:1.35}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.field{display:flex;flex-direction:column;gap:5px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field.full{grid-column:1/-1}
 .field label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:'IBM Plex Mono',monospace}
-.field input,.field select{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:8px 10px;font-size:13px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none}
+.field input,.field select{background:var(--bg);border:1px solid var(--bdr2);border-radius:var(--r);padding:8px 10px;font-size:13px;color:var(--txt);font-family:'IBM Plex Sans',sans-serif;outline:none;width:100%;box-sizing:border-box}
 .field input:focus,.field select:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-bg)}
 .field input::placeholder{color:var(--txt3)}
 .field input[readonly]{background:var(--bg2);color:var(--txt3);cursor:default}
@@ -312,7 +312,7 @@ tbody tr:hover .icon-btn{opacity:1}
 .modal-tab:hover{color:var(--txt)}
 .modal-tab.active{color:var(--amber);border-bottom-color:var(--amber);font-weight:600}
 .tab-pane{display:none}
-.tab-pane.active{display:block;flex:1;overflow-y:auto;min-height:0}
+.tab-pane.active{display:block;flex:1;overflow-y:auto;min-height:0;scrollbar-gutter:stable}
 .activity-list{display:flex;flex-direction:column;gap:0}
 .activity-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--bdr)}
 .activity-item:last-child{border-bottom:none}
