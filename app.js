@@ -71,7 +71,8 @@ var F = {
   DOCS:         'Docs',
   AWARDED_TO:    'Awarded To',
   AWARDED_PRICE: 'Awarded Price',
-  LOSS_REASON:   'Loss Reason'
+  LOSS_REASON:   'Loss Reason',
+  NEXT_STEPS:    'Next Steps'
 };
 // ================================================================
 
@@ -507,7 +508,8 @@ function parseItems() {
       lpo_client:s(f[F.LPO_CLIENT]), lpo_supplier:s(f[F.LPO_SUPPLIER]),
       last_update:s(f[F.LAST_UPDATE]), last_update_date:'', deadline:s(f[F.DEADLINE]), active:s(f[F.ACTIVE]),
       docs:s(f[F.DOCS]),
-      awarded_to:s(f[F.AWARDED_TO]), awarded_price:f[F.AWARDED_PRICE]||null, loss_reason:s(f[F.LOSS_REASON])
+      awarded_to:s(f[F.AWARDED_TO]), awarded_price:f[F.AWARDED_PRICE]||null, loss_reason:s(f[F.LOSS_REASON]),
+      next_steps:s(f[F.NEXT_STEPS])
     };
   });
   sortItems();
@@ -658,6 +660,7 @@ function confirmDelete(){
   if(pendingIRDeleteId)       { confirmDeleteIR(); return; }
   if(pendingQuoteDeleteId)    { confirmDeleteQuote(); return; }
   if(pendingBidderDeleteId)   { confirmDeleteBidder(); return; }
+  if(pendingOemDeleteId)      { confirmDeleteOemEnquiry(); return; }
   if(pendingActivityDeleteId) { confirmDeleteActivityNote(); return; }
   if(pendingPCDeleteId)       { confirmDeletePCTransaction(); return; }
   if(pendingPTDeleteId)       { confirmDeletePaymentTerm(); return; }
@@ -2514,9 +2517,11 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-pane').forEach(function(p) {
     p.classList.toggle('active', p.id === tabId);
   });
-  if(tabId === 'tab-activity'     && currentEditId) loadActivityForOpportunity(currentEditId);
-  if(tabId === 'tab-bidders'      && currentEditId) loadBidders(currentEditId);
-  if(tabId === 'tab-quotes'       && currentEditId) loadQuotes(currentEditId);
+  if(tabId === 'tab-activity'       && currentEditId) loadActivityForOpportunity(currentEditId);
+  if(tabId === 'tab-bidders'        && currentEditId) loadBidders(currentEditId);
+  if(tabId === 'tab-oem-enquiries'  && currentEditId) loadOemEnquiries(currentEditId);
+  if(tabId === 'tab-report'         && currentEditId) renderReport(currentEditId);
+  if(tabId === 'tab-quotes'         && currentEditId) loadQuotes(currentEditId);
   if(tabId === 'tab-po-received'  && currentEditId) loadPOReceived(currentEditId);
   if(tabId === 'tab-po-sent'      && currentEditId) loadPOSent(currentEditId);
   if(tabId === 'tab-inv-received' && currentEditId) loadInvReceived(currentEditId);
@@ -2811,31 +2816,33 @@ openEditModal = function(id) {
   document.querySelectorAll('.modal-tab').forEach(function(t,i){t.classList.toggle('active',i===0);});
   document.querySelectorAll('.tab-pane').forEach(function(p){p.classList.toggle('active',p.id==='tab-details');});
   // Clear stale data from previous opportunity
-  ['activity-list','bidders-list','quotes-list','invoices-list','po-received-list','po-sent-list','inv-received-list'].forEach(function(elId){
+  ['activity-list','bidders-list','oem-enquiries-list','quotes-list','invoices-list','po-received-list','po-sent-list','inv-received-list'].forEach(function(elId){
     var el = document.getElementById(elId);
     if(el) el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--txt3);font-size:13px">Loading…</div>';
   });
   var sumEls = ['quotes-summary','invoices-summary'];
   sumEls.forEach(function(elId){ var el=document.getElementById(elId); if(el) el.style.display='none'; });
   // Hide add forms from any previous modal session
-  ['add-por-form','add-pos-form','add-ir-form'].forEach(function(fid){
+  ['add-por-form','add-pos-form','add-ir-form','add-oem-form'].forEach(function(fid){
     var el = document.getElementById(fid); if(el) el.style.display='none';
   });
-  poReceivedEditId = null; poSentEditId = null; invReceivedEditId = null;
+  poReceivedEditId = null; poSentEditId = null; invReceivedEditId = null; oemEditId = null;
   // Clear caches for this opportunity so fresh data is always fetched
   delete actRecords[id];
   delete bidderRecords[id];
+  delete oemRecords[id];
   delete quoteRecords[id];
   delete invoiceRecords[id];
   delete poReceivedRecords[id];
   delete poSentRecords[id];
   delete invReceivedRecords[id];
   // Reset badges
-  ['activity-count-badge','bidders-count-badge','quotes-count-badge','invoices-count-badge','po-received-count-badge','po-sent-count-badge','inv-received-count-badge'].forEach(function(bid){
+  ['activity-count-badge','bidders-count-badge','oem-count-badge','quotes-count-badge','invoices-count-badge','po-received-count-badge','po-sent-count-badge','inv-received-count-badge'].forEach(function(bid){
     var el=document.getElementById(bid); if(el) el.textContent='';
   });
   loadActivityForOpportunity(id).then(function(){});
   loadBidders(id);
+  loadOemEnquiries(id);
   if(userRole !== 'engineer' && userRole !== 'viewer') loadQuotes(id);
   if(userRole === 'admin') { loadInvoices(id); loadPOReceived(id); loadPOSent(id); loadInvReceived(id); }
 };
@@ -2863,6 +2870,11 @@ document.getElementById('edit-modal').addEventListener('click', function(ev) {
   if(bidEdit) { openEditBidder(bidEdit.dataset.bidEdit); return; }
   var bidDel  = ev.target.closest('[data-bid-del]');
   if(bidDel)  { deleteBidder(bidDel.dataset.bidDel); return; }
+  // OEM Enquiries
+  var oemEdit = ev.target.closest('[data-oem-edit]');
+  if(oemEdit) { openEditOem(oemEdit.dataset.oemEdit); return; }
+  var oemDel  = ev.target.closest('[data-oem-del]');
+  if(oemDel)  { deleteOemEnquiry(oemDel.dataset.oemDel); return; }
   // Quotes
   var qteEdit = ev.target.closest('[data-qte-edit]');
   if(qteEdit) { openEditQuote(qteEdit.dataset.qteEdit); return; }
@@ -2949,6 +2961,8 @@ function showAddBidderForm() {
   bidderEditId = null;
   document.getElementById('add-bidder-form').style.display = 'block';
   document.getElementById('bidder-comments').value = '';
+  document.getElementById('bidder-boq-received').value = '';
+  document.getElementById('bidder-offer-sent').value = '';
   document.getElementById('bidder-status-sel').value = 'Bidding';
   if(ctrRecords.length === 0) {
     loadContractors().then(function(){ populateBidderContractorDropdown(null); });
@@ -3033,7 +3047,7 @@ function renderBiddersList(opportunityId) {
     return aName < bName ? -1 : aName > bName ? 1 : 0;
   });
 
-  var COLS = 'display:grid;grid-template-columns:1.2fr 1fr 2fr 80px;align-items:center';
+  var COLS = 'display:grid;grid-template-columns:1.4fr 1fr 110px 110px 1.8fr 80px;align-items:center';
   var TH   = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace';
   var ROW  = COLS+';border-bottom:1px solid var(--bdr)';
   var CELL = 'padding:10px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
@@ -3041,6 +3055,8 @@ function renderBiddersList(opportunityId) {
     '<div style="'+COLS+';border-bottom:2px solid var(--bdr2)">'+
       '<div style="'+TH+'">Contractor</div>'+
       '<div style="'+TH+'">Status</div>'+
+      '<div style="'+TH+'">BOQ</div>'+
+      '<div style="'+TH+'">Offer Sent</div>'+
       '<div style="'+TH+'">Comments</div>'+
       '<div></div>'+
     '</div>'+
@@ -3050,11 +3066,19 @@ function renderBiddersList(opportunityId) {
       var ctrRec = ctrId ? ctrRecords.find(function(r){ return r.id===ctrId; }) : null;
       var cName  = ctrRec ? (ctrRec.fields['Company Name']||'Unknown') : (f['Contractor']||'—');
       var status = f['Status']||'Bidding';
+      var boqDate   = f['BOQ Received'] ? fmtDate(f['BOQ Received']) : '';
+      var offerDate = f['Offer Sent']   ? fmtDate(f['Offer Sent'])   : '';
+      function dateBadge(date, cls) {
+        if(date) return '<span style="font-size:11px;font-family:monospace;padding:2px 6px;border-radius:4px;background:var(--'+cls+'-bg);color:var(--'+cls+')">'+e(date)+'</span>';
+        return '<span style="color:var(--txt3)">—</span>';
+      }
       return '<div style="'+ROW+'" data-bid-id="'+r.id+'">'+
         '<div style="'+CELL+';font-weight:500;color:var(--txt)" title="'+e(cName)+'">'+e(cName)+'</div>'+
         '<div style="padding:10px 8px">'+
           '<span style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;font-weight:600;'+statusBadgeStyle(status)+'">'+status+'</span>'+
         '</div>'+
+        '<div style="padding:10px 8px;white-space:nowrap">'+dateBadge(boqDate,'green')+'</div>'+
+        '<div style="padding:10px 8px;white-space:nowrap">'+dateBadge(offerDate,'blue')+'</div>'+
         '<div style="'+CELL+';color:var(--txt2)" title="'+e(f['Comments']||'')+'">'+e(f['Comments']||'')+'</div>'+
         '<div style="padding:10px 8px;text-align:right;white-space:nowrap">'+
           '<button class="icon-btn edit" data-bid-edit="'+r.id+'" style="opacity:1">'+IC_PENCIL+'</button>'+
@@ -3078,6 +3102,8 @@ function openEditBidder(recordId) {
   document.getElementById('add-bidder-form').style.display = 'block';
   document.getElementById('bidder-status-sel').value = f['Status']||'Bidding';
   document.getElementById('bidder-comments').value  = f['Comments']||'';
+  document.getElementById('bidder-boq-received').value = f['BOQ Received']||'';
+  document.getElementById('bidder-offer-sent').value   = f['Offer Sent']||'';
   // Populate and select contractor
   var sel = document.getElementById('bidder-contractor-sel');
   var linkedId = (f['Contractor']||[])[0] || '';
@@ -3089,6 +3115,8 @@ async function saveBidder() {
   var ctrId    = sel.value;
   var status   = document.getElementById('bidder-status-sel').value;
   var comments = document.getElementById('bidder-comments').value.trim();
+  var boqDate   = document.getElementById('bidder-boq-received').value || null;
+  var offerDate = document.getElementById('bidder-offer-sent').value   || null;
 
   if(!ctrId) { sel.focus(); return; }
 
@@ -3096,9 +3124,11 @@ async function saveBidder() {
   hideAddBidderForm();
 
   var fields = {
-    'Opportunity': [currentEditId],
-    'Contractor':  [ctrId],
-    'Status':      status,
+    'Opportunity':  [currentEditId],
+    'Contractor':   [ctrId],
+    'Status':       status,
+    'BOQ Received': boqDate,
+    'Offer Sent':   offerDate,
   };
   fields['Comments'] = comments || null;
 
@@ -3136,6 +3166,539 @@ async function confirmDeleteBidder() {
     toast('Bidder removed','ok');
   } catch(err) {
     toast('Failed: '+err.message,'err');
+  }
+}
+
+// ================================================================
+// OEM ENQUIRIES
+// ================================================================
+var oemRecords = {};  // keyed by opportunity ID
+var oemEditId  = null;
+
+function showAddOemForm() {
+  oemEditId = null;
+  document.getElementById('add-oem-form').style.display = 'block';
+  document.getElementById('oem-date-sent').value     = '';
+  document.getElementById('oem-date-received').value = '';
+  document.getElementById('oem-offer-price').value   = '';
+  document.getElementById('oem-notes').value         = '';
+  if(supRecords.length === 0) {
+    loadSuppliers().then(function(){ populateOemSupplierDropdown(null); });
+  } else {
+    populateOemSupplierDropdown(null);
+  }
+}
+
+function populateOemSupplierDropdown(selectedId) {
+  var sel = document.getElementById('oem-supplier-sel');
+  if(!sel) return;
+  var names = supRecords
+    .map(function(r){ return {id: r.id, name: r.fields['Supplier Name']||''}; })
+    .filter(function(s){ return s.name; })
+    .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  sel.innerHTML = '<option value="">— Select OEM —</option>' +
+    names.map(function(s){
+      return '<option value="'+s.id+'"'+(s.id===selectedId?' selected':'')+'>'+e(s.name)+'</option>';
+    }).join('');
+}
+
+function hideAddOemForm() {
+  document.getElementById('add-oem-form').style.display = 'none';
+  oemEditId = null;
+}
+
+async function loadOemEnquiries(opportunityId) {
+  var list = document.getElementById('oem-enquiries-list');
+  if(!list) return;
+  try {
+    var [res] = await Promise.all([
+      fetch(WORKER_URL + '/oem-enquiries?pageSize=100', {headers: getHeaders()}),
+      supRecords.length === 0 ? loadSuppliers() : Promise.resolve(),
+    ]);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var all  = data.records || [];
+    var records = all.filter(function(r){
+      return (r.fields['Opportunity']||[]).indexOf(opportunityId) !== -1;
+    });
+    oemRecords[opportunityId] = records;
+    var badge = document.getElementById('oem-count-badge');
+    if(badge) badge.textContent = records.length > 0 ? records.length : '';
+    renderOemList(opportunityId);
+  } catch(err) {
+    if(list) list.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px 0">Failed to load OEM enquiries: '+err.message+'</div>';
+  }
+}
+
+function renderOemList(opportunityId) {
+  var list = document.getElementById('oem-enquiries-list');
+  if(!list) return;
+  var records = oemRecords[opportunityId] || [];
+
+  if(records.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--txt3);font-size:13px">No OEM enquiries recorded yet.<br>Use the button above to add one.</div>';
+    return;
+  }
+
+  records = records.slice().sort(function(a,b){
+    var ad = a.fields['Date Sent']||'';
+    var bd = b.fields['Date Sent']||'';
+    return ad < bd ? -1 : ad > bd ? 1 : 0;
+  });
+
+  var COLS = 'display:grid;grid-template-columns:1.5fr 100px 100px 110px 2fr 80px;align-items:center';
+  var TH   = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace';
+  var ROW  = COLS+';border-bottom:1px solid var(--bdr)';
+  var CELL = 'padding:10px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+
+  list.innerHTML = '<div style="width:100%;font-size:12px">'+
+    '<div style="'+COLS+';border-bottom:2px solid var(--bdr2)">'+
+      '<div style="'+TH+'">OEM</div>'+
+      '<div style="'+TH+'">Sent</div>'+
+      '<div style="'+TH+'">Received</div>'+
+      '<div style="'+TH+'">Offer Price</div>'+
+      '<div style="'+TH+'">Notes</div>'+
+      '<div></div>'+
+    '</div>'+
+    records.map(function(r){
+      var f = r.fields;
+      var supId  = (f['Supplier']||[])[0] || null;
+      var supRec = supId ? supRecords.find(function(s){ return s.id===supId; }) : null;
+      var supName = supRec ? (supRec.fields['Supplier Name']||'Unknown') : '—';
+      var sent     = f['Date Sent']     ? fmtDate(f['Date Sent'])     : '—';
+      var received = f['Date Received'] ? fmtDate(f['Date Received']) : '';
+      var price    = f['Offer Price']   != null ? 'AED '+Number(f['Offer Price']).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+
+      var statusStyle, statusLabel;
+      if(received) {
+        statusStyle = 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;background:var(--green-bg);color:var(--green)';
+        statusLabel = received;
+      } else {
+        statusStyle = 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;background:var(--amber-bg);color:var(--amber)';
+        statusLabel = 'Awaiting';
+      }
+
+      return '<div style="'+ROW+'" data-oem-id="'+r.id+'">'+
+        '<div style="'+CELL+';font-weight:500;color:var(--txt)" title="'+e(supName)+'">'+e(supName)+'</div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt2)">'+e(sent)+'</div>'+
+        '<div style="padding:10px 8px"><span style="'+statusStyle+'">'+e(statusLabel)+'</span></div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt)">'+e(price)+'</div>'+
+        '<div style="'+CELL+';color:var(--txt2)" title="'+e(f['Notes']||'')+'">'+e(f['Notes']||'')+'</div>'+
+        '<div style="padding:10px 8px;text-align:right;white-space:nowrap">'+
+          '<button class="icon-btn edit" data-oem-edit="'+r.id+'" style="opacity:1">'+IC_PENCIL+'</button>'+
+          '<button class="icon-btn del" data-oem-del="'+r.id+'" style="opacity:1">'+IC_TRASH+'</button>'+
+        '</div>'+
+      '</div>';
+    }).join('')+
+  '</div>';
+}
+
+function openEditOem(recordId) {
+  var rec = (oemRecords[currentEditId]||[]).find(function(r){ return r.id===recordId; });
+  if(!rec) return;
+  oemEditId = recordId;
+  var f = rec.fields;
+  document.getElementById('add-oem-form').style.display = 'block';
+  document.getElementById('oem-date-sent').value     = f['Date Sent']||'';
+  document.getElementById('oem-date-received').value = f['Date Received']||'';
+  document.getElementById('oem-offer-price').value   = f['Offer Price']!=null ? f['Offer Price'] : '';
+  document.getElementById('oem-notes').value         = f['Notes']||'';
+  var supId = (f['Supplier']||[])[0] || null;
+  if(supRecords.length === 0) {
+    loadSuppliers().then(function(){ populateOemSupplierDropdown(supId); });
+  } else {
+    populateOemSupplierDropdown(supId);
+  }
+}
+
+async function saveOemEnquiry() {
+  var supSel    = document.getElementById('oem-supplier-sel');
+  var supId     = supSel.value;
+  var dateSent  = document.getElementById('oem-date-sent').value || null;
+  var dateRecv  = document.getElementById('oem-date-received').value || null;
+  var priceRaw  = document.getElementById('oem-offer-price').value;
+  var price     = priceRaw !== '' ? parseFloat(priceRaw) : null;
+  var notes     = document.getElementById('oem-notes').value.trim() || null;
+
+  if(!supId) { supSel.focus(); return; }
+
+  var savedEditId = oemEditId;
+  hideAddOemForm();
+
+  var fields = {
+    'Opportunity':   [currentEditId],
+    'Supplier':      [supId],
+    'Date Sent':     dateSent,
+    'Date Received': dateRecv,
+    'Offer Price':   price,
+    'Notes':         notes,
+  };
+
+  try {
+    var url    = savedEditId ? WORKER_URL+'/oem-enquiries/'+savedEditId : WORKER_URL+'/oem-enquiries';
+    var method = savedEditId ? 'PATCH' : 'POST';
+    var res    = await fetch(url, {method:method, headers:getHeaders(), body:JSON.stringify({fields:fields})});
+    var data   = await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    await loadOemEnquiries(currentEditId);
+    toast((savedEditId ? 'OEM enquiry updated' : 'OEM enquiry added'), 'ok');
+  } catch(err) {
+    toast('Failed: '+err.message, 'err');
+  }
+}
+
+var pendingOemDeleteId = null;
+
+function deleteOemEnquiry(recordId) {
+  pendingOemDeleteId = recordId;
+  document.getElementById('confirm-title').textContent = 'Remove OEM enquiry?';
+  document.getElementById('confirm-body').innerHTML = 'This will remove this OEM enquiry.<br><br>This cannot be undone.';
+  document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+async function confirmDeleteOemEnquiry() {
+  if(!pendingOemDeleteId) return;
+  var recordId = pendingOemDeleteId;
+  pendingOemDeleteId = null;
+  closeConfirm();
+  try {
+    var res = await fetch(WORKER_URL+'/oem-enquiries/'+recordId, {method:'DELETE', headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    await loadOemEnquiries(currentEditId);
+    toast('OEM enquiry removed', 'ok');
+  } catch(err) {
+    toast('Failed: '+err.message, 'err');
+  }
+}
+
+// ================================================================
+// REPORT
+// ================================================================
+
+var _nextStepsSaveTimer = null;
+
+function saveNextStepsDebounced() {
+  clearTimeout(_nextStepsSaveTimer);
+  _nextStepsSaveTimer = setTimeout(saveNextSteps, 800);
+}
+
+async function saveNextSteps() {
+  var text = (document.getElementById('report-next-steps').value||'').trim();
+  var item = items.find(function(i){ return i._id === currentEditId; });
+  if(!item) return;
+  if(item.next_steps === text) return;
+  item.next_steps = text;
+  setSave('saving');
+  try {
+    await patchRecord(currentEditId, {[F.NEXT_STEPS]: text || null});
+    setSave('saved');
+  } catch(err) {
+    setSave('err');
+  }
+}
+
+function _rptBidders(opportunityId) {
+  return (bidderRecords[opportunityId] || []).slice().sort(function(a, b) {
+    var aId = (a.fields['Contractor']||[])[0];
+    var bId = (b.fields['Contractor']||[])[0];
+    var aR  = aId ? ctrRecords.find(function(r){return r.id===aId;}) : null;
+    var bR  = bId ? ctrRecords.find(function(r){return r.id===bId;}) : null;
+    return ((aR&&aR.fields['Company Name'])||'').localeCompare((bR&&bR.fields['Company Name'])||'');
+  });
+}
+
+function _rptOems(opportunityId) {
+  return (oemRecords[opportunityId] || []).slice().sort(function(a, b) {
+    return (a.fields['Date Sent']||'').localeCompare(b.fields['Date Sent']||'');
+  });
+}
+
+function buildReportHtml(opportunityId, nextSteps) {
+  var item = items.find(function(i){ return i._id === opportunityId; });
+  if(!item) return null;
+  var srNo     = item.sr_no    || '';
+  var projName = item.project  || '—';
+  var client   = item.client   || '—';
+  var status   = item.status   || '—';
+  var deadline = item.deadline ? fmtDate(item.deadline) : '—';
+  var proposal = item.proposal ? fmtDate(item.proposal) : '—';
+  var today    = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'});
+  var bidders  = _rptBidders(opportunityId);
+  var oems     = _rptOems(opportunityId);
+  var quotes   = quoteRecords[opportunityId] || [];
+
+  function td(content, extra) { return '<td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;font-size:13px;'+(extra||'')+'">'+content+'</td>'; }
+  function th(content) { return '<th style="padding:6px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb">'+content+'</th>'; }
+  function secHead(title, count) { return '<h3 style="margin:28px 0 10px;font-size:12px;font-family:monospace;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:6px">'+title+(count!==undefined?' ('+count+')':'')+'</h3>'; }
+
+  var confirmedB = bidders.filter(function(r){ return (r.fields['Status']||'Bidding')==='Bidding'; }).length;
+  var askedB     = bidders.filter(function(r){ return (r.fields['Status']||'')==='Asked'; }).length;
+  var declinedB  = bidders.filter(function(r){ var st=r.fields['Status']||''; return st==='Not Bidding'||st==='Withdrawn'; }).length;
+  var oemResp    = oems.filter(function(r){ return !!r.fields['Date Received']; }).length;
+  var daysLeft   = null;
+  if(item.deadline){ var _dl=new Date(item.deadline+'T00:00:00'); var _dn=new Date(); _dn.setHours(0,0,0,0); daysLeft=Math.round((_dl-_dn)/86400000); }
+  var dlColorE   = daysLeft===null?'rgba(255,255,255,.6)':daysLeft<0?'#fca5a5':daysLeft<=7?'#fcd34d':'#fff';
+  var descPartsE = [];
+  if(bidders.length===0){descPartsE.push('No contractors have been engaged yet.');}
+  else{var _bP=[];if(confirmedB>0)_bP.push(confirmedB+' '+(confirmedB===1?'contractor':'contractors')+' confirmed');if(askedB>0)_bP.push(askedB+' awaiting response');if(declinedB>0)_bP.push(declinedB+' declined');descPartsE.push(_bP.join(' · ')+'.');}
+  if(oems.length>0) descPartsE.push(oems.length+' OEM '+(oems.length===1?'enquiry':'enquiries')+' sent'+(oemResp>0?', '+oemResp+' responded':'')+'. ');
+  if(daysLeft!==null){if(daysLeft<0)descPartsE.push('Deadline was '+Math.abs(daysLeft)+' days ago.');else if(daysLeft===0)descPartsE.push('Deadline is today.');else descPartsE.push('Deadline is in '+daysLeft+' days.');}
+  var _bSub=[]; if(askedB>0)_bSub.push(askedB+' invited'); if(declinedB>0)_bSub.push(declinedB+' declined'); if(_bSub.length===0&&bidders.length>0)_bSub.push(bidders.length+' engaged');
+  var EKL = 'color:rgba(255,255,255,.5);font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px';
+  var EKN = 'color:#fff;font-size:24px;font-weight:700;line-height:1;margin-bottom:2px';
+  var EKS = 'color:rgba(255,255,255,.6);font-size:11px';
+  var emailKpiCells = [
+    '<td style="padding:0 24px 0 0;vertical-align:top;border-right:1px solid rgba(255,255,255,.15)">',
+      '<div style="'+EKL+'">Deadline</div>',
+      deadline!=='—'
+        ? '<div style="color:'+dlColorE+';font-size:17px;font-weight:700;line-height:1;margin-bottom:2px">'+e(deadline)+'</div><div style="color:'+dlColorE+';font-size:11px">'+(daysLeft<0?Math.abs(daysLeft)+' days overdue':daysLeft===0?'Due today':daysLeft+' days left')+'</div>'
+        : '<div style="color:rgba(255,255,255,.4);font-size:17px;font-weight:700">—</div>',
+    '</td>',
+    '<td style="padding:0 24px;vertical-align:top;border-right:1px solid rgba(255,255,255,.15)">',
+      '<div style="'+EKL+'">Confirmed Bidders</div>',
+      '<div style="'+EKN+'">'+confirmedB+'</div>',
+      '<div style="'+EKS+'">'+((_bSub.join(' · '))||'none yet')+'</div>',
+    '</td>',
+    '<td style="padding:0 '+(quotes.length>0?'24px':'0')+';vertical-align:top'+(quotes.length>0?';border-right:1px solid rgba(255,255,255,.15)':'')+'">'  ,
+      '<div style="'+EKL+'">OEM Enquiries</div>',
+      '<div style="'+EKN+'">'+oems.length+'</div>',
+      '<div style="'+EKS+'">'+(oems.length===0?'none sent':oemResp>0?oemResp+' responded':'awaiting responses')+'</div>',
+    '</td>',
+    quotes.length>0 ? '<td style="padding:0 0 0 0;vertical-align:top"><div style="'+EKL+'">Quotes</div><div style="'+EKN+'">'+quotes.length+'</div><div style="'+EKS+'">submitted</div></td>' : ''
+  ].join('');
+
+  var bidderRows = bidders.map(function(r) {
+    var bf    = r.fields;
+    var ctrId = (bf['Contractor']||[])[0]||null;
+    var ctrR  = ctrId ? ctrRecords.find(function(c){return c.id===ctrId;}) : null;
+    var cName = ctrR ? (ctrR.fields['Company Name']||'Unknown') : '—';
+    var st    = bf['Status']||'Bidding';
+    var boq   = bf['BOQ Received'] ? fmtDate(bf['BOQ Received']) : '—';
+    var offer = bf['Offer Sent']   ? fmtDate(bf['Offer Sent'])   : '—';
+    var stColors = {'Bidding':'#1d4ed8','Won':'#15803d','Lost':'#b91c1c','Withdrawn':'#6b7280','Asked':'#b45309','Not Bidding':'#6b7280'};
+    var stBg     = {'Bidding':'#eff6ff','Won':'#f0fdf4','Lost':'#fef2f2','Withdrawn':'#f9fafb','Asked':'#fffbeb','Not Bidding':'#f9fafb'};
+    return '<tr>'+td('<b>'+e(cName)+'</b>')+td('<span style="font-size:11px;font-family:monospace;padding:2px 8px;border-radius:20px;background:'+(stBg[st]||'#f9fafb')+';color:'+(stColors[st]||'#6b7280')+';font-weight:600">'+e(st)+'</span>')+td(e(boq),'font-family:monospace;color:#6b7280')+td(e(offer),'font-family:monospace;color:#6b7280')+'</tr>';
+  }).join('');
+
+  var oemRows = oems.map(function(r) {
+    var of    = r.fields;
+    var supId = (of['Supplier']||[])[0]||null;
+    var supR  = supId ? supRecords.find(function(s){return s.id===supId;}) : null;
+    var sName = supR ? (supR.fields['Supplier Name']||'Unknown') : '—';
+    var sent  = of['Date Sent']     ? fmtDate(of['Date Sent'])     : '—';
+    var recv  = of['Date Received'] ? fmtDate(of['Date Received']) : '';
+    var price = of['Offer Price']!=null ? 'AED '+Number(of['Offer Price']).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    var notes = of['Notes']||'';
+    var rLabel=recv||'Awaiting'; var rColor=recv?'#15803d':'#b45309'; var rBg=recv?'#f0fdf4':'#fffbeb';
+    return '<tr>'+td('<b>'+e(sName)+'</b>')+td(e(sent),'font-family:monospace;color:#6b7280')+td('<span style="font-size:11px;font-family:monospace;padding:2px 7px;border-radius:4px;background:'+rBg+';color:'+rColor+'">'+e(rLabel)+'</span>')+td(e(price),'font-family:monospace')+td(e(notes),'color:#6b7280')+'</tr>';
+  }).join('');
+
+  var quoteRows = quotes.map(function(r) {
+    var qf=r.fields;
+    var amount=qf['Quote Amount']!=null?'AED '+Number(qf['Quote Amount']).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+    var dated=qf['Date Submitted']?fmtDate(qf['Date Submitted']):'—';
+    return '<tr>'+td('<b>'+e(qf['Name']||'—')+'</b>')+td(e(amount),'font-family:monospace')+td(e(dated),'font-family:monospace;color:#6b7280')+td(e(qf['Status']||'—'),'color:#6b7280')+'</tr>';
+  }).join('');
+
+  return [
+    '<div style="font-family:\'Helvetica Neue\',Arial,sans-serif;max-width:700px;margin:0 auto;color:#111827">',
+    '<div style="background:#5c1f25;padding:20px 28px;border-radius:8px 8px 0 0">',
+    '<div style="color:rgba(255,255,255,.6);font-size:11px;font-family:monospace;letter-spacing:.8px;text-transform:uppercase">Opportunity Report · '+today+(srNo?' · SR-'+e(srNo):'')+'</div>',
+    '<table style="border-collapse:collapse;margin-top:16px"><tr>'+emailKpiCells+'</tr></table>',
+    descPartsE.length ? '<div style="color:rgba(255,255,255,.7);font-size:12px;line-height:1.65;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15)">'+descPartsE.join(' ')+'</div>' : '',
+    '</div>',
+    '<div style="background:#fff;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:24px 28px">',
+    secHead('Bidders',bidders.length),
+    bidders.length?'<table style="width:100%;border-collapse:collapse"><thead><tr>'+th('Contractor')+th('Status')+th('BOQ Received')+th('Offer Sent')+'</tr></thead><tbody>'+bidderRows+'</tbody></table>':'<p style="color:#9ca3af;font-size:13px;margin:4px 0">No bidders recorded.</p>',
+    secHead('OEM Enquiries',oems.length),
+    oems.length?'<table style="width:100%;border-collapse:collapse"><thead><tr>'+th('OEM')+th('Sent')+th('Response')+th('Offer Price')+th('Notes')+'</tr></thead><tbody>'+oemRows+'</tbody></table>':'<p style="color:#9ca3af;font-size:13px;margin:4px 0">No OEM enquiries recorded.</p>',
+    quotes.length?secHead('Quotes Submitted',quotes.length)+'<table style="width:100%;border-collapse:collapse"><thead><tr>'+th('Quote')+th('Amount')+th('Submitted')+th('Status')+'</tr></thead><tbody>'+quoteRows+'</tbody></table>':'',
+    nextSteps?secHead('Next Steps')+'<p style="font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;margin:4px 0">'+e(nextSteps)+'</p>':'',
+    '<p style="margin-top:28px;font-size:11px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:14px">Generated by mBELLAb Operations Portal</p>',
+    '</div></div>'
+  ].join('');
+}
+
+function renderReport(opportunityId) {
+  var container = document.getElementById('report-content');
+  if(!container) return;
+  var item = items.find(function(i){ return i._id === opportunityId; });
+  if(!item) { container.innerHTML = '<div style="color:var(--txt3);text-align:center;padding:40px">No data available.</div>'; return; }
+
+  var srNo     = item.sr_no    || '';
+  var projName = item.project  || '—';
+  var client   = item.client   || '—';
+  var status   = item.status   || '—';
+  var deadline = item.deadline ? fmtDate(item.deadline) : '—';
+  var proposal = item.proposal ? fmtDate(item.proposal) : '—';
+  var today    = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'});
+
+  var bidders = _rptBidders(opportunityId);
+  var oems    = _rptOems(opportunityId);
+  var quotes  = quoteRecords[opportunityId] || [];
+
+  var SEC  = 'font-size:11px;font-family:monospace;letter-spacing:.7px;text-transform:uppercase;color:var(--txt3);border-bottom:1px solid var(--bdr);padding-bottom:6px;margin-bottom:12px;margin-top:0';
+  var CELL = 'padding:7px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
+  var TH   = 'padding:4px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace';
+
+  var html = '';
+
+  // ── Header ──────────────────────────────────────────────────────
+  var _confirmedB = bidders.filter(function(r){ return (r.fields['Status']||'Bidding')==='Bidding'; }).length;
+  var _askedB     = bidders.filter(function(r){ return (r.fields['Status']||'')==='Asked'; }).length;
+  var _declinedB  = bidders.filter(function(r){ var st=r.fields['Status']||''; return st==='Not Bidding'||st==='Withdrawn'; }).length;
+  var _oemResp    = oems.filter(function(r){ return !!r.fields['Date Received']; }).length;
+  var _daysLeft   = null;
+  if(item.deadline){ var _dl2=new Date(item.deadline+'T00:00:00'); var _dn2=new Date(); _dn2.setHours(0,0,0,0); _daysLeft=Math.round((_dl2-_dn2)/86400000); }
+  var _dlColor    = _daysLeft===null?'var(--txt3)':_daysLeft<0?'#b91c1c':_daysLeft<=7?'var(--amber)':'var(--txt)';
+  var _descParts  = [];
+  if(bidders.length===0){_descParts.push('No contractors have been engaged yet.');}
+  else{var _bP2=[];if(_confirmedB>0)_bP2.push(_confirmedB+' '+(+_confirmedB===1?'contractor':'contractors')+' confirmed');if(_askedB>0)_bP2.push(_askedB+' awaiting response');if(_declinedB>0)_bP2.push(_declinedB+' declined');_descParts.push(_bP2.join(' · ')+'.');}
+  if(oems.length>0) _descParts.push(oems.length+' OEM '+(oems.length===1?'enquiry':'enquiries')+' sent'+(_oemResp>0?', '+_oemResp+' responded':'')+'. ');
+  if(_daysLeft!==null){if(_daysLeft<0)_descParts.push('Deadline was '+Math.abs(_daysLeft)+' days ago.');else if(_daysLeft===0)_descParts.push('Deadline is today.');else _descParts.push('Deadline is in '+_daysLeft+' days.');}
+  var _bSub2=[]; if(_askedB>0)_bSub2.push(_askedB+' invited'); if(_declinedB>0)_bSub2.push(_declinedB+' declined'); if(_bSub2.length===0&&bidders.length>0)_bSub2.push(bidders.length+' engaged');
+  var CARD='background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:12px 14px';
+  var KL='font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;margin-bottom:3px';
+  var KN='font-size:22px;font-weight:700;color:var(--txt);line-height:1.1;margin-bottom:2px';
+  var KS='font-size:11px;color:var(--txt3)';
+  html += '<div style="margin-bottom:20px">';
+  html += '<div style="font-size:10px;font-family:monospace;color:var(--txt3);letter-spacing:.7px;text-transform:uppercase;margin-bottom:10px">Opportunity Report · '+today+(srNo?' · SR-'+e(srNo):'')+'</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px">';
+  html += '<div style="'+CARD+'"><div style="'+KL+'">Deadline</div>';
+  if(deadline!=='—'){ html += '<div style="font-size:16px;font-weight:700;color:'+_dlColor+';line-height:1.1;margin-bottom:2px">'+e(deadline)+'</div><div style="font-size:11px;color:'+_dlColor+'">'+(_daysLeft<0?Math.abs(_daysLeft)+' days overdue':_daysLeft===0?'Due today':_daysLeft+' days left')+'</div>'; }
+  else { html += '<div style="'+KN+';color:var(--txt3)">—</div><div style="'+KS+'">Not set</div>'; }
+  html += '</div>';
+  html += '<div style="'+CARD+'"><div style="'+KL+'">Confirmed Bidders</div><div style="'+KN+'">'+_confirmedB+'</div><div style="'+KS+'">'+(_bSub2.join(' · ')||'none engaged')+'</div></div>';
+  html += '<div style="'+CARD+'"><div style="'+KL+'">OEM Enquiries</div><div style="'+KN+'">'+oems.length+'</div><div style="'+KS+'">'+(oems.length===0?'none sent':_oemResp>0?_oemResp+' responded':'awaiting responses')+'</div></div>';
+  if(quotes.length>0){ html += '<div style="'+CARD+'"><div style="'+KL+'">Quotes Submitted</div><div style="'+KN+'">'+quotes.length+'</div><div style="'+KS+'">proposal'+(quotes.length===1?'':'s')+' sent</div></div>'; }
+  html += '</div>';
+  if(_descParts.length>0){ html += '<div style="font-size:12px;color:var(--txt2);line-height:1.65;padding:10px 14px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r)">'+_descParts.join(' ')+'</div>'; }
+  html += '</div>';
+
+  // ── Bidders ──────────────────────────────────────────────────────
+  html += '<div style="margin-bottom:20px"><div style="'+SEC+'">Bidders ('+bidders.length+')</div>';
+  if(bidders.length === 0) {
+    html += '<div style="color:var(--txt3);font-size:13px;padding:4px 0">No bidders recorded.</div>';
+  } else {
+    var BC = 'display:grid;grid-template-columns:1.8fr 1fr 110px 110px;align-items:center';
+    html += '<div style="font-size:12px"><div style="'+BC+';border-bottom:1px solid var(--bdr2)">';
+    html += '<div style="'+TH+'">Contractor</div><div style="'+TH+'">Status</div><div style="'+TH+'">BOQ</div><div style="'+TH+'">Offer Sent</div></div>';
+    html += bidders.map(function(r) {
+      var bf    = r.fields;
+      var ctrId = (bf['Contractor']||[])[0]||null;
+      var ctrR  = ctrId ? ctrRecords.find(function(c){return c.id===ctrId;}) : null;
+      var cName = ctrR ? (ctrR.fields['Company Name']||'Unknown') : '—';
+      var st    = bf['Status']||'Bidding';
+      var boq   = bf['BOQ Received'] ? fmtDate(bf['BOQ Received']) : '—';
+      var offer = bf['Offer Sent']   ? fmtDate(bf['Offer Sent'])   : '—';
+      return '<div style="'+BC+';border-bottom:1px solid var(--bdr)">'+
+        '<div style="'+CELL+';font-weight:500;color:var(--txt)" title="'+e(cName)+'">'+e(cName)+'</div>'+
+        '<div style="padding:7px 8px"><span style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;font-weight:600;'+statusBadgeStyle(st)+'">'+st+'</span></div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt2)">'+e(boq)+'</div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt2)">'+e(offer)+'</div></div>';
+    }).join('')+'</div>';
+  }
+  html += '</div>';
+
+  // ── OEM Enquiries ────────────────────────────────────────────────
+  html += '<div style="margin-bottom:20px"><div style="'+SEC+'">OEM Enquiries ('+oems.length+')</div>';
+  if(oems.length === 0) {
+    html += '<div style="color:var(--txt3);font-size:13px;padding:4px 0">No OEM enquiries recorded.</div>';
+  } else {
+    var OC = 'display:grid;grid-template-columns:1.6fr 110px 120px 130px 1.8fr;align-items:center';
+    html += '<div style="font-size:12px"><div style="'+OC+';border-bottom:1px solid var(--bdr2)">';
+    html += '<div style="'+TH+'">OEM</div><div style="'+TH+'">Sent</div><div style="'+TH+'">Response</div><div style="'+TH+'">Offer Price</div><div style="'+TH+'">Notes</div></div>';
+    html += oems.map(function(r) {
+      var of    = r.fields;
+      var supId = (of['Supplier']||[])[0]||null;
+      var supR  = supId ? supRecords.find(function(s){return s.id===supId;}) : null;
+      var sName = supR ? (supR.fields['Supplier Name']||'Unknown') : '—';
+      var sent  = of['Date Sent']     ? fmtDate(of['Date Sent'])     : '—';
+      var recv  = of['Date Received'] ? fmtDate(of['Date Received']) : '';
+      var price = of['Offer Price']!=null ? 'AED '+Number(of['Offer Price']).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+      var notes = of['Notes']||'';
+      var rStyle = recv
+        ? 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;background:var(--green-bg);color:var(--green)'
+        : 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;background:var(--amber-bg);color:var(--amber)';
+      return '<div style="'+OC+';border-bottom:1px solid var(--bdr)">'+
+        '<div style="'+CELL+';font-weight:500;color:var(--txt)" title="'+e(sName)+'">'+e(sName)+'</div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt2);white-space:nowrap">'+e(sent)+'</div>'+
+        '<div style="padding:7px 8px;white-space:nowrap"><span style="'+rStyle+'">'+e(recv||'Awaiting')+'</span></div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt);white-space:nowrap">'+e(price)+'</div>'+
+        '<div style="'+CELL+';color:var(--txt2)" title="'+e(notes)+'">'+e(notes)+'</div></div>';
+    }).join('')+'</div>';
+  }
+  html += '</div>';
+
+  // ── Quotes ───────────────────────────────────────────────────────
+  if(quotes.length > 0) {
+    html += '<div style="margin-bottom:20px"><div style="'+SEC+'">Quotes Submitted ('+quotes.length+')</div>';
+    var QC = 'display:grid;grid-template-columns:2fr 140px 110px 1fr;align-items:center';
+    html += '<div style="font-size:12px"><div style="'+QC+';border-bottom:1px solid var(--bdr2)">';
+    html += '<div style="'+TH+'">Quote</div><div style="'+TH+'">Amount</div><div style="'+TH+'">Submitted</div><div style="'+TH+'">Status</div></div>';
+    html += quotes.map(function(r) {
+      var qf    = r.fields;
+      var amount = qf['Quote Amount']!=null ? 'AED '+Number(qf['Quote Amount']).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+      var dated  = qf['Date Submitted'] ? fmtDate(qf['Date Submitted']) : '—';
+      return '<div style="'+QC+';border-bottom:1px solid var(--bdr)">'+
+        '<div style="'+CELL+';font-weight:500;color:var(--txt)">'+e(qf['Name']||'—')+'</div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt);white-space:nowrap">'+e(amount)+'</div>'+
+        '<div style="'+CELL+';font-family:monospace;color:var(--txt2);white-space:nowrap">'+e(dated)+'</div>'+
+        '<div style="'+CELL+';color:var(--txt2)">'+e(qf['Status']||'—')+'</div></div>';
+    }).join('')+'</div>';
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+
+  var ta = document.getElementById('report-next-steps');
+  if(ta && ta.value === '') ta.value = item.next_steps || '';
+}
+
+function copyReportText() {
+  var nextSteps = (document.getElementById('report-next-steps').value||'').trim();
+  var html = buildReportHtml(currentEditId, nextSteps);
+  if(!html) { toast('No opportunity data', 'err'); return; }
+  var item = items.find(function(i){ return i._id === currentEditId; });
+  var srNo     = item.sr_no    || '';
+  var projName = item.project  || '—';
+  var client   = item.client   || '—';
+  var status   = item.status   || '—';
+  var deadline = item.deadline ? fmtDate(item.deadline) : '—';
+  var proposal = item.proposal ? fmtDate(item.proposal) : '—';
+  var today    = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'});
+  var plain = 'Opportunity Report — '+today+'\n'+(srNo?'SR-'+srNo+' · ':'')+projName+'\nClient: '+client+'   |   Status: '+status+'   |   Deadline: '+deadline+'\n'+(proposal!=='—'?'Proposal Submitted: '+proposal+'\n':'');
+  if(nextSteps) plain += '\nNext Steps:\n'+nextSteps+'\n';
+  try {
+    navigator.clipboard.write([new ClipboardItem({
+      'text/html':  new Blob([html],  {type:'text/html'}),
+      'text/plain': new Blob([plain], {type:'text/plain'})
+    })]).then(function(){
+      toast('Copied — paste directly into your email', 'ok');
+    }).catch(function(){
+      navigator.clipboard.writeText(plain).then(function(){ toast('Copied as plain text', 'ok'); });
+    });
+  } catch(err) {
+    navigator.clipboard.writeText(plain).then(function(){ toast('Copied as plain text', 'ok'); });
+  }
+}
+
+async function emailReport() {
+  var nextSteps = (document.getElementById('report-next-steps').value||'').trim();
+  var html = buildReportHtml(currentEditId, nextSteps);
+  if(!html) { toast('No opportunity data', 'err'); return; }
+  var item    = items.find(function(i){ return i._id === currentEditId; });
+  var srNo    = item ? (item.sr_no || '') : '';
+  var today   = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'});
+  var subject = 'Opportunity Report'+(srNo?' — SR-'+srNo:'')+' — '+today;
+  try {
+    toast('Sending…');
+    var res  = await fetch(WORKER_URL+'/send-report', {method:'POST', headers:getHeaders(), body:JSON.stringify({subject:subject, html:html})});
+    var data = await res.json();
+    if(!res.ok) throw new Error(data.error||'HTTP '+res.status);
+    toast('Report sent to management', 'ok');
+  } catch(err) {
+    toast('Failed to send: '+err.message, 'err');
   }
 }
 

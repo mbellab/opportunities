@@ -104,6 +104,7 @@ const SCALAR = {
     'Awarded To':            'awarded_to',
     'Awarded Price':         'awarded_price',
     'Loss Reason':           'loss_reason',
+    'Next Steps':            'next_steps',
   },
   activity_log: {
     'Name':   'name',
@@ -113,9 +114,17 @@ const SCALAR = {
     'Type':   'type',
   },
   bidders: {
-    'Name':     'name',
-    'Comments': 'comments',
-    'Status':   'status',
+    'Name':         'name',
+    'Comments':     'comments',
+    'Status':       'status',
+    'BOQ Received': 'boq_received',
+    'Offer Sent':   'offer_sent',
+  },
+  oem_enquiries: {
+    'Date Sent':     'date_sent',
+    'Date Received': 'date_received',
+    'Offer Price':   'offer_price',
+    'Notes':         'notes',
   },
   quotes: {
     'Name':            'name',
@@ -346,6 +355,7 @@ const SCALAR = {
 const LINKS = {
   activity_log:             { 'Opportunity': 'project_id' },
   bidders:                  { 'Opportunity': 'project_id', 'Contractor': 'contractor_id' },
+  oem_enquiries:            { 'Opportunity': 'project_id', 'Supplier': 'supplier_id' },
   quotes:                   { 'Opportunity': 'project_id' },
   invoices:                 { 'Opportunity': 'project_id' },
   quality_objectives:       { 'Opportunity': 'project_id' },
@@ -458,6 +468,7 @@ const ROUTES = [
   { prefix: '/quotes',              sbTable: 'quotes'                   },
   { prefix: '/quote-items',         sbTable: 'quote_items'              },
   { prefix: '/bidders',             sbTable: 'bidders'                  },
+  { prefix: '/oem-enquiries',       sbTable: 'oem_enquiries'            },
   { prefix: '/activity',            sbTable: 'activity_log'             },
   { prefix: '/contractors',         sbTable: 'contractors'              },
   { prefix: '/vendor',              sbTable: 'vendor_equipment_pricing'  },
@@ -629,6 +640,27 @@ export default {
         });
       }
       return result;
+    }
+
+    // ── /send-report — email management summary via Resend ────────
+    if (path === '/send-report' && method === 'POST') {
+      if (!env.RESEND_API_KEY) return json({ error: 'Email not configured' }, 500);
+      const { subject, html: emailHtml, text } = body || {};
+      if (!subject || !emailHtml) return json({ error: 'Missing fields' }, 400);
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from:    'mBELLAb Portal <onboarding@resend.dev>',
+          to:      [NOTIFY_EMAIL],
+          subject,
+          html:    emailHtml,
+          text:    text || '',
+        }),
+      });
+      const rd = await r.json();
+      if (!r.ok) return json({ error: rd.message || 'Send failed' }, 500);
+      return json({ ok: true });
     }
 
     // ── Named routes ──────────────────────────────────────────────
