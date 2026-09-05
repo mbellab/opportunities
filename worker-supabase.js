@@ -486,11 +486,11 @@ const ROUTES = [
 
 async function sendRenewalsReport(RESEND_API_KEY) {
   const today  = new Date();
-  const in90   = new Date(today); in90.setDate(today.getDate() + 90);
+  const in30   = new Date(today); in30.setDate(today.getDate() + 30);
   const fmt    = d => d.toISOString().slice(0, 10);
 
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/renewals?renewal_date=gte.${fmt(today)}&renewal_date=lte.${fmt(in90)}&order=renewal_date.asc`,
+    `${SUPABASE_URL}/rest/v1/renewals?expiry_date=gte.${fmt(today)}&expiry_date=lte.${fmt(in30)}&order=expiry_date.asc`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   );
   const rows = res.ok ? await res.json() : [];
@@ -502,8 +502,8 @@ async function sendRenewalsReport(RESEND_API_KEY) {
       body: JSON.stringify({
         from:    'mBELLAb Portal <onboarding@resend.dev>',
         to:      [NOTIFY_EMAIL],
-        subject: 'Daily Renewals Report — No upcoming renewals in next 90 days',
-        html:    '<p>No renewals are due in the next 90 days.</p>',
+        subject: 'Daily Renewals Report — No upcoming renewals in next 30 days',
+        html:    '<p>No renewals are due in the next 30 days.</p>',
       }),
     });
     return;
@@ -512,17 +512,17 @@ async function sendRenewalsReport(RESEND_API_KEY) {
   const daysDiff = d => Math.ceil((new Date(d) - today) / 86400000);
 
   const urgencyColor = days =>
-    days <= 14 ? '#c0392b' : days <= 30 ? '#e67e22' : '#2980b9';
+    days <= 7 ? '#c0392b' : days <= 14 ? '#e67e22' : '#2980b9';
 
   const rows_html = rows.map(r => {
-    const days  = daysDiff(r.renewal_date);
+    const days  = daysDiff(r.expiry_date);
     const color = urgencyColor(days);
-    const dateStr = r.renewal_date
-      ? new Date(r.renewal_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+    const dateStr = r.expiry_date
+      ? new Date(r.expiry_date).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
       : '—';
     return `<tr>
-      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.item_name || '—'}</td>
-      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.supplier || '—'}</td>
+      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.renewal_details || '—'}</td>
+      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.entity || '—'}</td>
       <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${dateStr}</td>
       <td style="padding:6px 0 6px 0;border-bottom:1px solid #eee;font-weight:700;color:${color}">${days}d</td>
     </tr>`;
@@ -534,14 +534,14 @@ async function sendRenewalsReport(RESEND_API_KEY) {
     body: JSON.stringify({
       from:    'mBELLAb Portal <onboarding@resend.dev>',
       to:      [NOTIFY_EMAIL],
-      subject: `Daily Renewals Report — ${rows.length} renewal${rows.length > 1 ? 's' : ''} due in next 90 days`,
+      subject: `Daily Renewals Report — ${rows.length} renewal${rows.length > 1 ? 's' : ''} due in next 30 days`,
       html: `
-        <p style="font-family:sans-serif">Good morning. Here are the renewals due in the next <strong>90 days</strong>.</p>
+        <p style="font-family:sans-serif">Good morning. Here are the renewals due in the next <strong>30 days</strong>.</p>
         <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px;width:100%;max-width:600px">
           <thead>
             <tr style="color:#666;font-size:12px;text-transform:uppercase;letter-spacing:.5px">
               <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Item</th>
-              <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Supplier</th>
+              <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Entity</th>
               <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Due Date</th>
               <th style="padding:4px 0 8px 0;text-align:left;font-weight:600">Days</th>
             </tr>
