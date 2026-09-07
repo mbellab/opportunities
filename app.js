@@ -6744,7 +6744,7 @@ async function generateQuoteLetter() {
     if(typeof PizZip === 'undefined') throw new Error('PizZip library not loaded — reload the page');
     if(typeof docxtemplater === 'undefined') throw new Error('Docxtemplater library not loaded — reload the page');
 
-    var resp = await fetch('MBELLAB_Quotation_Template.docx');
+    var resp = await fetch('mBELLAB_Quotation_Template.docx');
     if(!resp.ok) throw new Error('Could not load template file (HTTP '+resp.status+')');
     var buf = await resp.arrayBuffer();
     var zip = new PizZip(buf);
