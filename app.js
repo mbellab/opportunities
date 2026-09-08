@@ -7030,6 +7030,7 @@ function showDiagnostics() {
   document.getElementById('diag-screen').style.display='flex';
   renderApiUsage();
   loadDiagnostics();
+  loadDbUsage();
 }
 
 function renderApiUsage(fromTs, toTs) {
@@ -7115,18 +7116,20 @@ function renderApiUsage(fromTs, toTs) {
       '<span style="font-size:11px;color:var(--txt3)">'+log.length.toLocaleString()+' entries stored locally</span>' +
     '</div>';
 
-  // Live connection ping
+  // Live connection ping with latency
+  var pingT0 = Date.now();
   fetch(WORKER_URL+'?maxRecords=1', {headers: getHeaders()})
     .then(function(r) {
+      var ms = Date.now() - pingT0;
       var cs = document.getElementById('diag-conn-status');
       if (!cs) return;
       if (r.ok) {
-        cs.textContent = '✓ Connected';
+        cs.textContent = '✓ Connected · ' + ms + 'ms';
         cs.style.color = 'var(--green)';
         cs.style.background = 'var(--green-bg)';
         cs.style.borderColor = 'var(--green-bdr)';
       } else {
-        cs.textContent = '✗ Error ' + r.status;
+        cs.textContent = '✗ Error ' + r.status + ' · ' + ms + 'ms';
         cs.style.color = 'var(--red)';
       }
     })
@@ -7134,6 +7137,71 @@ function renderApiUsage(fromTs, toTs) {
       var cs = document.getElementById('diag-conn-status');
       if (cs) { cs.textContent = '✗ Unreachable'; cs.style.color = 'var(--red)'; }
     });
+}
+
+async function loadDbUsage() {
+  var el = document.getElementById('diag-db-usage');
+  if (!el) return;
+  try {
+    var res = await fetch(WORKER_URL+'/diag-usage', {headers: getHeaders()});
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    var d = await res.json();
+
+    var usedBytes  = d.db_size_bytes || 0;
+    var limitBytes = 500 * 1024 * 1024; // 500 MB free tier
+    var pct        = Math.min(100, (usedBytes / limitBytes) * 100);
+    var pctStr     = pct.toFixed(1);
+    var barColor   = pct > 80 ? 'var(--red)' : pct > 60 ? 'var(--amber)' : 'var(--green)';
+    var freeStr    = function(b) {
+      if (b >= 1024*1024*1024) return (b/(1024*1024*1024)).toFixed(1)+' GB';
+      if (b >= 1024*1024)      return (b/(1024*1024)).toFixed(1)+' MB';
+      return (b/1024).toFixed(0)+' KB';
+    };
+
+    // Table row counts — sort by count desc, hide internal/empty tables
+    var HIDE = ['agent_activity_log','vendor_pricing_projects'];
+    var TABLE_LABELS = {
+      projects:'Opportunities', activity_log:'Activity Log', passwords:'Passwords',
+      renewals:'Renewals', quality_objectives:'Quality Objectives', petty_cash:'Petty Cash',
+      company_docs:'Company Docs', leave_records:'Leave Records', suppliers:'Suppliers',
+      bidders:'Bidders', bank_holidays:'Bank Holidays', employees:'Employees',
+      quotes:'Quotes', quote_items:'Quote Items', vendor_equipment_pricing:'Supplier Pricing',
+      invoices:'Invoices (sent)', invoices_received:'Invoices (received)',
+      po_received:'POs Received', po_sent:'POs Sent', contractors:'Contractors',
+      annual_entitlements:'Annual Entitlements', annual_tickets:'Annual Tickets',
+      leave_requests:'Leave Requests', users:'Users', role_permissions:'Role Permissions',
+      oem_enquiries:'OEM Enquiries', payment_terms:'Payment Terms', price_book:'Price Book',
+      knowledge_articles:'Knowledge Articles',
+    };
+    var tables = d.tables || {};
+    var rows = Object.keys(tables)
+      .filter(function(k){ return HIDE.indexOf(k)===-1; })
+      .map(function(k){ return {key:k, label:TABLE_LABELS[k]||k, count:tables[k]||0}; })
+      .sort(function(a,b){ return b.count-a.count; });
+
+    var chipSt = 'display:inline-flex;align-items:center;gap:5px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:3px 10px;font-size:12px;margin:2px 3px';
+
+    el.innerHTML =
+      '<div style="margin-bottom:14px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">'+
+          '<span style="font-size:13px;color:var(--txt)"><b>'+e(d.db_size_pretty||freeStr(usedBytes))+'</b> used of 500 MB free tier</span>'+
+          '<span style="font-size:12px;color:'+(pct>80?'var(--red)':pct>60?'var(--amber)':'var(--green)')+'">'+pctStr+'%</span>'+
+        '</div>'+
+        '<div style="height:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;overflow:hidden">'+
+          '<div style="height:100%;width:'+pctStr+'%;background:'+barColor+';border-radius:4px;transition:width .4s"></div>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--txt3);margin-top:5px">'+freeStr(limitBytes-usedBytes)+' remaining</div>'+
+      '</div>'+
+      '<div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Row counts</div>'+
+      '<div style="display:flex;flex-wrap:wrap">'+
+        rows.map(function(r){
+          var col=r.count===0?'var(--txt3)':'var(--txt)';
+          return '<span style="'+chipSt+';color:'+col+'">'+e(r.label)+': <b>'+r.count.toLocaleString()+'</b></span>';
+        }).join('')+
+      '</div>';
+  } catch(err) {
+    if(el) el.innerHTML='<div style="color:var(--txt3)">Could not load DB stats: '+e(err.message)+'</div>';
+  }
 }
 
 function loadDiagnostics() {
