@@ -349,6 +349,16 @@ const SCALAR = {
     'Schedule':        'schedule',
     'Notes':           'notes',
   },
+  knowledge_articles: {
+    'title':       'title',
+    'category':    'category',
+    'subcategory': 'subcategory',
+    'description': 'description',
+    'url':         'url',
+    'body':        'body',
+    'sort_order':  'sort_order',
+    'created_at':  'created_at',
+  },
 };
 
 // Linked record fields (returned as [uuid] arrays in GET, first element stored in POST/PATCH)
