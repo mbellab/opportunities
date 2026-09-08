@@ -367,6 +367,7 @@ function applyRoleRestrictions() {
     'showEmployees':'employees','showRenewals':'renewals','showCompanyDocs':'company-docs',
     'showPettyCash':'petty-cash','showPasswords':'passwords','showEmployeeLeave':'employee-leave',
     'showLeaveRequests':'leave-requests','showDiagnostics':'diagnostics','showAdmin':'admin',
+    'showKnowledge':'knowledge',
   };
   document.querySelectorAll('.nav-drop-item, .nav-admin-only').forEach(function(el){
     var oc = el.getAttribute('onclick')||'';
@@ -1080,7 +1081,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -1091,7 +1092,7 @@ function showOpportunities() {
   if(!canAccess('opportunities')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','opportunities');
   setActivePage('opportunities');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('loading').style.display = 'flex';
@@ -1103,7 +1104,7 @@ function showPriceBook() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('price-book-screen').style.display='flex';
@@ -1113,7 +1114,7 @@ function showVendors() {
   if(!canAccess('vendors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','vendors');
   setActivePage('vendors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('vendor-screen').style.display='flex';
@@ -1468,7 +1469,7 @@ function showDashboard() {
   if(!canAccess('dashboard')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','dashboard');
   setActivePage('dashboard');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   if(items.length === 0) {
@@ -1748,7 +1749,7 @@ function showContractors() {
   if(!canAccess('contractors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','contractors');
   setActivePage('contractors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('contractors-screen').style.display='flex';
@@ -2065,7 +2066,7 @@ function showSuppliers() {
   if(!canAccess('suppliers')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','suppliers');
   setActivePage('suppliers');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('suppliers-screen').style.display='flex';
@@ -4141,7 +4142,7 @@ function signOut() {
   var style = document.getElementById('role-restrictions-style');
   if(style) style.textContent = '';
   // Clear all screens
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
@@ -5105,7 +5106,7 @@ var qoEditId   = null;
 function showQualityObjectives() {
   if(!canAccess('quality')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','quality');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('quality-screen').style.display='flex';
@@ -5532,7 +5533,7 @@ var empEditId   = null;
 function showEmployees() {
   if(!canAccess('employees')) { toast('Employees is restricted to your role','err'); return; }
   sessionStorage.setItem('mbb_screen','employees');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('employees-screen').style.display='flex';
@@ -5848,7 +5849,7 @@ function showRenewals() {
   if(!canAccess('renewals')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','renewals');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('renewals-screen').style.display='flex';
@@ -6457,7 +6458,7 @@ function showCompanyDocs() {
   if(!canAccess('company-docs')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','company-docs');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('company-docs-screen').style.display='flex';
@@ -7023,7 +7024,7 @@ function showDiagnostics() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen'].forEach(function(id){
+   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('diag-screen').style.display='flex';
@@ -7372,7 +7373,7 @@ function showPettyCash() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','passwords-screen',
-   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen'].forEach(function(id){
+   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('petty-cash-screen').style.display='flex';
@@ -7663,7 +7664,7 @@ function showPasswords(){
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('passwords-screen').style.display='flex';
@@ -7803,7 +7804,7 @@ function showEmployeeLeave() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('employees-leave-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','employee-leave');
@@ -7817,7 +7818,7 @@ function showLeaveRequests() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('leave-requests-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','leave-requests');
@@ -9185,7 +9186,7 @@ function showAdmin() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
    'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
    'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'employees-leave-screen','home-screen','admin-screen'].forEach(function(id){
+   'employees-leave-screen','home-screen','admin-screen','knowledge-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('admin-screen').style.display='flex';
@@ -9732,6 +9733,7 @@ document.addEventListener("DOMContentLoaded",async function(){
     else if(lastScreen === 'employee-leave') showEmployeeLeave();
     else if(lastScreen === 'leave-requests') showLeaveRequests();
     else if(lastScreen === 'admin')          showAdmin();
+    else if(lastScreen === 'knowledge')      showKnowledge();
     else showHome();
   } else {
     sessionStorage.removeItem('mbb_pwd');
@@ -9739,3 +9741,196 @@ document.addEventListener("DOMContentLoaded",async function(){
     document.getElementById('login-screen').style.display='flex';
   }
 });
+
+// ══ KNOWLEDGE BASE ════════════════════════════════════════════════════════════
+
+var knowledgeRecords = [];
+var knowledgeLoaded  = false;
+var knEditId         = null;
+var knFilterCat      = '';
+
+function showKnowledge() {
+  sessionStorage.setItem('mbb_screen','knowledge');
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('knowledge-screen').style.display='flex';
+  if(!knowledgeLoaded) loadKnowledge(); else renderKnowledge();
+}
+
+async function loadKnowledge() {
+  var list=document.getElementById('kn-list');
+  if(list) list.innerHTML='<div style="padding:60px;text-align:center;color:var(--txt3)">Loading…</div>';
+  try {
+    var res=await fetch(WORKER_URL+'/knowledge?pageSize=200',{headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    knowledgeRecords=data.records||[];
+    knowledgeLoaded=true;
+    renderKnowledge();
+  } catch(err) {
+    var list=document.getElementById('kn-list');
+    if(list) list.innerHTML='<div style="padding:20px;color:var(--red)">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function renderKnowledge() {
+  var list  =document.getElementById('kn-list');
+  var cntEl =document.getElementById('kn-count');
+  if(!list) return;
+  var searchQ=((document.getElementById('kn-search')||{}).value||'').toLowerCase().trim();
+
+  var recs=knowledgeRecords.filter(function(r){
+    if(knFilterCat && r.fields['category']!==knFilterCat) return false;
+    if(searchQ){
+      var hay=[(r.fields['title']||''),(r.fields['description']||''),(r.fields['subcategory']||'')].join(' ').toLowerCase();
+      if(hay.indexOf(searchQ)===-1) return false;
+    }
+    return true;
+  });
+
+  recs.sort(function(a,b){
+    var so=(a.fields['sort_order']||0)-(b.fields['sort_order']||0);
+    if(so!==0) return so;
+    return (a.fields['title']||'').localeCompare(b.fields['title']||'');
+  });
+
+  if(cntEl) cntEl.textContent=recs.length+' article'+(recs.length===1?'':'s');
+
+  if(!recs.length){
+    list.innerHTML='<div style="padding:60px;text-align:center;color:var(--txt3)">No articles found</div>';
+    return;
+  }
+
+  var grouped={};
+  recs.forEach(function(r){
+    var cat=r.fields['category']||'General';
+    if(!grouped[cat]) grouped[cat]=[];
+    grouped[cat].push(r);
+  });
+
+  var html='';
+  Object.keys(grouped).sort().forEach(function(cat){
+    if(!knFilterCat) html+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;padding:16px 0 6px;border-bottom:1px solid var(--bdr);margin-bottom:8px">'+e(cat)+'</div>';
+    grouped[cat].forEach(function(r){
+      var f=r.fields;
+      var hasUrl =!!(f['url']  && f['url'].trim());
+      var hasBody=!!(f['body'] && f['body'].trim());
+      html+='<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">'+
+        '<div style="flex:1;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'+
+        '<span style="font-weight:600;font-size:13px;color:var(--txt)">'+e(f['title']||'Untitled')+'</span>'+
+        (f['subcategory']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);font-family:monospace;white-space:nowrap">'+e(f['subcategory'])+'</span>':'')+
+        '</div>'+
+        (f['description']?'<div style="font-size:12px;color:var(--txt2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+e(f['description'])+'</div>':'')+
+        '</div>'+
+        '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-top:2px">'+
+        (hasBody?'<button class="btn-ghost" style="font-size:12px;padding:4px 10px" onclick="openKnReader(\''+r.id+'\')">Read</button>':'')+
+        (hasUrl?'<a href="'+e(f['url'])+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:12px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center">Open ↗</a>':'')+
+        '<button class="icon-btn edit" onclick="openKnModal(\''+r.id+'\')" style="opacity:1">'+IC_PENCIL+'</button>'+
+        '<button class="icon-btn del"  onclick="deleteKnArticle(\''+r.id+'\')" style="opacity:1">'+IC_TRASH+'</button>'+
+        '</div>'+
+      '</div>';
+    });
+  });
+  list.innerHTML=html;
+}
+
+function setKnCat(cat) {
+  knFilterCat=cat;
+  document.querySelectorAll('.kn-cat-btn').forEach(function(b){
+    var on=b.dataset.cat===cat;
+    b.style.background=on?'var(--blue-bg)':'transparent';
+    b.style.color=on?'var(--blue)':'var(--txt2)';
+    b.style.fontWeight=on?'600':'400';
+  });
+  renderKnowledge();
+}
+
+function openKnReader(id) {
+  var r=knowledgeRecords.find(function(x){return x.id===id;});
+  if(!r) return;
+  var f=r.fields;
+  document.getElementById('kn-reader-title').textContent=f['title']||'';
+  document.getElementById('kn-reader-body').textContent =f['body']||'';
+  var linkBtn=document.getElementById('kn-reader-link');
+  if(f['url']&&f['url'].trim()){ linkBtn.href=f['url']; linkBtn.style.display='inline-flex'; }
+  else { linkBtn.style.display='none'; }
+  document.getElementById('kn-reader-modal').style.display='flex';
+}
+
+function closeKnReader(){
+  document.getElementById('kn-reader-modal').style.display='none';
+}
+
+function openKnModal(id) {
+  knEditId=id||null;
+  var isNew=!id;
+  document.getElementById('kn-modal-title').textContent=isNew?'Add Article':'Edit Article';
+  var f=isNew?{}:(knowledgeRecords.find(function(r){return r.id===id;})||{}).fields||{};
+  document.getElementById('knf-title').value       =f['title']||'';
+  document.getElementById('knf-category').value    =f['category']||'Employee Services';
+  document.getElementById('knf-subcategory').value =f['subcategory']||'';
+  document.getElementById('knf-description').value =f['description']||'';
+  document.getElementById('knf-url').value         =f['url']||'';
+  document.getElementById('knf-body').value        =f['body']||'';
+  document.getElementById('kn-modal').style.display='flex';
+  setTimeout(function(){ document.getElementById('knf-title').focus(); },50);
+}
+
+function closeKnModal(){
+  document.getElementById('kn-modal').style.display='none';
+  knEditId=null;
+}
+
+async function saveKnArticle() {
+  var title=document.getElementById('knf-title').value.trim();
+  if(!title){ document.getElementById('knf-title').focus(); return; }
+  var fields={
+    title:       title,
+    category:    document.getElementById('knf-category').value||'Employee Services',
+    subcategory: document.getElementById('knf-subcategory').value.trim()||null,
+    description: document.getElementById('knf-description').value.trim()||null,
+    url:         document.getElementById('knf-url').value.trim()||null,
+    body:        document.getElementById('knf-body').value.trim()||null,
+  };
+  var savedId=knEditId;
+  closeKnModal();
+  setSave('saving');
+  try {
+    if(savedId){
+      var res=await fetch(WORKER_URL+'/knowledge/'+savedId,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      var idx=knowledgeRecords.findIndex(function(r){return r.id===savedId;});
+      if(idx!==-1) knowledgeRecords[idx].fields=Object.assign({},knowledgeRecords[idx].fields,fields);
+    } else {
+      var res=await fetch(WORKER_URL+'/knowledge',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      var created=await res.json();
+      knowledgeRecords.push({id:created.id,fields:fields});
+    }
+    setSave('saved');
+    renderKnowledge();
+  } catch(err){
+    setSave('err');
+    toast('Save failed: '+err.message,'err');
+  }
+}
+
+async function deleteKnArticle(id) {
+  if(!confirm('Delete this article?')) return;
+  setSave('saving');
+  try {
+    var res=await fetch(WORKER_URL+'/knowledge/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    knowledgeRecords=knowledgeRecords.filter(function(r){return r.id!==id;});
+    setSave('saved');
+    renderKnowledge();
+  } catch(err){
+    setSave('err');
+    toast('Delete failed: '+err.message,'err');
+  }
+}

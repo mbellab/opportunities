@@ -480,6 +480,7 @@ const ROUTES = [
   { prefix: '/leave-requests',      sbTable: 'leave_requests'           },
   { prefix: '/price-book',          sbTable: 'price_book'               },
   { prefix: '/payment-terms',       sbTable: 'payment_terms'            },
+  { prefix: '/knowledge',            sbTable: 'knowledge_articles'       },
 ];
 
 // ── Renewals report ───────────────────────────────────────────────
