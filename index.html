@@ -13,6 +13,7 @@
 <title>mBELLAb Operations Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.4/dist/pizzip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3/build/docxtemplater.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
@@ -485,7 +486,7 @@
       <button class="btn-ghost" onclick="closeKnReader()">Close</button>
     </div>
     <div style="overflow-y:auto;padding:20px 22px;flex:1">
-      <pre id="kn-reader-body" style="white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.75;color:var(--txt);margin:0"></pre>
+      <div id="kn-reader-body" class="kn-md-body"></div>
     </div>
   </div>
 </div>

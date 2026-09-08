@@ -641,3 +641,20 @@ table.vnd-table td{padding:5px 10px}
 .el-tab{background:none;border:none;border-bottom:2px solid transparent;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:500;color:var(--txt2);margin-bottom:-1px}
 .el-tab-active{color:var(--amber);border-bottom-color:var(--amber)}
 .el-tab:hover:not(.el-tab-active){color:var(--txt)}
+
+
+/* Knowledge Base markdown renderer */
+.kn-md-body{font-size:13px;line-height:1.75;color:var(--txt)}
+.kn-md-body h1,.kn-md-body h2,.kn-md-body h3{font-weight:700;margin:1.2em 0 .4em;color:var(--txt)}
+.kn-md-body h1{font-size:18px}.kn-md-body h2{font-size:15px}.kn-md-body h3{font-size:13px}
+.kn-md-body p{margin:0 0 .8em}
+.kn-md-body ul,.kn-md-body ol{margin:0 0 .8em;padding-left:22px}
+.kn-md-body li{margin-bottom:.25em}
+.kn-md-body strong{font-weight:700;color:var(--txt)}
+.kn-md-body em{font-style:italic}
+.kn-md-body code{font-family:monospace;font-size:12px;background:var(--bg2);padding:1px 5px;border-radius:4px;border:1px solid var(--bdr)}
+.kn-md-body pre{background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--r);padding:12px 14px;overflow-x:auto;margin:0 0 .8em}
+.kn-md-body pre code{background:none;border:none;padding:0}
+.kn-md-body blockquote{border-left:3px solid var(--amber);margin:0 0 .8em;padding:4px 12px;color:var(--txt2)}
+.kn-md-body hr{border:none;border-top:1px solid var(--bdr);margin:.8em 0}
+.kn-md-body a{color:var(--blue);text-decoration:underline}

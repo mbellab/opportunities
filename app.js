@@ -9855,7 +9855,7 @@ function openKnReader(id) {
   if(!r) return;
   var f=r.fields;
   document.getElementById('kn-reader-title').textContent=f['title']||'';
-  document.getElementById('kn-reader-body').textContent =f['body']||'';
+  document.getElementById('kn-reader-body').innerHTML=marked.parse(f['body']||'');
   var linkBtn=document.getElementById('kn-reader-link');
   if(f['url']&&f['url'].trim()){ linkBtn.href=f['url']; linkBtn.style.display='inline-flex'; }
   else { linkBtn.style.display='none'; }
