@@ -7992,10 +7992,10 @@ async function approveRequest(id) {
       Start_Date:f['Date_Out'],End_Date:f['Date_In'],Days:f['Days']};
     if(f['Detail']) leaveFields.Notes=f['Detail'];
     var lRes=await fetch(WORKER_URL+'/leave-records',{method:'POST',headers:getHeaders(),
-      body:JSON.stringify({records:[{fields:leaveFields}]})});
+      body:JSON.stringify({fields:leaveFields})});
     if(!lRes.ok) throw new Error('Failed to create leave record: HTTP '+lRes.status);
     var lData=await lRes.json();
-    if(lData.records) elRecords=elRecords.concat(lData.records);
+    if(lData.id) elRecords.push(lData);
     // Update request status
     var today=new Date().toISOString().split('T')[0];
     var pRes=await fetch(WORKER_URL+'/leave-requests/'+id,{method:'PATCH',headers:getHeaders(),
@@ -8945,10 +8945,10 @@ async function saveLeaveEntry() {
     var f = {'Employee':[elCurrentEmpId],'Type':type,'Start_Date':start,'End_Date':end,'Days':computedDays};
     if(notes) f['Notes']=notes;
     var res = await fetch(WORKER_URL+'/leave-records',
-      {method:'POST', headers:getHeaders(), body:JSON.stringify({records:[{fields:f}]})});
+      {method:'POST', headers:getHeaders(), body:JSON.stringify({fields:f})});
     if(!res.ok) throw new Error('HTTP '+res.status);
     var data = await res.json();
-    (data.records||[]).forEach(function(r){ elRecords.push(r); });
+    if(data.id) elRecords.push(data);
     document.getElementById('el-entry-modal').style.display='none';
     toast('Leave entry added ('+computedDays+' day'+(computedDays!==1?'s':'')+')', 'ok');
     await loadLeaveData();
