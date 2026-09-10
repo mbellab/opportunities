@@ -72,7 +72,9 @@ var F = {
   AWARDED_TO:    'Awarded To',
   AWARDED_PRICE: 'Awarded Price',
   LOSS_REASON:   'Loss Reason',
-  NEXT_STEPS:    'Next Steps'
+  NEXT_STEPS:    'Next Steps',
+  FAT_DATE:      'FAT Date',
+  FAT_COMPLETED: 'FAT Completed'
 };
 // ================================================================
 
@@ -510,7 +512,8 @@ function parseItems() {
       last_update:s(f[F.LAST_UPDATE]), last_update_date:'', deadline:s(f[F.DEADLINE]), active:s(f[F.ACTIVE]),
       docs:s(f[F.DOCS]),
       awarded_to:s(f[F.AWARDED_TO]), awarded_price:f[F.AWARDED_PRICE]||null, loss_reason:s(f[F.LOSS_REASON]),
-      next_steps:s(f[F.NEXT_STEPS])
+      next_steps:s(f[F.NEXT_STEPS]),
+      fat_date:s(f[F.FAT_DATE]), fat_completed:!!(f[F.FAT_COMPLETED])
     };
   });
   sortItems();
@@ -980,6 +983,8 @@ function openEditModal(id) {
   document.getElementById('ef-awarded-price').value = item.awarded_price != null ? item.awarded_price : '';
   document.getElementById('ef-loss-reason').value   = item.loss_reason || '';
   updateLossSection();
+  document.getElementById('ef-fat-date').value      = item.fat_date || '';
+  document.getElementById('ef-fat-completed').checked = !!(item.fat_completed);
   document.getElementById('edit-modal').style.display = 'flex';
   setTimeout(function(){ document.getElementById('ef-proj').focus(); }, 50);
 }
@@ -1016,6 +1021,9 @@ async function saveEditModal() {
     fields[F.AWARDED_PRICE] = null;
     fields[F.LOSS_REASON]   = null;
   }
+  var fatDateVal = document.getElementById('ef-fat-date').value;
+  fields[F.FAT_DATE]      = fatDateVal || null;
+  fields[F.FAT_COMPLETED] = document.getElementById('ef-fat-completed').checked;
   // Update local item
   var item = items.find(function(i){ return i._id === id; });
   if(item){
@@ -1029,6 +1037,8 @@ async function saveEditModal() {
     item.awarded_to = fields[F.AWARDED_TO] || '';
     item.awarded_price = fields[F.AWARDED_PRICE];
     item.loss_reason = fields[F.LOSS_REASON] || '';
+    item.fat_date = fatDateVal || '';
+    item.fat_completed = fields[F.FAT_COMPLETED];
     var rec=allRecords.find(function(r){return r.id===id;});
     if(rec){
       Object.keys(fields).forEach(function(k){ rec.fields[k]=fields[k]; });
