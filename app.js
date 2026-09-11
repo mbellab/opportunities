@@ -81,6 +81,8 @@ var F = {
 var HEADERS = {'Content-Type':'application/json'};
 function getHeaders(){ return {'Content-Type':'application/json','X-App-Password':appPassword}; }
 var allRecords = [], items = [], filtered = [];
+var allQuoteHeaders = [];   // quote records (no line items) — loaded at startup
+var quotesByOpp    = {};    // keyed by opp ID: [{status,date}]
 var currentStatus = 'ALL';
 var currentPage = 1;
 var PER_PAGE = 15;
@@ -488,8 +490,9 @@ async function loadAll() {
     document.getElementById('loading').style.display='none';
     document.getElementById('app').style.display='flex';
     renderKPIs(); applyFilters(); setSave('ready');
-  updateRowCount();
+    updateRowCount();
     toast(items.length+' enquiries loaded','ok');
+    loadAllQuotes();
   } catch(err) {
     clearTimeout(loadTimeout);
     document.getElementById('loading').style.display='none';
@@ -497,6 +500,51 @@ async function loadAll() {
     showError('<b>Failed to load:</b> '+err.message);
     setSave('err');
   }
+}
+
+async function loadAllQuotes() {
+  try {
+    var recs=[], offset=null;
+    do {
+      var url=WORKER_URL+'/quotes?pageSize=100'+(offset?'&offset='+offset:'');
+      var res=await fetch(url,{headers:getHeaders()});
+      if(!res.ok) return;
+      var data=await res.json();
+      recs=recs.concat(data.records||[]);
+      offset=data.offset||null;
+    } while(offset);
+    allQuoteHeaders=recs;
+    quotesByOpp={};
+    recs.forEach(function(q){
+      (q.fields['Opportunity']||[]).forEach(function(oid){
+        if(!quotesByOpp[oid]) quotesByOpp[oid]=[];
+        quotesByOpp[oid].push({status:q.fields['Status']||'', date:q.fields['Date Submitted']||''});
+      });
+    });
+    renderTable();
+  } catch(e){}
+}
+
+function renderQtnBadge(oppId) {
+  var qs=quotesByOpp[oppId];
+  if(!qs||!qs.length) return '<span style="color:var(--txt3)">—</span>';
+  var statuses=qs.map(function(q){return q.status;});
+  var color;
+  if(statuses.indexOf('Awarded')!==-1)        color='var(--green)';
+  else if(statuses.indexOf('Submitted')!==-1) color='var(--blue)';
+  else if(statuses.indexOf('Draft')!==-1)     color='var(--amber)';
+  else                                        color='var(--txt3)';
+  var dates=qs.map(function(q){return q.date;}).filter(Boolean).sort().reverse();
+  var dateLabel='';
+  if(dates[0]){
+    var d=new Date(dates[0]);
+    var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    dateLabel=d.getDate()+' '+M[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+  }
+  return '<div style="line-height:1.2">'
+    +'<div style="font-weight:700;font-size:12px;color:'+color+'">'+qs.length+'</div>'
+    +(dateLabel?'<div style="font-size:10px;color:var(--txt3);font-family:monospace">'+dateLabel+'</div>':'')
+    +'</div>';
 }
 
 // ── Parse ────────────────────────────────────────────────────────
@@ -556,7 +604,7 @@ async function postRecord(fields) {
     var data=await res.json();
     if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
     allRecords.push(data); parseItems(); setSave('saved');
-    currentStatus='ACTIVE_ONLY'; currentPage=1;
+    currentStatus='ALL'; currentPage=1;
     renderKPIs(); applyFilters();
     toast('SR-'+fields[F.SR_NO]+' added — opening Activity tab…','ok');
     // Open edit modal on Activity tab so user can add first note
@@ -624,15 +672,14 @@ async function saveEditRow(){
   fields[F.DATE]=gi('ei-date'); fields[F.PROJECT]=gi('ei-proj');
   fields[F.MAIN_CONT]=gi('ei-mc');
   fields[F.RTU]=gi('ei-rtu')||'--'; fields[F.STATUS]=gi('ei-status');
-  fields[F.PROPOSAL]=gi('ei-proposal')||null;
   fields[F.DEADLINE]=gi('ei-deadline')||null; // Last Update is driven by Activity tab only
   var item=items.find(function(i){return i._id===editingId;});
   if(item){
     item.date=fields[F.DATE]; item.project=fields[F.PROJECT]; item.main_cont=fields[F.MAIN_CONT];
     item.rtu=fields[F.RTU]; item.status=normStatus(fields[F.STATUS]);
-    item.proposal=fields[F.PROPOSAL]; item.deadline=fields[F.DEADLINE];
+    item.deadline=fields[F.DEADLINE];
     var rec=allRecords.find(function(r){return r.id===editingId;});
-    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.PROPOSAL]=fields[F.PROPOSAL];rec.fields[F.DEADLINE]=fields[F.DEADLINE];}
+    if(rec){rec.fields[F.DATE]=fields[F.DATE];rec.fields[F.PROJECT]=fields[F.PROJECT];rec.fields[F.MAIN_CONT]=fields[F.MAIN_CONT];rec.fields[F.RTU]=fields[F.RTU];rec.fields[F.STATUS]=fields[F.STATUS];rec.fields[F.DEADLINE]=fields[F.DEADLINE];}
   }
   var savedId=editingId; editingId=null;
   renderKPIs(); applyFilters();
@@ -675,16 +722,14 @@ function confirmDelete(){
 
 // ── KPIs ─────────────────────────────────────────────────────────
 function renderKPIs(){
-  var c={ALL:items.length,ACTIVE_ONLY:0,WON:0,LOST:0,CANCELLED:0,PIPELINE:0,CLOSED:0};
+  var c={ALL:items.length,WON:0,LOST:0,CANCELLED:0,PIPELINE:0,CLOSED:0};
   items.forEach(function(r){
-    if(r.active==='Yes') c.ACTIVE_ONLY++;
     if(c[r.status]!==undefined) c[r.status]++;
   });
   var cards=[
     {k:'ALL',label:'All Opportunities',cls:''},
-    {k:'ACTIVE_ONLY',label:'Active (working on)',cls:'activefilter'},
-    {k:'WON',label:'Won',cls:'won'},
     {k:'PIPELINE',label:'Pipeline',cls:'process'},
+    {k:'WON',label:'Won',cls:'won'},
     {k:'LOST',label:'Lost',cls:'lost'},
     {k:'CANCELLED',label:'Cancelled',cls:'cancelled'},
     {k:'CLOSED',label:'Closed',cls:'closed'}
@@ -702,8 +747,7 @@ function applyFilters(){
   var showLost=document.getElementById('show-lost').checked;
   var showCancelled=document.getElementById('show-cancelled').checked;
   filtered=items.filter(function(r){
-    var isActive=r.active==='Yes';
-    var ms=currentStatus==='ALL'||(currentStatus==='ACTIVE_ONLY'?isActive:r.status===currentStatus);
+    var ms=currentStatus==='ALL'||r.status===currentStatus;
     var mq=!q||[r.project,r.client,r.main_cont,r.sr_no,r.contractor].some(function(f){return (f||'').toLowerCase().indexOf(q)!==-1;});
     var inDate=true;
     if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
@@ -727,20 +771,11 @@ function mkDisplayRow(r){
     '<td class="c-mc">'+e(r.main_cont||'—')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
-    '<td class="c-proposal">'+(r.proposal ? fmtDate(r.proposal) : '')+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
+    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
-    '<td class="c-deadline">'+(r.proposal ? '' : renderDeadline(r.deadline))+'</td>'+
-    (function(){
-      var lu = r.last_update || '';
-      var sep = lu.indexOf(' - ');
-      var datePart = sep !== -1 ? lu.substring(0, sep) : lu;
-      var tooltipText = r.last_update_full_note || lu;
-      return '<td class="c-update" title="'+e(tooltipText)+'">'+(datePart ? '<span style="font-size:11px;font-weight:500;color:var(--txt)">'+e(datePart)+'</span>' : '<span style="color:var(--txt3)">—</span>')+'</td>';
-    })()+
-    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
+    '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
       (r.docs ? '<a class="icon-btn docs-link has-link" href="'+r.docs+'" target="_blank" rel="noopener">'+IC_DOCS+'</a>' : '<span class="icon-btn docs-link">'+IC_DOCS+'</span>')+
       '<button class="icon-btn" data-quote-id="'+r._id+'" style="color:var(--blue);opacity:1">&#128196;</button>'+
@@ -759,14 +794,11 @@ function mkEditRow(r){
     '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
     '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
-    '<td class="c-proposal" style="overflow:visible"><input class="ei" id="ei-proposal" type="date" value="'+e(r.proposal||'')+'" style="width:112px"></td>'+
-    '<td class="c-chk">'+mkTick(r._id,'quotation',F.QUOTATION,r.quotation)+'</td>'+
+    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
-    '<td class="c-update"><span style="font-size:12px;color:var(--txt3);font-style:italic">'+e(r.last_update||'—')+'</span></td>'+
-    '<td class="c-active">'+mkTick(r._id,'active',F.ACTIVE,r.active)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
       '<button class="icon-btn save" onclick="saveEditRow()">'+IC_SAVE+'</button>'+
       '<button class="icon-btn cancel-edit" onclick="cancelEdit()">'+IC_CANCEL+'</button>'+
@@ -910,7 +942,7 @@ function showModal(){
   document.getElementById('f-date').value=now.toISOString().substring(0,10);
   document.getElementById('f-cont').value='';
   document.getElementById('f-status').value='PIPELINE';
-  ['f-proj','f-mc','f-client','f-rtu','f-prop'].forEach(function(id){document.getElementById(id).value='';});
+  ['f-proj','f-mc','f-client','f-rtu'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('f-deadline').value='';
   document.getElementById('modal').style.display='flex';
   if(ctrRecords.length === 0) {
@@ -933,7 +965,7 @@ function saveEntry(){
   fields[F.SR_NO]=g('f-sr'); fields[F.DATE]=g('f-date'); fields[F.PROJECT]=proj;
   fields[F.CONTRACTOR]=g('f-cont'); fields[F.MAIN_CONT]=g('f-mc');
   fields[F.CLIENT]=g('f-client'); fields[F.RTU]=g('f-rtu')||'--';
-  fields[F.STATUS]=g('f-status'); fields[F.PROPOSAL]=g('f-prop')||null;
+  fields[F.STATUS]=g('f-status');
   var dlVal=document.getElementById('f-deadline').value; if(dlVal) fields[F.DEADLINE]=dlVal;
   fields[F.QUOTATION]=''; fields[F.TECH_PROP]=''; fields[F.LPO_CLIENT]=''; fields[F.LPO_SUPPLIER]='';
   postRecord(fields);
@@ -976,7 +1008,6 @@ function openEditModal(id) {
   document.getElementById('ef-client').value   = item.client;
   document.getElementById('ef-rtu').value      = item.rtu === '--' ? '' : item.rtu;
   document.getElementById('ef-status').value   = item.status;
-  document.getElementById('ef-prop').value     = item.proposal;
   document.getElementById('ef-deadline').value = item.deadline || '';
   document.getElementById('ef-docs').value     = item.docs || '';
   document.getElementById('ef-awarded-to').value    = item.awarded_to || '';
@@ -1007,7 +1038,6 @@ async function saveEditModal() {
   fields[F.CLIENT]      = g('ef-client');
   fields[F.RTU]         = g('ef-rtu') || '--';
   fields[F.STATUS]      = g('ef-status');
-  fields[F.PROPOSAL]    = g('ef-prop');
   var docsVal = g('ef-docs'); if(docsVal) fields[F.DOCS] = docsVal;
   var dlVal = document.getElementById('ef-deadline').value;
   fields[F.DEADLINE] = dlVal || null;
@@ -1030,7 +1060,7 @@ async function saveEditModal() {
     item.date=fields[F.DATE]; item.project=fields[F.PROJECT];
     item.contractor=fields[F.CONTRACTOR]; item.main_cont=fields[F.MAIN_CONT];
     item.client=fields[F.CLIENT]; item.rtu=fields[F.RTU]||'--';
-    item.status=normStatus(fields[F.STATUS]); item.proposal=fields[F.PROPOSAL];
+    item.status=normStatus(fields[F.STATUS]);
     // Preserve last_update (driven by activity log, not edited directly)
     if(docsVal) item.docs=docsVal;
     item.deadline = dlVal || '';
@@ -4021,6 +4051,7 @@ async function saveQuote() {
       }));
     }
     await loadQuotes(currentEditId);
+    loadAllQuotes();
     toast((savedId?'Quote updated':'Quote added'),'ok');
   } catch(err) {
     toast('Failed: '+err.message,'err');
@@ -4050,6 +4081,7 @@ async function confirmDeleteQuote() {
     var res = await fetch(WORKER_URL+'/quotes/'+id, {method:'DELETE', headers:getHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
     await loadQuotes(currentEditId);
+    loadAllQuotes();
     toast('Quote deleted','ok');
   } catch(err) { toast('Failed: '+err.message,'err'); }
 }
@@ -4152,8 +4184,11 @@ function signOut() {
   var style = document.getElementById('role-restrictions-style');
   if(style) style.textContent = '';
   // Clear all screens
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
-    document.getElementById(id).style.display='none';
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('login-pwd').value  = '';
@@ -6807,8 +6842,7 @@ function exportReport(){
   var dateStr=pad(now.getDate())+'.'+pad(now.getMonth()+1)+'.'+now.getFullYear();
   var timeStr=pad(now.getHours())+':'+pad(now.getMinutes());
   var filterDesc='All Enquiries';
-  if(currentStatus==='ACTIVE_ONLY') filterDesc='Active Enquiries';
-  else if(currentStatus!=='ALL') filterDesc=currentStatus+' Enquiries';
+  if(currentStatus!=='ALL') filterDesc=currentStatus+' Enquiries';
   var q=document.getElementById('search').value.trim();
   if(q) filterDesc+=' matching "'+q+'"';
   var fromV=document.getElementById('date-from').value;
@@ -6894,7 +6928,7 @@ function exportOpportunitiesExcel() {
   var todayStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
   var genStr   = pad(now.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
 
-  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','Proposal Submitted On','QTN','TP','LPO-C','LPO-S'];
+  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','QTN','TP','LPO-C','LPO-S'];
   var NC = COLS.length;
 
   function yesNo(v){ return (v==='✔'||v==='Yes') ? 'Yes' : (v==='✖'||v==='No') ? 'No' : ''; }
@@ -6915,7 +6949,6 @@ function exportOpportunitiesExcel() {
       r.client    || '',
       r.rtu       || '',
       r.status==='Under Process' ? 'Pipeline' : (r.status || ''),
-      r.proposal  ? fmtDate(r.proposal) : '',
       yesNo(r.quotation),
       yesNo(r.tech_prop),
       yesNo(r.lpo_client),
@@ -6930,7 +6963,7 @@ function exportOpportunitiesExcel() {
   ];
   ws['!cols'] = [
     {wch:10},{wch:14},{wch:42},{wch:22},{wch:22},{wch:8},
-    {wch:14},{wch:18},{wch:7},{wch:7},{wch:8},{wch:8}
+    {wch:14},{wch:7},{wch:7},{wch:8},{wch:8}
   ];
   ws['!rows'] = [{hpt:32},{hpt:18},{hpt:6},{hpt:22}];
 
@@ -7029,6 +7062,18 @@ var DIAG_TABLES = [
   {name:'Users',                   url:'/users'},
   {name:'Role Permissions',        url:'/role-permissions'},
 ];
+
+function switchDiagTab(paneId) {
+  document.querySelectorAll('.diag-tab').forEach(function(t){
+    var active = t.getAttribute('data-diag-tab')===paneId;
+    t.classList.toggle('active', active);
+    t.style.color = active ? 'var(--txt)' : 'var(--txt3)';
+    t.style.borderBottomColor = active ? 'var(--accent)' : 'transparent';
+  });
+  document.querySelectorAll('.diag-pane').forEach(function(p){
+    p.style.display = p.id===paneId ? 'block' : 'none';
+  });
+}
 
 function showDiagnostics() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
@@ -7255,10 +7300,12 @@ function loadDiagnostics() {
 }
 
 async function runIntegrityChecks() {
-  var intEl = document.getElementById('diag-integrity');
-  var lvEl  = document.getElementById('diag-leave-health');
-  var btn   = document.getElementById('diag-checks-btn');
-  if(btn){ btn.disabled=true; btn.textContent='Running…'; }
+  var intEl  = document.getElementById('diag-integrity');
+  var lvEl   = document.getElementById('diag-leave-health');
+  var btn    = document.getElementById('diag-checks-btn');
+  var btn2   = document.getElementById('diag-integrity-btn');
+  var tsEl2  = document.getElementById('diag-integrity-timestamp');
+  [btn, btn2].forEach(function(b){ if(b){ b.disabled=true; b.textContent='Running…'; } });
   if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Fetching data…</div>';
   if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--txt3);font-size:13px">Fetching data…</div>';
 
@@ -7273,7 +7320,7 @@ async function runIntegrityChecks() {
     return recs;
   }
 
-  var diagEmps, diagLeave, diagEnts, diagTickets, diagHols;
+  var diagEmps, diagLeave, diagEnts, diagTickets, diagHols, diagQuotes, diagOppsRaw;
   try {
     var fetched = await Promise.all([
       empRecords.length   ? Promise.resolve(empRecords)     : fetchAll('/employees'),
@@ -7281,17 +7328,28 @@ async function runIntegrityChecks() {
       elEntitlements.length ? Promise.resolve(elEntitlements) : fetchAll('/annual-entitlements'),
       elTickets.length    ? Promise.resolve(elTickets)      : fetchAll('/annual-tickets'),
       elHolidays.length   ? Promise.resolve(elHolidays)     : fetchAll('/bank-holidays'),
+      fetchAll('/quotes'),
+      allRecords.length   ? Promise.resolve(allRecords)     : fetchAll('/'),
     ]);
-    diagEmps=fetched[0]; diagLeave=fetched[1]; diagEnts=fetched[2]; diagTickets=fetched[3]; diagHols=fetched[4];
+    diagEmps=fetched[0]; diagLeave=fetched[1]; diagEnts=fetched[2]; diagTickets=fetched[3]; diagHols=fetched[4]; diagQuotes=fetched[5]; diagOppsRaw=fetched[6];
   } catch(err) {
     if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
     if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
-    if(btn){ btn.disabled=false; btn.textContent='↻ Re-run Checks'; }
+    [btn, btn2].forEach(function(b){ if(b){ b.disabled=false; b.textContent='↻ Re-run Checks'; } });
     return;
   }
 
   var empIds = {};
   diagEmps.forEach(function(e2){ empIds[e2.id]=e2; });
+
+  var diagItems = diagOppsRaw.map(function(rec){
+    var f=rec.fields;
+    return {
+      _id:rec.id, sr_no:(f[F.SR_NO]||''), project:(f[F.PROJECT]||''),
+      status:normStatus(f[F.STATUS]||''), quotation:(f[F.QUOTATION]||''),
+      tech_prop:(f[F.TECH_PROP]||''), lpo_client:(f[F.LPO_CLIENT]||''), docs:(f[F.DOCS]||'')
+    };
+  });
 
   // ── Leave health ─────────────────────────────────────────────────
   if(lvEl) {
@@ -7361,15 +7419,75 @@ async function runIntegrityChecks() {
   if(intEl) {
     var issues=[];
 
-    var qtnNoProposal = items.filter(function(r){
-      return r.quotation === '✔' && !r.proposal;
-    });
-    if(qtnNoProposal.length) issues.push({
-      sev:'amber', label:'Quotation submitted but no Proposal date set ('+qtnNoProposal.length+')',
-      detail:qtnNoProposal.slice(0,8).map(function(r){ return 'SR-'+r.sr_no+(r.project?' – '+r.project.substring(0,40):''); }).join('; ')+(qtnNoProposal.length>8?' …':'')
+    // Build a map of opportunity ID → quote count from freshly-fetched quotes
+    var quoteCountByOpp = {};
+    diagQuotes.forEach(function(q){
+      var oppIds = q.fields['Opportunity'] || [];
+      oppIds.forEach(function(oid){ quoteCountByOpp[oid] = (quoteCountByOpp[oid]||0) + 1; });
     });
 
-    var noDocs = items.filter(function(r){ return !r.docs; });
+    // QTN ticked but no quote record exists
+    var tickedNoQuote = diagItems.filter(function(r){ return r.quotation==='✔' && !quoteCountByOpp[r._id]; });
+    if(tickedNoQuote.length) issues.push({
+      sev:'amber',
+      label:'QTN checkbox ticked but no Quote found in system ('+tickedNoQuote.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        tickedNoQuote.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project?' <span>'+e(r.project)+'</span>':'')+
+            '</div>';
+        }).join('')+'</div>'
+    });
+
+    // TP ticked but no quote in system
+    var tpNoQuote = diagItems.filter(function(r){ return r.tech_prop==='✔' && !quoteCountByOpp[r._id]; });
+    if(tpNoQuote.length) issues.push({
+      sev:'amber',
+      label:'Technical Proposal sent but no Quote in system ('+tpNoQuote.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        tpNoQuote.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project?' <span>'+e(r.project)+'</span>':'')+
+            '</div>';
+        }).join('')+'</div>'
+    });
+
+    // Pipeline/WON with a quote in system but no PO received from client
+    var quotedNoPO = diagItems.filter(function(r){
+      return (r.status==='PIPELINE'||r.status==='WON') && quoteCountByOpp[r._id] && r.lpo_client!=='✔';
+    });
+    if(quotedNoPO.length) issues.push({
+      sev:'amber',
+      label:'Pipeline / WON: Quote sent but no Purchase Order received ('+quotedNoPO.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        quotedNoPO.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project?' <span>'+e(r.project)+'</span>':'')+
+            ' <span style="font-family:monospace;color:var(--blue);font-size:10px">('+quoteCountByOpp[r._id]+' quote'+(quoteCountByOpp[r._id]>1?'s':'')+')</span>'+
+            '</div>';
+        }).join('')+'</div>'
+    });
+
+    // Pipeline with no quote sent at all
+    var pipelineNoQuote = diagItems.filter(function(r){
+      return r.status==='PIPELINE' && !quoteCountByOpp[r._id];
+    });
+    if(pipelineNoQuote.length) issues.push({
+      sev:'amber',
+      label:'Pipeline: No Quote sent yet ('+pipelineNoQuote.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        pipelineNoQuote.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project?' <span>'+e(r.project)+'</span>':'')+
+            '</div>';
+        }).join('')+'</div>'
+    });
+
+    var noDocs = diagItems.filter(function(r){ return !r.docs; });
     if(noDocs.length) issues.push({
       sev:'amber', label:'Opportunities missing a SharePoint Docs link ('+noDocs.length+')',
       detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
@@ -7388,7 +7506,9 @@ async function runIntegrityChecks() {
     });
     if(orphanLeave.length) issues.push({
       sev:'amber', label:'Leave records with no matching employee ('+orphanLeave.length+')',
-      detail:orphanLeave.slice(0,5).map(function(r){return r.fields['Start_Date']||r.id;}).join(', ')+(orphanLeave.length>5?' …':'')
+      detail:orphanLeave.slice(0,5).map(function(r){
+        return r.fields['Start_Date']||r.fields['Date']||r.fields['Employee']||'(unknown)';
+      }).join(', ')+(orphanLeave.length>5?' …':'')
     });
 
     var orphanTix=diagTickets.filter(function(r){
@@ -7397,13 +7517,13 @@ async function runIntegrityChecks() {
     });
     if(orphanTix.length) issues.push({
       sev:'amber', label:'Annual tickets with no matching employee ('+orphanTix.length+')',
-      detail:orphanTix.slice(0,5).map(function(r){return r.fields['Period']||r.id;}).join(', ')+(orphanTix.length>5?' …':'')
+      detail:orphanTix.slice(0,5).map(function(r){return r.fields['Period']||r.fields['Employee']||'(unknown)';}).join(', ')+(orphanTix.length>5?' …':'')
     });
 
     var missingDate=diagHols.filter(function(h){ return !h.fields['Date']; });
     if(missingDate.length) issues.push({
       sev:'amber', label:'Bank holidays missing a date ('+missingDate.length+')',
-      detail:missingDate.map(function(h){return e(h.fields['Name']||h.id);}).join(', ')
+      detail:missingDate.map(function(h){return e(h.fields['Name']||'(unnamed holiday)');}).join(', ')
     });
 
     // Bank holidays: duplicate dates
@@ -7426,9 +7546,13 @@ async function runIntegrityChecks() {
     });
 
     var rowSt2='padding:10px 16px;border-bottom:1px solid var(--bdr);font-size:13px';
-    var it='';
+    var chipSt2='display:inline-flex;align-items:center;gap:4px;background:var(--bg2);border:1px solid var(--bdr);border-radius:20px;padding:2px 9px;font-size:11px;margin:2px 3px';
+    var it='<div style="padding:8px 16px;border-bottom:1px solid var(--bdr);display:flex;flex-wrap:wrap;gap:2px;background:var(--bg2)">'+
+      '<span style="'+chipSt2+'">Opportunities: <b>'+diagItems.length+'</b></span>'+
+      '<span style="'+chipSt2+'">Quotes: <b>'+diagQuotes.length+'</b></span>'+
+    '</div>';
     if(!issues.length){
-      it='<div style="'+rowSt2+';color:var(--green);display:flex;align-items:center;gap:8px">✓ No integrity issues found</div>';
+      it+='<div style="'+rowSt2+';color:var(--green);display:flex;align-items:center;gap:8px">✓ No integrity issues found</div>';
     } else {
       issues.forEach(function(iss){
         var col=iss.sev==='red'?'var(--red)':'var(--amber)';
@@ -7440,7 +7564,9 @@ async function runIntegrityChecks() {
     }
     intEl.innerHTML=it;
   }
-  if(btn){ btn.disabled=false; btn.textContent='↻ Re-run Checks'; }
+  var doneTs = 'Last run: '+new Date().toLocaleTimeString();
+  [btn, btn2].forEach(function(b){ if(b){ b.disabled=false; b.textContent='↻ Re-run Checks'; } });
+  if(tsEl2) tsEl2.textContent = doneTs;
 }
 
 

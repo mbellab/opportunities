@@ -127,7 +127,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:'IBM
 .kpi.active.cancelled{border-color:var(--grey-bdr);background:var(--grey-bg)}
 .kpi.active.process{border-color:var(--blue-bdr);background:var(--blue-bg)}
 .kpi.active.closed{border-color:var(--purple-bdr);background:var(--purple-bg)}
-.kpi.active.activefilter{border-color:var(--green-bdr);background:var(--green-bg)}
 .kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--txt3);margin-bottom:6px;font-family:'IBM Plex Mono',monospace}
 .kpi-val{font-size:28px;font-weight:300;letter-spacing:-1px;color:var(--txt);line-height:1}
 .kpi.active .kpi-val{color:var(--amber)}
@@ -136,7 +135,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--txt);font-family:'IBM
 .kpi.active.cancelled .kpi-val{color:var(--txt2)}
 .kpi.active.process .kpi-val{color:var(--blue)}
 .kpi.active.closed .kpi-val{color:var(--purple)}
-.kpi.active.activefilter .kpi-val{color:var(--green)}
 
 /* ── Date range ── */
 .date-range-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -182,11 +180,11 @@ td{padding:8px 11px;vertical-align:middle;overflow:hidden;text-overflow:ellipsis
 .c-client{width:88px;font-size:11.5px;color:var(--txt2)!important}
 .c-rtu{width:58px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--txt2)!important}
 .c-status{width:108px}
-.c-proposal{width:82px;font-size:11px;color:var(--txt2)!important}
+.c-qtn{width:58px;text-align:center}
+.diag-tab{color:var(--txt3);border-bottom:2px solid transparent;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:500;white-space:nowrap;transition:color .15s,border-color .15s}
+.diag-tab.active{color:var(--txt);border-bottom-color:var(--accent)}
 .c-chk{width:44px;text-align:center}
-.c-active{width:72px;text-align:center}
 .c-deadline{width:110px}
-.c-update{width:62px;font-size:12px;color:var(--txt2);text-align:center}
 .c-actions{width:68px;text-align:right}
 
 /* ── Badges ── */
