@@ -84,6 +84,7 @@ var allRecords = [], items = [], filtered = [];
 var allQuoteHeaders = [];   // quote records (no line items) — loaded at startup
 var quotesByOpp    = {};    // keyed by opp ID: [{status,date}]
 var currentStatus = 'ALL';
+var currentException = '';
 var currentPage = 1;
 var PER_PAGE = 15;
 var editingId = null;
@@ -740,20 +741,27 @@ function renderKPIs(){
   }).join('');
 }
 function setStatus(s){cancelEdit();currentStatus=s;currentPage=1;applyFilters();renderKPIs();}
+function setException(val){
+  currentException=val;
+  currentPage=1;
+  var sel=document.getElementById('exception-filter');
+  if(sel) sel.style.borderColor=val?'var(--amber)':'';
+  applyFilters();
+}
 
 // ── Filter & table ────────────────────────────────────────────────
 function applyFilters(){
   var q=document.getElementById('search').value.toLowerCase();
-  var showLost=document.getElementById('show-lost').checked;
-  var showCancelled=document.getElementById('show-cancelled').checked;
   filtered=items.filter(function(r){
     var ms=currentStatus==='ALL'||r.status===currentStatus;
     var mq=!q||[r.project,r.client,r.main_cont,r.sr_no,r.contractor].some(function(f){return (f||'').toLowerCase().indexOf(q)!==-1;});
     var inDate=true;
     if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
-    var hideLost=currentStatus==='ALL'&&r.status==='LOST'&&!showLost;
-    var hideCancelled=currentStatus==='ALL'&&r.status==='CANCELLED'&&!showCancelled;
-    return ms&&mq&&inDate&&!hideLost&&!hideCancelled;
+    if(!ms||!mq||!inDate) return false;
+    if(currentException==='tp_no_quote')      return r.tech_prop==='✔' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
+    if(currentException==='quoted_no_po')     return (r.status==='PIPELINE'||r.status==='WON') && quotesByOpp[r._id]&&quotesByOpp[r._id].length && r.lpo_client!=='✔';
+    if(currentException==='pipeline_no_quote') return r.status==='PIPELINE' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
+    return true;
   });
   renderTable(); renderPagination();
 }
@@ -923,7 +931,15 @@ function initColumnResize(){
 // ── Date range ────────────────────────────────────────────────────
 document.getElementById('date-from').addEventListener('change',function(ev){dateFrom=parseISO(ev.target.value);currentPage=1;applyFilters();});
 document.getElementById('date-to').addEventListener('change',function(ev){var d=parseISO(ev.target.value);if(d)d.setHours(23,59,59);dateTo=d;currentPage=1;applyFilters();});
-function clearDates(){document.getElementById('date-from').value='';document.getElementById('date-to').value='';dateFrom=null;dateTo=null;currentPage=1;applyFilters();}
+function clearDates(){
+  document.getElementById('date-from').value='';
+  document.getElementById('date-to').value='';
+  dateFrom=null;dateTo=null;
+  currentException='';
+  var sel=document.getElementById('exception-filter');
+  if(sel){sel.value='';sel.style.borderColor='';}
+  currentPage=1;applyFilters();
+}
 
 // Keyboard shortcuts
 document.addEventListener('keydown',function(ev){
@@ -7349,7 +7365,7 @@ async function runIntegrityChecks() {
       status:normStatus(f[F.STATUS]||''), quotation:(f[F.QUOTATION]||''),
       tech_prop:(f[F.TECH_PROP]||''), lpo_client:(f[F.LPO_CLIENT]||''), docs:(f[F.DOCS]||'')
     };
-  });
+  }).sort(function(a,b){ return (parseInt(b.sr_no)||0)-(parseInt(a.sr_no)||0); });
 
   // ── Leave health ─────────────────────────────────────────────────
   if(lvEl) {
