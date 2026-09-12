@@ -45,6 +45,10 @@
       <label>Password</label>
       <input class="linput" id="login-pwd" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')attemptLogin()">
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <input type="checkbox" id="login-remember" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
+      <label for="login-remember" style="font-size:13px;color:var(--txt2);cursor:pointer;user-select:none">Remember me</label>
+    </div>
     <button class="lbtn" onclick="attemptLogin()">Sign in</button>
     <div class="lerr" id="login-error"></div>
     <div id="app-version" style="text-align:center;font-size:11px;color:var(--txt3);margin-top:16px;font-family:monospace;letter-spacing:.5px"></div>
@@ -2761,6 +2765,15 @@ async function attemptLogin() {
       btn.textContent = 'Sign in'; btn.disabled = false;
       return;
     }
+    // Remember me
+    var rememberEl = document.getElementById('login-remember');
+    if(rememberEl && rememberEl.checked) {
+      localStorage.setItem('mbb_remember_user', username);
+      localStorage.setItem('mbb_remember_pwd',  pwd);
+    } else {
+      localStorage.removeItem('mbb_remember_user');
+      localStorage.removeItem('mbb_remember_pwd');
+    }
     // Success
     appPassword = pwd;
     currentUser = {name: data.name, role: (data.role||'').toLowerCase(), username: username};
@@ -2888,8 +2901,8 @@ function applyRoleRestrictions() {
       'button[onclick*="showVendorModal"]{display:none!important}',
     ]);
   }
-  // Non-admin: hide commercial tabs
-  if(!isAdmin) {
+  // Non-admin and non-finance: hide commercial tabs
+  if(!isAdmin && userRole !== 'finance') {
     rules.push('.modal-tab[data-tab="tab-quotes"]{display:none!important}');
     rules.push('#tab-quotes{display:none!important}');
     rules.push('.modal-tab[data-tab="tab-po-received"]{display:none!important}');
@@ -6446,9 +6459,21 @@ function signOut() {
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
-  document.getElementById('login-pwd').value  = '';
-  document.getElementById('login-user').value = '';
   document.getElementById('login-error').textContent = '';
+  var savedUser=localStorage.getItem('mbb_remember_user');
+  var savedPwd =localStorage.getItem('mbb_remember_pwd');
+  var uEl=document.getElementById('login-user');
+  var pEl=document.getElementById('login-pwd');
+  var rEl=document.getElementById('login-remember');
+  if(savedUser && savedPwd) {
+    if(uEl) uEl.value=savedUser;
+    if(pEl) pEl.value=savedPwd;
+    if(rEl) rEl.checked=true;
+  } else {
+    if(uEl) uEl.value='';
+    if(pEl) pEl.value='';
+    if(rEl) rEl.checked=false;
+  }
 }
 
 function updateAllUserLabels() {
@@ -11167,6 +11192,18 @@ async function savePermission(checkbox) {
   finally { checkbox.disabled=false; }
 }
 
+function showKnowledge() {
+  if(!canAccess('knowledge')){ toast('Access restricted','err'); return; }
+  sessionStorage.setItem('mbb_screen','knowledge');
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('knowledge-screen').style.display='flex';
+}
+
 function showAdmin() {
   if(!canAccess('admin')){ toast('Admin only','err'); return; }
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
@@ -11314,6 +11351,17 @@ document.addEventListener("DOMContentLoaded",function(){
     var el=document.getElementById(id);
     if(el)el.addEventListener("keydown",function(ev){if(ev.key==="Enter")document.querySelector(".lbtn").click();});
   });
+  // Pre-fill remembered credentials
+  var savedUser=localStorage.getItem('mbb_remember_user');
+  var savedPwd =localStorage.getItem('mbb_remember_pwd');
+  if(savedUser && savedPwd) {
+    var uEl=document.getElementById('login-user');
+    var pEl=document.getElementById('login-pwd');
+    var rEl=document.getElementById('login-remember');
+    if(uEl) uEl.value=savedUser;
+    if(pEl) pEl.value=savedPwd;
+    if(rEl) rEl.checked=true;
+  }
   var vEl=document.getElementById('app-version');
   if(vEl) vEl.textContent=APP_VERSION;
   var hv=document.getElementById('home-version');

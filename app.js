@@ -307,6 +307,15 @@ async function attemptLogin() {
       btn.textContent = 'Sign in'; btn.disabled = false;
       return;
     }
+    // Remember me
+    var rememberEl = document.getElementById('login-remember');
+    if(rememberEl && rememberEl.checked) {
+      localStorage.setItem('mbb_remember_user', username);
+      localStorage.setItem('mbb_remember_pwd',  pwd);
+    } else {
+      localStorage.removeItem('mbb_remember_user');
+      localStorage.removeItem('mbb_remember_pwd');
+    }
     // Success
     appPassword = pwd;
     currentUser = {name: data.name, role: (data.role||'').toLowerCase(), username: username};
@@ -441,8 +450,8 @@ function applyRoleRestrictions() {
       'button[onclick*="showVendorModal"]{display:none!important}',
     ]);
   }
-  // Non-admin: hide commercial tabs
-  if(!isAdmin) {
+  // Non-admin and non-finance: hide commercial tabs
+  if(!isAdmin && userRole !== 'finance') {
     rules.push('.modal-tab[data-tab="tab-quotes"]{display:none!important}');
     rules.push('#tab-quotes{display:none!important}');
     rules.push('.modal-tab[data-tab="tab-po-received"]{display:none!important}');
@@ -4207,9 +4216,21 @@ function signOut() {
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
-  document.getElementById('login-pwd').value  = '';
-  document.getElementById('login-user').value = '';
   document.getElementById('login-error').textContent = '';
+  var savedUser=localStorage.getItem('mbb_remember_user');
+  var savedPwd =localStorage.getItem('mbb_remember_pwd');
+  var uEl=document.getElementById('login-user');
+  var pEl=document.getElementById('login-pwd');
+  var rEl=document.getElementById('login-remember');
+  if(savedUser && savedPwd) {
+    if(uEl) uEl.value=savedUser;
+    if(pEl) pEl.value=savedPwd;
+    if(rEl) rEl.checked=true;
+  } else {
+    if(uEl) uEl.value='';
+    if(pEl) pEl.value='';
+    if(rEl) rEl.checked=false;
+  }
 }
 
 function updateAllUserLabels() {
@@ -9903,6 +9924,17 @@ document.addEventListener("DOMContentLoaded",async function(){
     var el=document.getElementById(id);
     if(el)el.addEventListener("keydown",function(ev){if(ev.key==="Enter")document.querySelector(".lbtn").click();});
   });
+  // Pre-fill remembered credentials
+  var savedUser=localStorage.getItem('mbb_remember_user');
+  var savedPwd =localStorage.getItem('mbb_remember_pwd');
+  if(savedUser && savedPwd) {
+    var uEl=document.getElementById('login-user');
+    var pEl=document.getElementById('login-pwd');
+    var rEl=document.getElementById('login-remember');
+    if(uEl) uEl.value=savedUser;
+    if(pEl) pEl.value=savedPwd;
+    if(rEl) rEl.checked=true;
+  }
   var vEl=document.getElementById('app-version');
   if(vEl) vEl.textContent=APP_VERSION;
   var lt=document.getElementById('login-title');
@@ -9970,6 +10002,7 @@ var knEditId         = null;
 var knFilterCat      = '';
 
 function showKnowledge() {
+  if(!canAccess('knowledge')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','knowledge');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
@@ -10034,22 +10067,22 @@ function renderKnowledge() {
 
   var html='';
   Object.keys(grouped).sort().forEach(function(cat){
-    if(!knFilterCat) html+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;padding:16px 0 6px;border-bottom:1px solid var(--bdr);margin-bottom:8px">'+e(cat)+'</div>';
+    if(!knFilterCat) html+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;padding:10px 0 4px;border-bottom:1px solid var(--bdr);margin-bottom:4px">'+e(cat)+'</div>';
     grouped[cat].forEach(function(r){
       var f=r.fields;
       var hasUrl =!!(f['url']  && f['url'].trim());
       var hasBody=!!(f['body'] && f['body'].trim());
-      html+='<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px">'+
+      html+='<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 12px;margin-bottom:3px;display:flex;align-items:center;gap:10px">'+
         '<div style="flex:1;min-width:0">'+
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
         '<span style="font-weight:600;font-size:13px;color:var(--txt)">'+e(f['title']||'Untitled')+'</span>'+
         (f['subcategory']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);font-family:monospace;white-space:nowrap">'+e(f['subcategory'])+'</span>':'')+
+        (f['description']?'<span style="font-size:12px;color:var(--txt3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:480px">'+e(f['description'])+'</span>':'')+
         '</div>'+
-        (f['description']?'<div style="font-size:12px;color:var(--txt2);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'+e(f['description'])+'</div>':'')+
         '</div>'+
-        '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-top:2px">'+
-        (hasBody?'<button class="btn-ghost" style="font-size:12px;padding:4px 10px" onclick="openKnReader(\''+r.id+'\')">Read</button>':'')+
-        (hasUrl?'<a href="'+e(f['url'])+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:12px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center">Open ↗</a>':'')+
+        '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+
+        (hasBody?'<button class="btn-ghost" style="font-size:12px;padding:3px 9px" onclick="openKnReader(\''+r.id+'\')">Read</button>':'')+
+        (hasUrl?'<a href="'+e(f['url'])+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:12px;padding:3px 9px;text-decoration:none;display:inline-flex;align-items:center">Open ↗</a>':'')+
         '<button class="icon-btn edit" onclick="openKnModal(\''+r.id+'\')" style="opacity:1">'+IC_PENCIL+'</button>'+
         '<button class="icon-btn del"  onclick="deleteKnArticle(\''+r.id+'\')" style="opacity:1">'+IC_TRASH+'</button>'+
         '</div>'+
