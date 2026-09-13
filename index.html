@@ -824,6 +824,7 @@
         <option value="">Exception filters…</option>
         <option value="tp_no_quote">TP sent, no Quote in system</option>
         <option value="quoted_no_po">Quote sent, no PO received</option>
+        <option value="po_rec_no_sent">PO Received, no PO Sent</option>
         <option value="pipeline_no_quote">Pipeline: no Quote sent yet</option>
       </select>
     </div>
@@ -3439,8 +3440,9 @@ function applyFilters(){
     var inDate=true;
     if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
     if(!ms||!mq||!inDate) return false;
-    if(currentException==='tp_no_quote')      return r.tech_prop==='✔' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
+    if(currentException==='tp_no_quote')      return r.tech_prop==='✔' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length) && r.status!=='LOST' && r.status!=='CANCELLED';
     if(currentException==='quoted_no_po')     return (r.status==='PIPELINE'||r.status==='WON') && quotesByOpp[r._id]&&quotesByOpp[r._id].length && r.lpo_client!=='✔';
+    if(currentException==='po_rec_no_sent')   return !!(poReceivedByOpp[r._id]&&poReceivedByOpp[r._id].length) && !(poSentByOpp[r._id]&&poSentByOpp[r._id].length);
     if(currentException==='pipeline_no_quote') return r.status==='PIPELINE' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
     return true;
   });

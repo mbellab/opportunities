@@ -858,8 +858,9 @@ function applyFilters(){
     var inDate=true;
     if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
     if(!ms||!mq||!inDate) return false;
-    if(currentException==='tp_no_quote')      return r.tech_prop==='✔' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
+    if(currentException==='tp_no_quote')      return r.tech_prop==='✔' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length) && r.status!=='LOST' && r.status!=='CANCELLED';
     if(currentException==='quoted_no_po')     return (r.status==='PIPELINE'||r.status==='WON') && quotesByOpp[r._id]&&quotesByOpp[r._id].length && r.lpo_client!=='✔';
+    if(currentException==='po_rec_no_sent')   return !!(poReceivedByOpp[r._id]&&poReceivedByOpp[r._id].length) && !(poSentByOpp[r._id]&&poSentByOpp[r._id].length);
     if(currentException==='pipeline_no_quote') return r.status==='PIPELINE' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
     return true;
   });
