@@ -590,10 +590,8 @@ function renderPORBadge(oppId) {
     var d=new Date(dates[0]);
     dateLabel=d.getDate()+' '+M[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
   }
-  var num=pos[0].number;
   return '<div style="line-height:1.2">'
     +'<div style="font-weight:700;font-size:12px;color:var(--green)">'+pos.length+'</div>'
-    +(num?'<div style="font-size:10px;color:var(--txt3);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px" title="'+e(num)+'">'+e(num)+'</div>':'')
     +(dateLabel?'<div style="font-size:10px;color:var(--txt3);font-family:monospace">'+dateLabel+'</div>':'')
     +'</div>';
 }
