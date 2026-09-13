@@ -83,6 +83,7 @@ function getHeaders(){ return {'Content-Type':'application/json','X-App-Password
 var allRecords = [], items = [], filtered = [];
 var allQuoteHeaders = [];   // quote records (no line items) — loaded at startup
 var quotesByOpp    = {};    // keyed by opp ID: [{status,date}]
+var poReceivedByOpp = {};   // keyed by opp ID: [{number,date}]
 var currentStatus = 'ALL';
 var currentException = '';
 var currentPage = 1;
@@ -563,8 +564,38 @@ async function loadAllQuotes() {
         quotesByOpp[oid].push({status:q.fields['Status']||'', date:q.fields['Date Submitted']||''});
       });
     });
+    // Load PO received in parallel
+    var porRes=await fetch(WORKER_URL+'/po-received?pageSize=200',{headers:getHeaders()});
+    if(porRes.ok){
+      var porData=await porRes.json();
+      poReceivedByOpp={};
+      (porData.records||[]).forEach(function(p){
+        (p.fields['Opportunity']||[]).forEach(function(oid){
+          if(!poReceivedByOpp[oid]) poReceivedByOpp[oid]=[];
+          poReceivedByOpp[oid].push({number:p.fields['PO Number']||'', date:p.fields['Date']||''});
+        });
+      });
+    }
     renderTable();
   } catch(e){}
+}
+
+function renderPORBadge(oppId) {
+  var pos=poReceivedByOpp[oppId];
+  if(!pos||!pos.length) return '<span style="color:var(--txt3)">—</span>';
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dates=pos.map(function(p){return p.date;}).filter(Boolean).sort().reverse();
+  var dateLabel='';
+  if(dates[0]){
+    var d=new Date(dates[0]);
+    dateLabel=d.getDate()+' '+M[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+  }
+  var num=pos[0].number;
+  return '<div style="line-height:1.2">'
+    +'<div style="font-weight:700;font-size:12px;color:var(--green)">'+pos.length+'</div>'
+    +(num?'<div style="font-size:10px;color:var(--txt3);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px" title="'+e(num)+'">'+e(num)+'</div>':'')
+    +(dateLabel?'<div style="font-size:10px;color:var(--txt3);font-family:monospace">'+dateLabel+'</div>':'')
+    +'</div>';
 }
 
 function renderQtnBadge(oppId) {
@@ -822,7 +853,7 @@ function mkDisplayRow(r){
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
+    '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
@@ -845,7 +876,7 @@ function mkEditRow(r){
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'lpo_client',F.LPO_CLIENT,r.lpo_client)+'</td>'+
+    '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
     '<td class="c-actions"><div class="row-actions">'+
@@ -7029,7 +7060,7 @@ function exportOpportunitiesExcel() {
   var todayStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
   var genStr   = pad(now.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
 
-  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','QTN','TP','LPO-C','LPO-S'];
+  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','QTN','TP','PO Received','LPO-S'];
   var NC = COLS.length;
 
   function yesNo(v){ return (v==='✔'||v==='Yes') ? 'Yes' : (v==='✖'||v==='No') ? 'No' : ''; }
@@ -8070,7 +8101,7 @@ function openVoucherForm(id) {
   var f={};
   if(id){ var rec=pvRecords.find(function(r){return r.id===id;}); if(rec) f=rec.fields; }
   document.getElementById('pvf-date').value=f['Date']||new Date().toISOString().substring(0,10);
-  document.getElementById('pvf-no').value=f['Voucher No']||pvNextNumber();
+  document.getElementById('pvf-no').value=f['Voucher No']||'';
   document.getElementById('pvf-paid-to').value=f['Paid To']||'Shomon';
   document.getElementById('pvf-amount').value=f['Amount']!==undefined?f['Amount']:500;
   document.getElementById('pvf-purpose').value=f['Purpose']||'Cleaning Fee';
