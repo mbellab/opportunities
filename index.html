@@ -131,51 +131,119 @@
       </div>
     <button class="btn-ghost" onclick="pcRecords=[];loadPettyCash()" style="margin-left:8px;font-size:13px" title="Reload data">&#8635; Reload</button>
   </div>
-  <div class="body-wrap" style="padding:16px 20px;max-width:900px;margin:0 auto;width:100%">
+  <div class="body-wrap" style="overflow-y:auto;flex:1;display:flex;flex-direction:column">
 
-    <!-- Month nav -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <button onclick="pcPrevMonth()" class="btn-ghost" style="font-size:18px;padding:4px 12px">&#8592;</button>
-      <div style="display:flex;align-items:center;gap:8px">
-        <select id="pc-month-sel" onchange="pcPickMonth()" style="font-size:16px;font-weight:600;color:var(--txt);background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:4px 8px;cursor:pointer"></select>
-        <select id="pc-year-sel" onchange="pcPickMonth()" style="font-size:16px;font-weight:600;color:var(--txt);background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:4px 8px;cursor:pointer"></select>
+    <!-- Tabs -->
+    <div style="border-bottom:1px solid var(--bdr);display:flex;padding:0 20px;background:var(--bg);flex-shrink:0">
+      <button id="pc-tab-ledger" onclick="switchPCTab('ledger')" style="background:none;border:none;border-bottom:2px solid var(--amber);padding:12px 18px;font-size:13px;font-weight:600;color:var(--txt);cursor:pointer;margin-bottom:-1px">Cash Ledger</button>
+      <button id="pc-tab-vouchers" onclick="switchPCTab('vouchers')" style="background:none;border:none;border-bottom:2px solid transparent;padding:12px 18px;font-size:13px;font-weight:600;color:var(--txt3);cursor:pointer;margin-bottom:-1px">Payment Vouchers</button>
+    </div>
+
+    <!-- Ledger panel -->
+    <div id="pc-ledger-panel" style="padding:16px 20px;max-width:900px;margin:0 auto;width:100%">
+
+      <!-- Month nav -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <button onclick="pcPrevMonth()" class="btn-ghost" style="font-size:18px;padding:4px 12px">&#8592;</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <select id="pc-month-sel" onchange="pcPickMonth()" style="font-size:16px;font-weight:600;color:var(--txt);background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:4px 8px;cursor:pointer"></select>
+          <select id="pc-year-sel" onchange="pcPickMonth()" style="font-size:16px;font-weight:600;color:var(--txt);background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:4px 8px;cursor:pointer"></select>
+        </div>
+        <button onclick="pcNextMonth()" class="btn-ghost" style="font-size:18px;padding:4px 12px">&#8594;</button>
       </div>
-      <button onclick="pcNextMonth()" class="btn-ghost" style="font-size:18px;padding:4px 12px">&#8594;</button>
-    </div>
 
-    <!-- Summary bar -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
-      <div class="kpi-card">
-        <div class="kpi-label">OPENING BALANCE</div>
-        <div id="pc-opening" class="kpi-val" style="font-size:18px">AED 0.00</div>
+      <!-- Summary bar -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        <div class="kpi-card">
+          <div class="kpi-label">OPENING BALANCE</div>
+          <div id="pc-opening" class="kpi-val" style="font-size:18px">AED 0.00</div>
+        </div>
+        <div class="kpi-card" style="border-color:var(--green)">
+          <div class="kpi-label">CASH IN</div>
+          <div id="pc-in" class="kpi-val" style="font-size:18px;color:var(--green)">AED 0.00</div>
+        </div>
+        <div class="kpi-card" style="border-color:var(--red)">
+          <div class="kpi-label">CASH OUT</div>
+          <div id="pc-out" class="kpi-val" style="font-size:18px;color:var(--red)">AED 0.00</div>
+        </div>
       </div>
-      <div class="kpi-card" style="border-color:var(--green)">
-        <div class="kpi-label">CASH IN</div>
-        <div id="pc-in" class="kpi-val" style="font-size:18px;color:var(--green)">AED 0.00</div>
+
+      <!-- Balance highlight -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:12px 18px;margin-bottom:20px">
+        <span style="font-size:13px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Closing Balance</span>
+        <span id="pc-balance" style="font-size:22px;font-weight:700;color:var(--amber);font-family:monospace">AED 0.00</span>
       </div>
-      <div class="kpi-card" style="border-color:var(--red)">
-        <div class="kpi-label">CASH OUT</div>
-        <div id="pc-out" class="kpi-val" style="font-size:18px;color:var(--red)">AED 0.00</div>
+
+      <!-- Add button -->
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+        <button class="btn-ghost" onclick="exportPCtoExcel()">Export Excel</button>
+        <button class="btn-pri" onclick="openPCModal()">+ Add Transaction</button>
       </div>
+
+      <!-- Ledger table -->
+      <div><div style="width:100%"><div id="pc-tbody"></div></div></div>
     </div>
 
-    <!-- Balance highlight -->
-    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:12px 18px;margin-bottom:20px">
-      <span style="font-size:13px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Closing Balance</span>
-      <span id="pc-balance" style="font-size:22px;font-weight:700;color:var(--amber);font-family:monospace">AED 0.00</span>
+    <!-- Payment Vouchers panel -->
+    <div id="pc-vouchers-panel" style="display:none;padding:16px 20px;max-width:900px;margin:0 auto;width:100%">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+        <button class="btn-pri" onclick="openVoucherForm(null)">+ New Voucher</button>
+      </div>
+      <div id="pv-list"></div>
     </div>
+  </div>
+</div>
 
-    <!-- Add button -->
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
-      <button class="btn-ghost" onclick="exportPCtoExcel()">Export Excel</button>
-      <button class="btn-pri" onclick="openPCModal()">+ Add Transaction</button>
-    </div>
+<!-- PAYMENT VOUCHER FORM OVERLAY -->
+<div id="pv-form-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:300;flex-direction:column;overflow:hidden">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--bg)">
+    <button class="btn-ghost" onclick="closeVoucherForm()" style="font-size:18px;padding:2px 10px">&#8592;</button>
+    <span style="font-weight:700;font-size:16px">Payment Voucher</span>
+    <div style="flex:1"></div>
+    <button class="btn-cancel" onclick="saveVoucher()">Save</button>
+    <button id="pv-btn-print" class="btn-pri" onclick="pvPrintVoucher()" style="display:none">&#128438; Print / Export</button>
+    <button class="btn-pri" onclick="saveAndPrintVoucher()" style="background:var(--green)">Save &amp; Print</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:24px 20px">
+    <div style="max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:20px">
 
-    <!-- Ledger table -->
-    <div>
-      <div style="width:100%">
-      <div id="pc-tbody"></div>
-    </div>
+      <!-- Header fields -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="field"><label>Date</label><input type="date" id="pvf-date"></div>
+        <div class="field"><label>Voucher No.</label><input type="text" id="pvf-no" placeholder="PV-001"></div>
+      </div>
+      <div class="field"><label>Paid To</label><input type="text" id="pvf-paid-to" placeholder="Shomon"></div>
+      <div style="display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:end">
+        <div class="field">
+          <label>Amount (AED)</label>
+          <input type="number" id="pvf-amount" min="0" step="0.01" placeholder="500" oninput="pvUpdateWords()">
+        </div>
+        <div class="field">
+          <label>Amount in Words</label>
+          <div id="pvf-amount-words" style="padding:8px 10px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);font-size:12px;font-weight:600;min-height:36px;color:var(--txt3);text-transform:uppercase;letter-spacing:.3px"></div>
+        </div>
+      </div>
+      <div class="field"><label>For Payment of</label><input type="text" id="pvf-purpose" placeholder="Cleaning Fee"></div>
+      <div class="field">
+        <label>Paid by</label>
+        <select id="pvf-method">
+          <option value="Cash">Cash</option>
+          <option value="Cheque">Cheque</option>
+        </select>
+      </div>
+
+      <!-- Signature -->
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Received by (signature)</div>
+        <div style="border:1px solid var(--bdr2);border-radius:var(--r);background:#fff;position:relative;cursor:crosshair">
+          <canvas id="pv-sig-canvas" width="580" height="160" style="width:100%;height:160px;display:block;border-radius:var(--r)"></canvas>
+          <div style="position:absolute;bottom:8px;left:12px;font-size:10px;color:#ccc;pointer-events:none;user-select:none">Sign here</div>
+        </div>
+        <div style="margin-top:6px;display:flex;justify-content:flex-end">
+          <button class="btn-ghost" onclick="pvClearSig()" style="font-size:12px;padding:4px 10px">Clear Signature</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>

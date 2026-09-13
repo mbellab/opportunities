@@ -362,6 +362,19 @@ const SCALAR = {
     'sort_order':  'sort_order',
     'created_at':  'created_at',
   },
+  payment_vouchers: {
+    'Date':           'voucher_date',
+    'Voucher No':     'voucher_no',
+    'Paid To':        'paid_to',
+    'Amount':         'amount',
+    'Amount Words':   'amount_words',
+    'Purpose':        'purpose',
+    'Payment Method': 'payment_method',
+    'Signature':      'signature_data',
+    'Signed At':      'signed_at',
+    'Created By':     'created_by',
+    'Created At':     'created_at',
+  },
   expense_claims: {
     'Entity':         'entity',
     'Employee Name':  'employee_name',
@@ -545,7 +558,8 @@ const ROUTES = [
   { prefix: '/annual-entitlements', sbTable: 'annual_entitlements'      },
   { prefix: '/leave-requests',      sbTable: 'leave_requests'           },
   { prefix: '/price-book',          sbTable: 'price_book'               },
-  { prefix: '/payment-terms',       sbTable: 'payment_terms'            },
+  { prefix: '/payment-terms',        sbTable: 'payment_terms'            },
+  { prefix: '/payment-vouchers',    sbTable: 'payment_vouchers'         },
   { prefix: '/knowledge',            sbTable: 'knowledge_articles'       },
 ];
 

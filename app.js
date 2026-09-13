@@ -7961,6 +7961,312 @@ async function confirmDeletePCTransaction() {
   } catch(err) { toast('Delete failed: '+err.message,'err'); }
 }
 
+// ── PAYMENT VOUCHERS ─────────────────────────────────────────────────────────
+var pvRecords=[],pvLoaded=false,pvFormId=null,pvCanvas=null,pvCtx=null,pvDrawing=false;
+
+function switchPCTab(tab) {
+  var ledger=document.getElementById('pc-ledger-panel');
+  var vouchers=document.getElementById('pc-vouchers-panel');
+  var tL=document.getElementById('pc-tab-ledger');
+  var tV=document.getElementById('pc-tab-vouchers');
+  var isLedger=(tab==='ledger');
+  if(ledger) ledger.style.display=isLedger?'':'none';
+  if(vouchers) vouchers.style.display=isLedger?'none':'';
+  if(tL){ tL.style.borderBottom=isLedger?'2px solid var(--amber)':'2px solid transparent'; tL.style.color=isLedger?'var(--txt)':'var(--txt3)'; }
+  if(tV){ tV.style.borderBottom=isLedger?'2px solid transparent':'2px solid var(--amber)'; tV.style.color=isLedger?'var(--txt3)':'var(--txt)'; }
+  if(!isLedger){ if(!pvLoaded) loadPaymentVouchers(); else renderPaymentVouchers(); }
+}
+
+async function loadPaymentVouchers() {
+  try {
+    var res=await fetch(WORKER_URL+'/payment-vouchers?pageSize=200',{headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    pvRecords=(data&&data.records)?data.records:[];
+    pvLoaded=true;
+    renderPaymentVouchers();
+  } catch(err) {
+    var el=document.getElementById('pv-list');
+    if(el) el.innerHTML='<div style="padding:20px;text-align:center;color:var(--red)">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function renderPaymentVouchers() {
+  var el=document.getElementById('pv-list'); if(!el) return;
+  var recs=pvRecords.slice().sort(function(a,b){
+    return (b.fields['Date']||'')>(a.fields['Date']||'')?1:-1;
+  });
+  if(!recs.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--txt3)">No payment vouchers yet. Click <b>+ New Voucher</b> to create the first one.</div>';
+    return;
+  }
+  var S={
+    hdr:'display:flex;align-items:center;border-bottom:2px solid var(--bdr2);padding:6px 0;background:var(--bg2)',
+    row:'display:flex;align-items:center;border-bottom:1px solid var(--bdr);padding:4px 0;cursor:pointer',
+    lbl:'font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);font-family:monospace;padding:6px 8px',
+  };
+  var html='<div style="'+S.hdr+'">'+
+    '<div style="flex:0 0 100px;'+S.lbl+'">Date</div>'+
+    '<div style="flex:0 0 70px;'+S.lbl+'">No.</div>'+
+    '<div style="flex:1 1 0;'+S.lbl+'">Paid To / Purpose</div>'+
+    '<div style="flex:0 0 110px;'+S.lbl+';text-align:right">Amount</div>'+
+    '<div style="flex:0 0 90px;'+S.lbl+';text-align:center">Signed</div>'+
+    '<div style="flex:0 0 70px"></div>'+
+    '</div>';
+  recs.forEach(function(r){
+    var f=r.fields;
+    var d=f['Date']?new Date(f['Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    var signed=f['Signature']?
+      '<span style="color:var(--green);font-weight:700;font-size:12px">&#10003; Signed</span>':
+      '<span style="color:var(--txt3);font-size:12px">Unsigned</span>';
+    html+='<div style="'+S.row+'" ondblclick="openVoucherForm(\''+r.id+'\')">'+
+      '<div style="flex:0 0 100px;padding:6px 8px;font-size:12px">'+e(d)+'</div>'+
+      '<div style="flex:0 0 70px;padding:6px 8px;font-size:12px;font-family:monospace;color:var(--txt3)">'+e(f['Voucher No']||'—')+'</div>'+
+      '<div style="flex:1 1 0;padding:6px 8px">'+
+        '<div style="font-weight:500;font-size:13px">'+e(f['Paid To']||'—')+'</div>'+
+        (f['Purpose']?'<div style="font-size:11px;color:var(--txt3)">'+e(f['Purpose'])+'</div>':'')+
+      '</div>'+
+      '<div style="flex:0 0 110px;padding:6px 8px;text-align:right;font-family:monospace;font-weight:600">'+fmtPCAED(f['Amount']||0)+'</div>'+
+      '<div style="flex:0 0 90px;padding:6px 8px;text-align:center">'+signed+'</div>'+
+      '<div style="flex:0 0 70px;padding:4px 6px;display:flex;gap:4px;justify-content:flex-end">'+
+        '<button class="btn-ghost" style="font-size:11px;padding:3px 8px" onclick="event.stopPropagation();openVoucherForm(\''+r.id+'\')">Open</button>'+
+        '<button class="icon-btn del" style="opacity:.7;color:var(--red)" onclick="event.stopPropagation();deleteVoucher(\''+r.id+'\')" title="Delete">'+IC_TRASH+'</button>'+
+      '</div>'+
+    '</div>';
+  });
+  el.innerHTML=html;
+}
+
+function pvNextNumber() {
+  var max=0;
+  pvRecords.forEach(function(r){
+    var vn=r.fields['Voucher No']||''; var m=vn.match(/(\d+)$/);
+    if(m) max=Math.max(max,parseInt(m[1],10));
+  });
+  return 'PV-'+String(max+1).padStart(3,'0');
+}
+
+function pvAmountToWords(n) {
+  var ones=['','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE',
+            'TEN','ELEVEN','TWELVE','THIRTEEN','FOURTEEN','FIFTEEN','SIXTEEN',
+            'SEVENTEEN','EIGHTEEN','NINETEEN'];
+  var tens=['','','TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];
+  function toW(n){
+    n=Math.floor(n); if(n===0) return '';
+    if(n<20) return ones[n];
+    if(n<100) return tens[Math.floor(n/10)]+(n%10?' '+ones[n%10]:'');
+    if(n<1000) return ones[Math.floor(n/100)]+' HUNDRED'+(n%100?' '+toW(n%100):'');
+    if(n<1000000) return toW(Math.floor(n/1000))+' THOUSAND'+(n%1000?' '+toW(n%1000):'');
+    return toW(Math.floor(n/1000000))+' MILLION'+(n%1000000?' '+toW(n%1000000):'');
+  }
+  var r=Math.round(n*100); var dh=Math.floor(r/100); var fl=r%100;
+  var res=(dh===0?'ZERO':toW(dh))+' DIRHAMS';
+  if(fl>0) res+=' AND '+toW(fl)+' FILS';
+  return res+' ONLY';
+}
+
+function openVoucherForm(id) {
+  pvFormId=id||null;
+  var f={};
+  if(id){ var rec=pvRecords.find(function(r){return r.id===id;}); if(rec) f=rec.fields; }
+  document.getElementById('pvf-date').value=f['Date']||new Date().toISOString().substring(0,10);
+  document.getElementById('pvf-no').value=f['Voucher No']||pvNextNumber();
+  document.getElementById('pvf-paid-to').value=f['Paid To']||'Shomon';
+  document.getElementById('pvf-amount').value=f['Amount']!==undefined?f['Amount']:500;
+  document.getElementById('pvf-purpose').value=f['Purpose']||'Cleaning Fee';
+  document.getElementById('pvf-method').value=f['Payment Method']||'Cash';
+  pvUpdateWords();
+  pvInitCanvas();
+  pvClearSig();
+  if(f['Signature']){
+    var img=new Image();
+    img.onload=function(){pvCtx.drawImage(img,0,0);};
+    img.src=f['Signature'];
+  }
+  var pb=document.getElementById('pv-btn-print');
+  if(pb) pb.style.display=f['Signature']?'':'none';
+  document.getElementById('pv-form-overlay').style.display='flex';
+}
+
+function closeVoucherForm(){
+  document.getElementById('pv-form-overlay').style.display='none'; pvFormId=null;
+}
+
+function pvUpdateWords(){
+  var amt=parseFloat(document.getElementById('pvf-amount').value)||0;
+  var el=document.getElementById('pvf-amount-words');
+  if(el) el.textContent=amt>0?pvAmountToWords(amt):'';
+}
+
+function pvInitCanvas(){
+  pvCanvas=document.getElementById('pv-sig-canvas'); if(!pvCanvas) return;
+  pvCtx=pvCanvas.getContext('2d');
+  pvCtx.strokeStyle='#000000'; pvCtx.lineWidth=2; pvCtx.lineCap='round'; pvCtx.lineJoin='round';
+  pvDrawing=false;
+  pvCanvas.onmousedown=function(ev){
+    pvDrawing=true;
+    var r=pvCanvas.getBoundingClientRect();
+    var sx=pvCanvas.width/r.width, sy=pvCanvas.height/r.height;
+    pvCtx.beginPath(); pvCtx.moveTo((ev.clientX-r.left)*sx,(ev.clientY-r.top)*sy);
+  };
+  pvCanvas.onmousemove=function(ev){
+    if(!pvDrawing) return;
+    var r=pvCanvas.getBoundingClientRect();
+    var sx=pvCanvas.width/r.width, sy=pvCanvas.height/r.height;
+    pvCtx.lineTo((ev.clientX-r.left)*sx,(ev.clientY-r.top)*sy); pvCtx.stroke();
+  };
+  pvCanvas.onmouseup=function(){pvDrawing=false;};
+  pvCanvas.onmouseleave=function(){pvDrawing=false;};
+  pvCanvas.ontouchstart=function(ev){
+    ev.preventDefault(); pvDrawing=true;
+    var t=ev.touches[0]; var r=pvCanvas.getBoundingClientRect();
+    var sx=pvCanvas.width/r.width, sy=pvCanvas.height/r.height;
+    pvCtx.beginPath(); pvCtx.moveTo((t.clientX-r.left)*sx,(t.clientY-r.top)*sy);
+  };
+  pvCanvas.ontouchmove=function(ev){
+    ev.preventDefault(); if(!pvDrawing) return;
+    var t=ev.touches[0]; var r=pvCanvas.getBoundingClientRect();
+    var sx=pvCanvas.width/r.width, sy=pvCanvas.height/r.height;
+    pvCtx.lineTo((t.clientX-r.left)*sx,(t.clientY-r.top)*sy); pvCtx.stroke();
+  };
+  pvCanvas.ontouchend=function(){pvDrawing=false;};
+}
+
+function pvClearSig(){
+  if(pvCanvas&&pvCtx) pvCtx.clearRect(0,0,pvCanvas.width,pvCanvas.height);
+}
+
+function pvIsSigBlank(){
+  if(!pvCanvas) return true;
+  var d=pvCtx.getImageData(0,0,pvCanvas.width,pvCanvas.height).data;
+  for(var i=3;i<d.length;i+=4){ if(d[i]>0) return false; }
+  return true;
+}
+
+async function saveVoucher(){
+  var date=document.getElementById('pvf-date').value;
+  var vno=document.getElementById('pvf-no').value.trim();
+  var paidTo=document.getElementById('pvf-paid-to').value.trim();
+  var amount=parseFloat(document.getElementById('pvf-amount').value);
+  var purpose=document.getElementById('pvf-purpose').value.trim();
+  var method=document.getElementById('pvf-method').value;
+  if(!date){toast('Please enter a date','err');return;}
+  if(!amount||amount<=0){toast('Please enter a valid amount','err');return;}
+  if(!paidTo){toast('Please enter who was paid','err');return;}
+  var sigData=pvIsSigBlank()?null:pvCanvas.toDataURL('image/png');
+  var fields={
+    'Date':date,'Voucher No':vno||pvNextNumber(),'Paid To':paidTo,
+    'Amount':amount,'Amount Words':pvAmountToWords(amount),
+    'Purpose':purpose||'Cleaning Fee','Payment Method':method||'Cash',
+    'Signature':sigData,'Signed At':sigData?new Date().toISOString():null,
+    'Created By':userName||'',
+  };
+  setSave('saving');
+  try {
+    var url=pvFormId?WORKER_URL+'/payment-vouchers/'+pvFormId:WORKER_URL+'/payment-vouchers';
+    var mth=pvFormId?'PATCH':'POST';
+    var res=await fetch(url,{method:mth,headers:getHeaders(),body:JSON.stringify({fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    if(pvFormId){
+      pvRecords=pvRecords.map(function(r){return r.id===pvFormId?data:r;});
+    } else {
+      pvFormId=data.id; pvRecords.push(data);
+    }
+    setSave('saved'); toast('Voucher saved','ok');
+    renderPaymentVouchers();
+    var pb=document.getElementById('pv-btn-print'); if(pb) pb.style.display=sigData?'':'none';
+  } catch(err){setSave('err');toast('Save failed: '+err.message,'err');}
+}
+
+async function saveAndPrintVoucher(){ await saveVoucher(); pvPrintVoucher(); }
+
+function pvPrintVoucher(){
+  var f={};
+  if(pvFormId){ var rec=pvRecords.find(function(r){return r.id===pvFormId;}); if(rec) f=rec.fields; }
+  var date=document.getElementById('pvf-date').value||f['Date']||'';
+  var vno=document.getElementById('pvf-no').value||f['Voucher No']||'';
+  var paidTo=document.getElementById('pvf-paid-to').value||f['Paid To']||'';
+  var amount=parseFloat(document.getElementById('pvf-amount').value)||f['Amount']||0;
+  var amtWords=pvAmountToWords(amount);
+  var purpose=document.getElementById('pvf-purpose').value||f['Purpose']||'';
+  var method=document.getElementById('pvf-method').value||f['Payment Method']||'Cash';
+  var sigData=(pvCanvas&&!pvIsSigBlank())?pvCanvas.toDataURL('image/png'):(f['Signature']||null);
+  var dateStr=date?new Date(date).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}):'';
+  var logoEl=document.querySelector('#petty-cash-screen .top-bar img');
+  var logoSrc=logoEl?logoEl.src:'';
+  var isCash=(method==='Cash');
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Payment Voucher '+e(vno)+'</title>'+
+  '<style>@page{size:A4 portrait;margin:20mm 25mm}*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}'+
+  'body{color:#000;font-size:11pt}.title-bar{display:flex;justify-content:space-between;align-items:flex-start;'+
+  'border-bottom:2.5px solid #000;padding-bottom:12px;margin-bottom:24px}'+
+  '.title{font-size:22pt;font-weight:700;letter-spacing:1px;text-transform:uppercase}'+
+  '.ref-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:8px 16px;margin-bottom:24px;align-items:baseline}'+
+  '.ref-grid label{font-weight:700;white-space:nowrap}'+
+  '.ul{border-bottom:1.5px solid #000;padding:0 4px 2px;display:inline-block;min-width:160px}'+
+  '.row{display:flex;align-items:baseline;gap:8px;margin-bottom:16px}'+
+  '.row label{font-weight:700;white-space:nowrap;min-width:140px}'+
+  '.row .val{border-bottom:1.5px solid #000;flex:1;padding:0 4px 2px}'+
+  '.check-row{display:flex;align-items:center;gap:28px;margin-top:4px}'+
+  '.check-row label{font-weight:700;min-width:80px}'+
+  '.cb{width:14px;height:14px;border:1.5px solid #000;display:inline-flex;align-items:center;justify-content:center;'+
+  'margin-right:5px;font-size:10pt;font-weight:700;vertical-align:middle}'+
+  '.sig-section{margin-top:50px;border-top:1px solid #bbb;padding-top:20px}'+
+  '.sig-section label{font-weight:700;font-size:11pt;display:block;margin-bottom:10px}'+
+  '.sig-img{max-width:320px;max-height:110px;border:1px solid #ddd}'+
+  '.sig-line{border-bottom:1.5px solid #000;width:320px;height:80px}'+
+  '.footer{margin-top:50px;font-size:8pt;color:#aaa;text-align:center;border-top:1px solid #eee;padding-top:8px}</style></head><body>'+
+  '<div class="title-bar">'+
+    (logoSrc?'<img src="'+logoSrc+'" style="height:52px">':'<div></div>')+
+    '<div class="title">Payment Voucher</div>'+
+  '</div>'+
+  '<div class="ref-grid">'+
+    '<label>Date:</label><span class="ul">&nbsp;'+e(dateStr)+'&nbsp;</span>'+
+    '<label>Voucher No.:</label><span class="ul">&nbsp;'+e(vno)+'&nbsp;</span>'+
+  '</div>'+
+  '<div class="row"><label>Paid to</label><span class="val">&nbsp;'+e(paidTo)+'&nbsp;</span></div>'+
+  '<div class="row"><label>Amount of</label><span class="val">&nbsp;'+e(amtWords)+'&nbsp;</span></div>'+
+  '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:16px">'+
+    '<label style="font-weight:700;min-width:140px">AED</label>'+
+    '<span style="border-bottom:1.5px solid #000;min-width:120px;padding:0 8px 2px;font-family:monospace;font-size:13pt;font-weight:700">'+
+      amount.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+
+    '</span>'+
+  '</div>'+
+  '<div class="row"><label>For Payment of</label><span class="val">&nbsp;'+e(purpose)+'&nbsp;</span></div>'+
+  '<div class="check-row" style="margin-top:16px">'+
+    '<label>Paid by:</label>'+
+    '<span><span class="cb">'+(isCash?'&#10003;':'')+'</span> Cash</span>'+
+    '<span><span class="cb">'+(!isCash?'&#10003;':'')+'</span> Cheque No. <span style="border-bottom:1px solid #000;min-width:120px;display:inline-block">&nbsp;</span></span>'+
+  '</div>'+
+  '<div class="sig-section">'+
+    '<label>Received by:</label>'+
+    (sigData?'<img class="sig-img" src="'+sigData+'" alt="Signature">':'<div class="sig-line"></div>')+
+  '</div>'+
+  '<div class="footer">BSAA &mdash; Payment Voucher &mdash; '+e(vno)+'</div>'+
+  '</body></html>');
+  w.document.close();
+  setTimeout(function(){w.print();},400);
+}
+
+async function deleteVoucher(id){
+  var rec=pvRecords.find(function(r){return r.id===id;});
+  var paidTo=rec?(rec.fields['Paid To']||'this voucher'):'this voucher';
+  var ok=await appConfirm({icon:'🗑',title:'Delete Payment Voucher',
+    body:'Permanently delete the payment voucher for <b>'+e(paidTo)+'</b>? This cannot be undone.',
+    confirmLabel:'Delete',confirmStyle:'background:#c0392b;color:#fff;border:none'});
+  if(!ok) return;
+  try {
+    var res=await fetch(WORKER_URL+'/payment-vouchers/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    pvRecords=pvRecords.filter(function(r){return r.id!==id;});
+    if(pvFormId===id) closeVoucherForm();
+    renderPaymentVouchers(); toast('Voucher deleted','ok');
+  } catch(err){toast('Delete failed: '+err.message,'err');}
+}
+
+// ── END PAYMENT VOUCHERS ──────────────────────────────────────────────────────
+
 var pwdRecords=[],pwdLoaded=false,pwdEditId=null;
 
 function showPasswords(){
