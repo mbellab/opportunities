@@ -7589,20 +7589,6 @@ async function runIntegrityChecks() {
       oppIds.forEach(function(oid){ quoteCountByOpp[oid] = (quoteCountByOpp[oid]||0) + 1; });
     });
 
-    // QTN ticked but no quote record exists
-    var tickedNoQuote = diagItems.filter(function(r){ return r.quotation==='✔' && !quoteCountByOpp[r._id]; });
-    if(tickedNoQuote.length) issues.push({
-      sev:'amber',
-      label:'QTN checkbox ticked but no Quote found in system ('+tickedNoQuote.length+')',
-      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
-        tickedNoQuote.map(function(r){
-          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
-            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
-            (r.project?' <span>'+e(r.project)+'</span>':'')+
-            '</div>';
-        }).join('')+'</div>'
-    });
-
     // TP ticked but no quote in system
     var tpNoQuote = diagItems.filter(function(r){ return r.tech_prop==='✔' && !quoteCountByOpp[r._id] && r.status!=='LOST' && r.status!=='CANCELLED'; });
     if(tpNoQuote.length) issues.push({
