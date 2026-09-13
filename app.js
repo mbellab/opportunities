@@ -644,7 +644,6 @@ function renderPOSBadge(oppId) {
   }
   return '<div style="line-height:1.2">'
     +'<div style="font-weight:700;font-size:12px;color:var(--blue)">'+pos.length+'</div>'
-    +(latest.number?'<div style="font-size:10px;color:var(--txt3);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px" title="'+e(latest.number)+'">'+e(latest.number)+'</div>':'')
     +(dateLabel?'<div style="font-size:10px;color:var(--txt3);font-family:monospace">'+dateLabel+'</div>':'')
     +'</div>';
 }
