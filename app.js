@@ -7481,7 +7481,7 @@ async function runIntegrityChecks() {
     return recs;
   }
 
-  var diagEmps, diagLeave, diagEnts, diagTickets, diagHols, diagQuotes, diagOppsRaw;
+  var diagEmps, diagLeave, diagEnts, diagTickets, diagHols, diagQuotes, diagOppsRaw, diagPORec, diagPOSent;
   try {
     var fetched = await Promise.all([
       empRecords.length   ? Promise.resolve(empRecords)     : fetchAll('/employees'),
@@ -7491,8 +7491,10 @@ async function runIntegrityChecks() {
       elHolidays.length   ? Promise.resolve(elHolidays)     : fetchAll('/bank-holidays'),
       fetchAll('/quotes'),
       allRecords.length   ? Promise.resolve(allRecords)     : fetchAll('/'),
+      fetchAll('/po-received'),
+      fetchAll('/po-sent'),
     ]);
-    diagEmps=fetched[0]; diagLeave=fetched[1]; diagEnts=fetched[2]; diagTickets=fetched[3]; diagHols=fetched[4]; diagQuotes=fetched[5]; diagOppsRaw=fetched[6];
+    diagEmps=fetched[0]; diagLeave=fetched[1]; diagEnts=fetched[2]; diagTickets=fetched[3]; diagHols=fetched[4]; diagQuotes=fetched[5]; diagOppsRaw=fetched[6]; diagPORec=fetched[7]; diagPOSent=fetched[8];
   } catch(err) {
     if(intEl) intEl.innerHTML='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
     if(lvEl)  lvEl.innerHTML ='<div style="padding:12px 16px;color:var(--red);font-size:13px">Failed to fetch data for checks.</div>';
@@ -7628,6 +7630,28 @@ async function runIntegrityChecks() {
             '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
             (r.project?' <span>'+e(r.project)+'</span>':'')+
             ' <span style="font-family:monospace;color:var(--blue);font-size:10px">('+quoteCountByOpp[r._id]+' quote'+(quoteCountByOpp[r._id]>1?'s':'')+')</span>'+
+            '</div>';
+        }).join('')+'</div>'
+    });
+
+    // PO Received exists but no PO Sent
+    var poRecOppIds={};
+    diagPORec.forEach(function(p){
+      (p.fields['Opportunity']||[]).forEach(function(oid){ poRecOppIds[oid]=true; });
+    });
+    var poSentOppIds={};
+    diagPOSent.forEach(function(p){
+      (p.fields['Opportunity']||[]).forEach(function(oid){ poSentOppIds[oid]=true; });
+    });
+    var poRecNoPOSent = diagItems.filter(function(r){ return poRecOppIds[r._id] && !poSentOppIds[r._id]; });
+    if(poRecNoPOSent.length) issues.push({
+      sev:'amber',
+      label:'PO Received from client but no PO Sent to supplier ('+poRecNoPOSent.length+')',
+      detailHtml:'<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 16px">'+
+        poRecNoPOSent.map(function(r){
+          return '<div style="font-size:12px;color:var(--txt3);padding:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+
+            '<span style="font-family:monospace;color:var(--txt2);font-size:11px">SR-'+e(r.sr_no)+'</span>'+
+            (r.project?' <span>'+e(r.project)+'</span>':'')+
             '</div>';
         }).join('')+'</div>'
     });
