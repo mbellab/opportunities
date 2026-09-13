@@ -355,6 +355,37 @@ function toast(msg, type) {
   t._to = setTimeout(function(){ t.style.opacity='0'; }, 2800);
 }
 
+// appConfirm — Promise-based confirm dialog
+// opts: { icon, title, body, confirmLabel, confirmStyle, cancelLabel }
+function appConfirm(opts) {
+  return new Promise(function(resolve) {
+    var o=opts||{};
+    var el=document.getElementById('_app-modal');
+    if(!el){
+      el=document.createElement('div');
+      el.id='_app-modal';
+      el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px';
+      document.body.appendChild(el);
+    }
+    var confirmStyle=o.confirmStyle||'background:var(--amber);color:#fff;border:none';
+    el.innerHTML=
+      '<div style="background:var(--bg);border:1px solid var(--bdr2);border-radius:10px;padding:28px 28px 22px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.18)">'+
+        (o.icon?'<div style="font-size:32px;margin-bottom:14px;line-height:1">'+o.icon+'</div>':'')+
+        '<div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:8px">'+e(o.title||'Confirm')+'</div>'+
+        '<div style="font-size:13px;color:var(--txt2);line-height:1.6;margin-bottom:22px">'+o.body+'</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+          '<button id="_modal-cancel" class="btn-cancel" style="padding:8px 16px">'+e(o.cancelLabel||'Cancel')+'</button>'+
+          '<button id="_modal-confirm" style="padding:8px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:\'IBM Plex Sans\',sans-serif;'+confirmStyle+'">'+e(o.confirmLabel||'Confirm')+'</button>'+
+        '</div>'+
+      '</div>';
+    el.style.display='flex';
+    function close(val){ el.style.display='none'; el.innerHTML=''; resolve(val); }
+    document.getElementById('_modal-cancel').onclick=function(){ close(false); };
+    document.getElementById('_modal-confirm').onclick=function(){ close(true); };
+    el.onclick=function(ev){ if(ev.target===el) close(false); };
+  });
+}
+
 function showError(html) {
   var b = document.getElementById('err-banner');
   if(!b) return;
@@ -382,6 +413,7 @@ function applyRoleRestrictions() {
     'showPettyCash':'petty-cash','showPasswords':'passwords','showEmployeeLeave':'employee-leave',
     'showLeaveRequests':'leave-requests','showDiagnostics':'diagnostics','showAdmin':'admin',
     'showKnowledge':'knowledge',
+    'showExpenseClaims':'expense-claims',
   };
   document.querySelectorAll('.nav-drop-item, .nav-admin-only').forEach(function(el){
     var oc = el.getAttribute('onclick')||'';
@@ -1146,7 +1178,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -1157,7 +1189,7 @@ function showOpportunities() {
   if(!canAccess('opportunities')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','opportunities');
   setActivePage('opportunities');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('loading').style.display = 'flex';
@@ -1169,7 +1201,7 @@ function showPriceBook() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('price-book-screen').style.display='flex';
@@ -1179,7 +1211,7 @@ function showVendors() {
   if(!canAccess('vendors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','vendors');
   setActivePage('vendors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('vendor-screen').style.display='flex';
@@ -1534,7 +1566,7 @@ function showDashboard() {
   if(!canAccess('dashboard')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','dashboard');
   setActivePage('dashboard');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   if(items.length === 0) {
@@ -1814,7 +1846,7 @@ function showContractors() {
   if(!canAccess('contractors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','contractors');
   setActivePage('contractors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('contractors-screen').style.display='flex';
@@ -2131,7 +2163,7 @@ function showSuppliers() {
   if(!canAccess('suppliers')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','suppliers');
   setActivePage('suppliers');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('suppliers-screen').style.display='flex';
@@ -4212,7 +4244,7 @@ function signOut() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
@@ -5188,7 +5220,7 @@ var qoEditId   = null;
 function showQualityObjectives() {
   if(!canAccess('quality')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','quality');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('quality-screen').style.display='flex';
@@ -5615,7 +5647,7 @@ var empEditId   = null;
 function showEmployees() {
   if(!canAccess('employees')) { toast('Employees is restricted to your role','err'); return; }
   sessionStorage.setItem('mbb_screen','employees');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('employees-screen').style.display='flex';
@@ -5931,7 +5963,7 @@ function showRenewals() {
   if(!canAccess('renewals')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','renewals');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('renewals-screen').style.display='flex';
@@ -6046,7 +6078,10 @@ function renderRenewals() {
       '<td style="padding:6px 10px;font-family:monospace;font-size:12px;white-space:nowrap;'+st.cls+'">'+st.label+'</td>'+
       '<td style="padding:6px 10px;text-align:right;font-family:monospace;font-size:11px;color:var(--txt2);white-space:nowrap">'+cost+'</td>'+
       '<td style="padding:6px 10px;color:var(--txt3);font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+e(f['Comments']||'')+'</td>'+
-      '<td style="padding:6px 4px;text-align:center">'+(f['Link to Steps']?'<a href="'+e(f['Link to Steps'])+'" target="_blank" rel="noopener" style="color:var(--blue);font-size:14px">&#128279;</a>':'<span style="opacity:.2;font-size:14px">&#128279;</span>')+'</td>'+
+      '<td style="padding:6px 4px;text-align:center;white-space:nowrap">'+
+        (f['Link to Steps']?'<a href="'+e(f['Link to Steps'])+'" target="_blank" rel="noopener" style="color:var(--blue);font-size:14px;margin-right:4px">&#128279;</a>':'<span style="opacity:.2;font-size:14px;margin-right:4px">&#128279;</span>')+
+        (f['KB Article']?'<button onclick="event.stopPropagation();openKnReader(\''+f['KB Article']+'\')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:0;color:var(--blue)" title="Open KB article">&#128214;</button>':'<span style="opacity:.2;font-size:14px">&#128214;</span>')+
+      '</td>'+
       '<td style="padding:6px 6px;text-align:right;white-space:nowrap">'+
         '<button class="icon-btn edit" data-ren-edit="'+r.id+'" style="opacity:1">'+IC_PENCIL+'</button>'+
         '<button class="icon-btn del" data-ren-del="'+r.id+'" style="opacity:1">'+IC_TRASH+'</button>'+
@@ -6067,7 +6102,7 @@ function renderRenewals() {
   };
 }
 
-function showRenewalModal(recordId) {
+async function showRenewalModal(recordId) {
   renEditId = recordId;
   var isNew = !recordId;
   document.getElementById('ren-modal-title').textContent = isNew ? 'Add Renewal' : 'Edit Renewal';
@@ -6076,10 +6111,34 @@ function showRenewalModal(recordId) {
   document.getElementById('renf-details').value  = f['Renewal Details']||'';
   document.getElementById('renf-cost').value     = f['Estimated Cost']||'';
   document.getElementById('renf-expiry').value   = (f['Expiry Date']||'').substring(0,10);
-  document.getElementById('renf-steps').value   = f['Link to Steps']||'';
+  document.getElementById('renf-steps').value    = f['Link to Steps']||'';
   document.getElementById('renf-comments').value = f['Comments']||'';
+  // KB article dropdown
+  if(!knowledgeLoaded) await loadKnowledge();
+  var currentKb = f['KB Article']||'';
+  var kbSel = document.getElementById('renf-kb');
+  if(kbSel) {
+    kbSel.innerHTML = '<option value="">— None —</option>' +
+      knowledgeRecords.slice().sort(function(a,b){ return (a.fields['title']||'').localeCompare(b.fields['title']||''); })
+      .map(function(r){
+        var label = r.fields['subcategory'] ? r.fields['subcategory']+' / '+r.fields['title'] : (r.fields['title']||r.id);
+        return '<option value="'+r.id+'"'+(r.id===currentKb?' selected':'')+'>'+e(label)+'</option>';
+      }).join('');
+    updateRenKbBtn();
+  }
   document.getElementById('ren-modal').style.display='flex';
   setTimeout(function(){ document.getElementById('renf-details').focus(); },50);
+}
+
+function updateRenKbBtn() {
+  var val = (document.getElementById('renf-kb')||{}).value;
+  var btn = document.getElementById('renf-kb-open');
+  if(btn) btn.style.display = val ? 'inline-flex' : 'none';
+}
+
+function openRenewalKb() {
+  var id = (document.getElementById('renf-kb')||{}).value;
+  if(id) openKnReader(id);
 }
 
 function closeRenewalModal() {
@@ -6101,6 +6160,7 @@ async function saveRenewal() {
     'Expiry Date':     document.getElementById('renf-expiry').value || null,
     'Estimated Cost':  (!isNaN(cost) && document.getElementById('renf-cost').value.trim() !== '') ? cost : null,
     'Link to Steps':   document.getElementById('renf-steps').value.trim() || null,
+    'KB Article':      document.getElementById('renf-kb').value || null,
     'Comments':        document.getElementById('renf-comments').value.trim() || null,
   };
   var cleanFields = {};
@@ -6377,13 +6437,17 @@ async function loadUpcomingEvents() {
     if(!rRes.ok) throw new Error('Renewals HTTP '+rRes.status);
     if(rRes.ok) {
       var rData = await rRes.json();
-      // Include expired items AND items due within 30 days
-      var in30neg = new Date(today); in30neg.setDate(today.getDate()-30); // always 30 days back for expired
+      // Include expired items AND items due within window — use ISO string comparison to avoid UTC/local offset issues
+      var pad = function(n){ return String(n).padStart(2,'0'); };
+      var localIso = function(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
+      var in30neg = new Date(today); in30neg.setDate(today.getDate()-30);
+      var in30Str    = localIso(in30);
+      var in30negStr = localIso(in30neg);
       var due = (rData.records||[]).filter(function(r){
-        var d = new Date(r.fields['Expiry Date']||'');
-        return !isNaN(d) && d >= in30neg && d <= in30;
+        var ex = r.fields['Expiry Date']||'';
+        return ex && ex >= in30negStr && ex <= in30Str;
       }).sort(function(a,b){
-        return new Date(a.fields['Expiry Date']) - new Date(b.fields['Expiry Date']);
+        return (a.fields['Expiry Date']||'').localeCompare(b.fields['Expiry Date']||'');
       });
       if(renEl) {
         if(due.length===0) {
@@ -6540,7 +6604,7 @@ function showCompanyDocs() {
   if(!canAccess('company-docs')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','company-docs');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('company-docs-screen').style.display='flex';
@@ -7116,7 +7180,7 @@ function showDiagnostics() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
+   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('diag-screen').style.display='flex';
@@ -7614,7 +7678,7 @@ function showPettyCash() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','passwords-screen',
-   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
+   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('petty-cash-screen').style.display='flex';
@@ -7905,7 +7969,7 @@ function showPasswords(){
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen','knowledge-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('passwords-screen').style.display='flex';
@@ -9427,7 +9491,7 @@ function showAdmin() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
    'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
    'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'employees-leave-screen','home-screen','admin-screen','knowledge-screen'].forEach(function(id){
+   'employees-leave-screen','home-screen','admin-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('admin-screen').style.display='flex';
@@ -10186,4 +10250,788 @@ async function deleteKnArticle(id) {
     setSave('err');
     toast('Delete failed: '+err.message,'err');
   }
+}
+
+// ══ EXPENSE CLAIMS ════════════════════════════════════════════════════════
+
+var ecRecords = [];
+var ecLoaded  = false;
+var ecFormId  = null;
+
+var EC_TYPES = ['FE','EB','GRN'];
+var EC_STATUS_LABEL = {draft:'Draft',submitted:'Submitted',verified:'Verified',approved:'Approved'};
+var EC_STATUS_COLOR = {draft:'var(--txt3)',submitted:'var(--amber)',verified:'var(--blue)',approved:'var(--green)'};
+
+function showExpenseClaims() {
+  if(!canAccess('expense-claims')){ toast('Access restricted','err'); return; }
+  sessionStorage.setItem('mbb_screen','expense-claims');
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('expense-claims-screen').style.display='flex';
+  if(!ecLoaded) loadExpenseClaims(); else renderExpenseClaims();
+}
+
+async function loadExpenseClaims() {
+  var tbody=document.getElementById('ec-tbody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--txt3)">Loading…</td></tr>';
+  try {
+    var res=await fetch(WORKER_URL+'/expense-claims?pageSize=200',{headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    ecRecords=data.records||[];
+    ecLoaded=true;
+    renderExpenseClaims();
+  } catch(err){
+    if(tbody) tbody.innerHTML='<tr><td colspan="6" style="padding:20px;color:var(--red)">Failed: '+err.message+'</td></tr>';
+  }
+}
+
+function renderExpenseClaims() {
+  var tbody=document.getElementById('ec-tbody');
+  var cntEl=document.getElementById('ec-count');
+  var sumEl=document.getElementById('ec-summary');
+  if(!tbody) return;
+  var isAdminFin=(userRole==='admin'||userRole==='finance');
+  var filterStatus=((document.getElementById('ec-filter-status')||{}).value)||'';
+  var searchQ=(((document.getElementById('ec-search')||{}).value)||'').toLowerCase().trim();
+  var recs=ecRecords.filter(function(r){
+    var f=r.fields;
+    if(!isAdminFin && f['Created By']!==userName) return false;
+    if(filterStatus && f['Status']!==filterStatus) return false;
+    if(searchQ && [f['Employee Name'],f['Entity'],f['Notes']].join(' ').toLowerCase().indexOf(searchQ)===-1) return false;
+    return true;
+  });
+  if(cntEl) cntEl.textContent=recs.length+' claim'+(recs.length===1?'':'s');
+  if(sumEl){
+    var ct={draft:0,submitted:0,verified:0,approved:0};
+    recs.forEach(function(r){ var s=r.fields['Status']||'draft'; if(ct[s]!==undefined) ct[s]++; });
+    sumEl.innerHTML=[
+      {label:'Total',val:recs.length,cls:''},
+      {label:'Draft',val:ct.draft,cls:''},
+      {label:'Submitted',val:ct.submitted,cls:ct.submitted>0?'process':''},
+      {label:'Approved',val:ct.approved,cls:ct.approved>0?'green':''},
+    ].map(function(k){
+      return '<div class="dash-kpi '+k.cls+'" style="padding:10px 14px;flex:0;min-width:80px;text-align:center">'+
+        '<div class="dash-kpi-lbl">'+k.label+'</div><div class="dash-kpi-val" style="font-size:22px">'+k.val+'</div></div>';
+    }).join('');
+  }
+  if(!recs.length){
+    tbody.innerHTML='<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--txt3)">No expense claims found</td></tr>';
+    return;
+  }
+  var fmt2=function(n){ return n?parseFloat(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; };
+  tbody.innerHTML=recs.map(function(r){
+    var f=r.fields;
+    var from=f['Period From']?new Date(f['Period From']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    var to=f['Period To']?new Date(f['Period To']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    var st=f['Status']||'draft';
+    var stBadge='<span style="font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;background:var(--bg2);color:'+EC_STATUS_COLOR[st]+'">'+
+      (EC_STATUS_LABEL[st]||st)+'</span>';
+    var canVerify=(userRole==='admin'||userRole==='finance')&&st==='submitted';
+    var canApprove=(userRole==='admin'||userRole==='finance')&&st==='verified';
+    var canEdit=st==='draft'&&(isAdminFin||f['Created By']===userName);
+    var total=f['Total Amount']?'AED '+fmt2(f['Total Amount']):'—';
+    return '<tr style="border-bottom:1px solid var(--bdr);cursor:pointer" ondblclick="openClaimForm(\''+r.id+'\')">'+
+      '<td style="padding:10px 12px;font-weight:500">'+e(f['Employee Name']||'—')+'</td>'+
+      '<td style="padding:8px"><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);font-weight:600;font-family:monospace">'+e(f['Entity']||'—')+'</span></td>'+
+      '<td style="padding:8px;font-size:12px;color:var(--txt2);white-space:nowrap">'+from+' – '+to+'</td>'+
+      '<td style="padding:8px;font-family:monospace;font-size:12px;text-align:right;white-space:nowrap">'+total+'</td>'+
+      '<td style="padding:8px">'+stBadge+'</td>'+
+      '<td style="padding:6px 8px;text-align:right;white-space:nowrap">'+
+        (canEdit?'<button class="icon-btn edit" onclick="event.stopPropagation();openClaimForm(\''+r.id+'\')">'+IC_PENCIL+'</button>':'')+
+        (canVerify?'<button class="btn-sec" style="font-size:11px;padding:4px 10px;margin-right:4px" onclick="event.stopPropagation();ecVerify(\''+r.id+'\')">Verify</button>':'')+
+        (canApprove?'<button class="btn-sec" style="font-size:11px;padding:4px 10px;margin-right:4px" onclick="event.stopPropagation();ecApprove(\''+r.id+'\')">Approve</button>':'')+
+        '<button class="icon-btn" onclick="event.stopPropagation();openClaimForm(\''+r.id+'\')" style="opacity:.7">'+IC_DOCS+'</button>'+
+        '<button class="icon-btn" onclick="event.stopPropagation();duplicateClaim(\''+r.id+'\')" title="Duplicate" style="opacity:.7">&#128203;</button>'+
+        (userRole==='admin'?'<button class="icon-btn" onclick="event.stopPropagation();deleteClaim(\''+r.id+'\')" title="Delete" style="opacity:.7;color:#c0392b">&#128465;</button>':'')+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+// ── Claim form ────────────────────────────────────────────────────────────
+
+async function openClaimForm(id) {
+  ecFormId=id||null;
+  var overlay=document.getElementById('ec-form-overlay');
+  var titleEl=document.getElementById('ec-form-title');
+
+  // Load opportunities for project dropdown if not yet loaded
+  if(!items.length) {
+    try {
+      var oRes=await fetch(WORKER_URL+'/?pageSize=200',{headers:getHeaders()});
+      var oData=await oRes.json();
+      allRecords=(oData.records||[]);
+      parseItems();
+    } catch(oErr){ /* silent */ }
+  }
+
+  // Populate employee select
+  if(!empRecords.length) {
+    try {
+      var eRes=await fetch(WORKER_URL+'/employees?pageSize=100',{headers:getHeaders()});
+      var eData=await eRes.json(); empRecords=eData.records||[];
+    } catch(eErr){ /* silent */ }
+  }
+  var empSel=document.getElementById('ecf-employee');
+  var empNames=[];
+  if(empSel) {
+    empNames=empRecords.map(function(r){return r.fields['Employee Name']||'';}).filter(Boolean).sort();
+    empSel.innerHTML='<option value="">— Select Employee —</option>'+
+      empNames.map(function(n){return '<option value="'+e(n)+'">'+e(n)+'</option>';}).join('');
+    empSel.disabled=(userRole!=='admin');
+  }
+
+  if(!id) {
+    if(titleEl) titleEl.textContent='New Expense Claim';
+    if(empSel) {
+      // If current user's name isn't in the employee list, add it so the select can hold the value
+      if(userName && empNames.indexOf(userName)===-1) {
+        var uOpt=document.createElement('option'); uOpt.value=userName; uOpt.textContent=userName;
+        empSel.appendChild(uOpt);
+      }
+      empSel.value=userName||'';
+    }
+    document.getElementById('ecf-entity').value='';
+    document.getElementById('ecf-from').value='';
+    document.getElementById('ecf-to').value='';
+    document.getElementById('ecf-payment-method').value='Cash';
+    document.getElementById('ecf-notes').value='';
+    document.getElementById('ec-items-body').innerHTML='';
+    ecAddRow({});
+    ecUpdateSigs({});
+    ecSetEditable(true);
+    ecShowBtns({Status:'draft'});
+  } else {
+    if(titleEl) titleEl.textContent='Expense Claim';
+    var rec=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
+    var f=rec.fields;
+    if(empSel) {
+      var savedEmpName=f['Employee Name']||'';
+      if(savedEmpName && empNames.indexOf(savedEmpName)===-1) {
+        var eOpt=document.createElement('option'); eOpt.value=savedEmpName; eOpt.textContent=savedEmpName;
+        empSel.appendChild(eOpt);
+      }
+      empSel.value=savedEmpName;
+    }
+    document.getElementById('ecf-entity').value=f['Entity']||'';
+    document.getElementById('ecf-from').value=(f['Period From']||'').substring(0,10);
+    document.getElementById('ecf-to').value=(f['Period To']||'').substring(0,10);
+    document.getElementById('ecf-payment-method').value=f['Payment Method']||'Cash';
+    document.getElementById('ecf-notes').value=f['Notes']||'';
+    ecUpdateSigs(f);
+    var editable=(f['Status']||'draft')==='draft'||userRole==='admin';
+    ecSetEditable(editable);
+    ecShowBtns(f);
+    // Load items
+    var iBody=document.getElementById('ec-items-body');
+    iBody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--txt3)">Loading…</td></tr>';
+    try {
+      var iRes=await fetch(WORKER_URL+'/expense-claim-items?claim_id='+id,{headers:getHeaders()});
+      var iData=await iRes.json();
+      iBody.innerHTML='';
+      var iRecs=iData.records||[];
+      if(iRecs.length) iRecs.forEach(function(ir){ ecAddRow(ir.fields||{}); });
+      else ecAddRow({});
+      ecSetEditable(editable);
+    } catch(err){ iBody.innerHTML=''; ecAddRow({}); ecSetEditable(editable); }
+  }
+  ecUpdateTotals();
+  if(overlay) overlay.style.display='flex';
+  setTimeout(function(){
+    var el=document.getElementById('ecf-employee');
+    if(el&&!el.disabled) el.focus();
+    else { var en=document.getElementById('ecf-entity'); if(en) en.focus(); }
+  },80);
+}
+
+function closeClaimForm() {
+  document.getElementById('ec-form-overlay').style.display='none';
+  ecFormId=null;
+}
+
+async function saveAndCloseClaim() {
+  var id=await saveClaimDraft();
+  if(id) closeClaimForm();
+}
+
+function ecAddRow(f) {
+  f=f||{};
+  var tbody=document.getElementById('ec-items-body');
+  if(!tbody) return;
+  var tr=document.createElement('tr');
+  tr.style.borderBottom='1px solid var(--bdr)';
+  var iStyle='padding:4px 6px;background:var(--bg);border:1px solid var(--bdr2);border-radius:4px;font-size:12px;color:var(--txt);width:100%';
+  var savedProj=f['Project']||'';
+  var projOpts='<option value=""></option>'+
+    items.slice().sort(function(a,b){return (b.sr_no||'').localeCompare(a.sr_no||'');})
+      .map(function(i){var v=(i.sr_no||'')+(i.project?' — '+i.project:'');return '<option value="'+e(v)+'"'+(v===savedProj?' selected':'')+'>'+e(v)+'</option>';}).join('');
+  tr.innerHTML=
+    '<td style="padding:3px 4px;white-space:nowrap"><input type="date" class="ec-idate" value="'+(f['Item Date']||'')+'" style="'+iStyle+';width:120px" oninput="ecUpdateTotals()"></td>'+
+    '<td style="padding:3px 4px"><select class="ec-itype" oninput="ecUpdateTotals()" style="'+iStyle+';width:70px">'+
+      EC_TYPES.map(function(t){ return '<option'+(t===(f['Item Type']||'FE')?' selected':'')+'>'+t+'</option>'; }).join('')+
+    '</select></td>'+
+    '<td style="padding:3px 4px"><select class="ec-iproj" oninput="ecUpdateTotals()" style="'+iStyle+';width:190px">'+projOpts+'</select></td>'+
+    '<td style="padding:3px 4px"><input class="ec-isubst" value="'+e(f['Sub Station']||'')+'" placeholder="Sub Station" style="'+iStyle+';width:100px"></td>'+
+    '<td style="padding:3px 4px"><input class="ec-iactiv" value="'+e(f['Activity']||'')+'" placeholder="Activity" style="'+iStyle+';width:130px"></td>'+
+    '<td style="padding:3px 4px"><input class="ec-idesc" value="'+e(f['Description']||'')+'" placeholder="Description" style="'+iStyle+';width:140px"></td>'+
+    '<td style="padding:3px 4px"><input type="number" step="0.01" min="0" class="ec-iamt" value="'+(f['Amount']||'')+'" placeholder="0.00" style="'+iStyle+';width:80px;text-align:right" oninput="ecUpdateTotals()"></td>'+
+    '<td style="padding:3px 4px;text-align:center;white-space:nowrap">'+
+      '<button class="ec-dup-row" onclick="ecDuplicateRow(this)" style="background:none;border:none;cursor:pointer;color:var(--txt3);font-size:13px;line-height:1;padding:0 3px" title="Duplicate row">&#128203;</button>'+
+      '<button class="ec-del-row" onclick="ecRemoveRow(this)" style="background:none;border:none;cursor:pointer;color:var(--txt3);font-size:18px;line-height:1;padding:0 3px" title="Remove row">×</button>'+
+    '</td>';
+  tbody.appendChild(tr);
+}
+
+function ecRemoveRow(btn) {
+  var tr=btn.closest('tr');
+  if(tr){ tr.remove(); ecUpdateTotals(); }
+}
+
+function ecDuplicateRow(btn) {
+  var tr=btn.closest('tr');
+  if(!tr) return;
+  var f={
+    'Item Date': (tr.querySelector('.ec-idate')||{}).value||'',
+    'Item Type': (tr.querySelector('.ec-itype')||{}).value||'FE',
+    'Project':   ((tr.querySelector('.ec-iproj')||{}).value||'').trim(),
+    'Sub Station':((tr.querySelector('.ec-isubst')||{}).value||'').trim(),
+    'Activity':  ((tr.querySelector('.ec-iactiv')||{}).value||'').trim(),
+    'Description':((tr.querySelector('.ec-idesc')||{}).value||'').trim(),
+    'Amount':    (tr.querySelector('.ec-iamt')||{}).value||'',
+  };
+  ecAddRow(f);
+  ecUpdateTotals();
+}
+
+function ecUpdateTotals() {
+  var rows=document.querySelectorAll('#ec-items-body tr');
+  var alloc={};
+  var grand=0;
+  rows.forEach(function(row){
+    var proj=((row.querySelector('.ec-iproj')||{}).value||'').trim()||'(No Project)';
+    var type=(row.querySelector('.ec-itype')||{}).value||'FE';
+    var amt=parseFloat((row.querySelector('.ec-iamt')||{}).value)||0;
+    if(!alloc[proj]) alloc[proj]={EB:0,GRN:0,FE:0};
+    alloc[proj][type]=(alloc[proj][type]||0)+amt;
+    grand+=amt;
+  });
+  var fmt2=function(n){ return (n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  var tots={EB:0,GRN:0,FE:0};
+  var html=Object.keys(alloc).map(function(proj){
+    var r=alloc[proj]; tots.EB+=r.EB; tots.GRN+=r.GRN; tots.FE+=r.FE;
+    return '<tr style="border-bottom:1px solid var(--bdr)">'+
+      '<td style="padding:5px 10px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0" title="'+e(proj)+'">'+e(proj)+'</td>'+
+      ['EB','GRN','FE'].map(function(t){ return '<td style="padding:5px 10px;font-size:12px;text-align:right;font-family:monospace">'+fmt2(r[t])+'</td>'; }).join('')+
+      '<td style="padding:5px 10px;font-size:12px;text-align:right;font-family:monospace;font-weight:600">'+fmt2(r.EB+r.GRN+r.FE)+'</td>'+
+    '</tr>';
+  }).join('');
+  html+='<tr style="border-top:2px solid var(--bdr2);font-weight:700">'+
+    '<td style="padding:6px 10px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">TOTAL</td>'+
+    ['EB','GRN','FE'].map(function(t){ return '<td style="padding:6px 10px;font-size:12px;text-align:right;font-family:monospace">'+fmt2(tots[t])+'</td>'; }).join('')+
+    '<td style="padding:6px 10px;font-size:12px;text-align:right;font-family:monospace;color:var(--blue)">'+fmt2(tots.EB+tots.GRN+tots.FE)+'</td>'+
+  '</tr>';
+  var ab=document.getElementById('ec-alloc-body'); if(ab) ab.innerHTML=html;
+  var gt=document.getElementById('ec-grand-total'); if(gt) gt.textContent='AED '+fmt2(grand);
+}
+
+function ecUpdateSigs(f) {
+  var el=document.getElementById('ec-sigs'); if(!el) return;
+  var fmt=function(name,at){
+    if(!name) return '<span style="color:var(--txt3);font-size:12px;font-style:italic">Not yet</span>';
+    var dt=at?new Date(at).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+    return '<span style="font-size:13px;font-weight:600">'+e(name)+'</span>'+(dt?'<br><span style="font-size:10px;color:var(--txt3)">'+dt+'</span>':'');
+  };
+  el.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--bdr);border:1px solid var(--bdr);border-radius:6px;overflow:hidden">'+
+    [['Prepared By',f['Submitted By'],f['Submitted At']],['Verified By',f['Verified By'],f['Verified At']],['Approved By',f['Approved By'],f['Approved At']]]
+    .map(function(s){ return '<div style="padding:10px 14px;background:var(--bg)"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin-bottom:4px">'+s[0]+'</div>'+fmt(s[1],s[2])+'</div>'; })
+    .join('')+
+    '</div>';
+}
+
+function ecSetEditable(editable) {
+  var iBody=document.getElementById('ec-items-body');
+  if(iBody) iBody.querySelectorAll('input,select').forEach(function(inp){ inp.disabled=!editable; });
+  ['ecf-entity','ecf-from','ecf-to','ecf-payment-method','ecf-notes'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.disabled=!editable;
+  });
+  // Employee: admin follows editable state; non-admin always disabled
+  var empEl=document.getElementById('ecf-employee');
+  if(empEl) empEl.disabled=(userRole!=='admin')||!editable;
+  var addBtn=document.getElementById('ec-add-row-btn');
+  if(addBtn) addBtn.style.display=editable?'':'none';
+  // hide delete/duplicate row buttons when read-only
+  if(iBody) iBody.querySelectorAll('.ec-del-row,.ec-dup-row').forEach(function(b){ b.style.display=editable?'':'none'; });
+}
+
+function ecShowBtns(f) {
+  var st=f['Status']||'draft';
+  var isAdminFin=userRole==='admin'||userRole==='finance';
+  var isAdmin=userRole==='admin';
+  var btns={
+    'ec-btn-save':       st==='draft'||isAdmin,
+    'ec-btn-save-close': st==='draft'||isAdmin,
+    'ec-btn-submit':     st==='draft',
+    'ec-btn-verify':  st==='submitted'&&isAdminFin,
+    'ec-btn-approve': st==='verified'&&(userRole==='admin'||userRole==='finance'),
+    'ec-btn-export':  st!=='draft',
+    'ec-btn-delete':  isAdmin,
+  };
+  Object.keys(btns).forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display=btns[id]?'inline-flex':'none';
+  });
+}
+
+// ── Read form data ────────────────────────────────────────────────────────
+
+function ecReadItems() {
+  var out=[];
+  document.querySelectorAll('#ec-items-body tr').forEach(function(row,idx){
+    out.push({
+      'Item Date':(row.querySelector('.ec-idate')||{}).value||null,
+      'Item Type':(row.querySelector('.ec-itype')||{}).value||'FE',
+      'Project':  ((row.querySelector('.ec-iproj')||{}).value||'').trim()||null,
+      'Sub Station':((row.querySelector('.ec-isubst')||{}).value||'').trim()||null,
+      'Activity': ((row.querySelector('.ec-iactiv')||{}).value||'').trim()||null,
+      'Description':((row.querySelector('.ec-idesc')||{}).value||'').trim()||null,
+      'Amount':   parseFloat((row.querySelector('.ec-iamt')||{}).value)||0,
+      'Sort Order':idx,
+    });
+  });
+  return out;
+}
+
+function ecReadHeader() {
+  var existing=ecFormId?(ecRecords.find(function(r){return r.id===ecFormId;})||{fields:{}}).fields:{};
+  return {
+    'Employee Name':document.getElementById('ecf-employee').value.trim()||userName||'',
+    'Entity':       document.getElementById('ecf-entity').value,
+    'Period From':  document.getElementById('ecf-from').value||null,
+    'Period To':    document.getElementById('ecf-to').value||null,
+    'Payment Method':document.getElementById('ecf-payment-method').value||'Cash',
+    'Notes':        document.getElementById('ecf-notes').value.trim()||null,
+    'Status':       existing['Status']||'draft',
+    'Created By':   existing['Created By']||userName||'',
+  };
+}
+
+// ── Save / Submit / Verify / Approve ─────────────────────────────────────
+
+async function saveClaimDraft() {
+  setSave('saving');
+  try {
+    var hdr=ecReadHeader();
+    var lineItems=ecReadItems();
+    hdr['Total Amount']=lineItems.reduce(function(s,i){ return s+(i['Amount']||0); },0);
+    var claimId=ecFormId;
+    if(!claimId) {
+      var r1=await fetch(WORKER_URL+'/expense-claims',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:hdr})});
+      var d1=await r1.json(); if(!r1.ok) throw new Error((d1.error&&d1.error.message)||'HTTP '+r1.status);
+      claimId=d1.id; ecFormId=claimId; ecRecords.push(d1);
+    } else {
+      var r2=await fetch(WORKER_URL+'/expense-claims/'+claimId,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:hdr})});
+      var d2=await r2.json(); if(!r2.ok) throw new Error((d2.error&&d2.error.message)||'HTTP '+r2.status);
+      var idx=ecRecords.findIndex(function(r){return r.id===claimId;});
+      if(idx!==-1) ecRecords[idx].fields=Object.assign(ecRecords[idx].fields,hdr);
+    }
+    // Replace items: delete existing, insert new
+    var ei=await fetch(WORKER_URL+'/expense-claim-items?claim_id='+claimId,{headers:getHeaders()});
+    if(!ei.ok) throw new Error('Failed to fetch existing items: HTTP '+ei.status);
+    var ed=await ei.json();
+    var delResults=await Promise.all((ed.records||[]).map(function(ir){
+      return fetch(WORKER_URL+'/expense-claim-items/'+ir.id,{method:'DELETE',headers:getHeaders()});
+    }));
+    var delFailed=delResults.find(function(r){return !r.ok;});
+    if(delFailed) throw new Error('Failed to delete item: HTTP '+delFailed.status);
+    var insResults=await Promise.all(lineItems.map(function(item){
+      item['Claim']=claimId;
+      return fetch(WORKER_URL+'/expense-claim-items',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:item})})
+        .then(function(r){ return r.json().then(function(body){ return {ok:r.ok,status:r.status,body:body}; }); });
+    }));
+    var insFailed=insResults.find(function(r){return !r.ok;});
+    if(insFailed) throw new Error('Failed to save item: '+(insFailed.body&&insFailed.body.error?JSON.stringify(insFailed.body.error):'HTTP '+insFailed.status));
+    setSave('saved'); toast('Draft saved','ok');
+    return claimId;
+  } catch(err){ setSave('err'); toast('Save failed: '+err.message,'err'); return null; }
+}
+
+async function ecSubmit() {
+  var ok=await appConfirm({
+    icon:'&#8679;',
+    title:'Submit for Approval',
+    body:'Once submitted, <b>this claim cannot be edited</b>. It will be sent to Finance for review.<br><br>Make sure all items and amounts are correct before continuing.',
+    confirmLabel:'Submit for Approval',
+    confirmStyle:'background:var(--green);color:#fff;border:none',
+  });
+  if(!ok) return;
+  var claimId=await saveClaimDraft();
+  if(!claimId) return;
+  try {
+    var now=new Date().toISOString();
+    var sf={'Status':'submitted','Submitted By':userName,'Submitted At':now};
+    var res=await fetch(WORKER_URL+'/expense-claims/'+claimId,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:sf})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var idx=ecRecords.findIndex(function(r){return r.id===claimId;});
+    if(idx!==-1) Object.assign(ecRecords[idx].fields,sf);
+    ecSetEditable(false);
+    var updF=Object.assign({},ecReadHeader(),sf);
+    ecUpdateSigs(updF); ecShowBtns(updF);
+    await ecSendEmail(claimId);
+    toast('Submitted','ok');
+  } catch(err){ toast('Submit failed: '+err.message,'err'); }
+}
+
+async function ecVerify(id) {
+  var rec=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
+  var vf=rec.fields;
+  var ok=await appConfirm({
+    icon:'✓',
+    title:'Verify Claim',
+    body:'You are confirming that <b>'+e(vf['Employee Name']||'this employee')+'\'s</b> expense claim of <b>AED '+parseFloat(vf['Total Amount']||0).toLocaleString('en-US',{minimumFractionDigits:2})+'</b> has been reviewed and the amounts are correct.<br><br>The claim will move to the <b>Approval</b> stage.',
+    confirmLabel:'Mark as Verified',
+    confirmStyle:'background:var(--blue);color:#fff;border:none',
+  });
+  if(!ok) return;
+  try {
+    var now=new Date().toISOString();
+    var sf={'Status':'verified','Verified By':userName,'Verified At':now};
+    var res=await fetch(WORKER_URL+'/expense-claims/'+id,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:sf})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var idx=ecRecords.findIndex(function(r){return r.id===id;});
+    if(idx!==-1) Object.assign(ecRecords[idx].fields,sf);
+    toast('Verified','ok'); renderExpenseClaims();
+    if(ecFormId===id){ var f=ecRecords[idx].fields; ecUpdateSigs(f); ecShowBtns(f); }
+  } catch(err){ toast('Failed: '+err.message,'err'); }
+}
+
+async function ecApprove(id) {
+  var rec=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
+  var af=rec.fields;
+  var ok=await appConfirm({
+    icon:'✔',
+    title:'Approve Claim',
+    body:'You are approving <b>'+e(af['Employee Name']||'this employee')+'\'s</b> expense claim of <b>AED '+parseFloat(af['Total Amount']||0).toLocaleString('en-US',{minimumFractionDigits:2})+'</b> for payment.<br><br>This action will finalise the claim.',
+    confirmLabel:'Approve',
+    confirmStyle:'background:var(--amber);color:#fff;border:none',
+  });
+  if(!ok) return;
+  try {
+    var now=new Date().toISOString();
+    var sf={'Status':'approved','Approved By':userName,'Approved At':now};
+    var res=await fetch(WORKER_URL+'/expense-claims/'+id,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:sf})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var idx=ecRecords.findIndex(function(r){return r.id===id;});
+    if(idx!==-1) Object.assign(ecRecords[idx].fields,sf);
+    toast('Approved','ok'); renderExpenseClaims();
+    if(ecFormId===id){ var f2=ecRecords[idx].fields; ecUpdateSigs(f2); ecShowBtns(f2); }
+  } catch(err){ toast('Failed: '+err.message,'err'); }
+}
+
+async function ecSendEmail(claimId) {
+  try {
+    var rec=ecRecords.find(function(r){return r.id===claimId;})||{fields:{}};
+    var f=rec.fields;
+    var fmtD=function(d){ return d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—'; };
+    var fmt2=function(n){ return (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    var iRes=await fetch(WORKER_URL+'/expense-claim-items?claim_id='+claimId,{headers:getHeaders()});
+    var iData=await iRes.json();
+    var iRecs=iData.records||[];
+    var rowsHtml=iRecs.map(function(ir){
+      var fi=ir.fields;
+      return '<tr><td style="padding:5px 10px;border-bottom:1px solid #eee">'+fmtD(fi['Item Date'])+'</td>'+
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px">'+e(fi['Item Type']||'')+'</td>'+
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+e(fi['Project']||'—')+'</td>'+
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+e(fi['Description']||'—')+'</td>'+
+        '<td style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">AED '+fmt2(fi['Amount'])+'</td></tr>';
+    }).join('');
+    var total=iRecs.reduce(function(s,ir){ return s+(parseFloat(ir.fields['Amount'])||0); },0);
+    var html='<div style="font-family:sans-serif;font-size:14px;max-width:680px">'+
+      '<h2 style="color:#333;margin-bottom:4px">Expense Claim Submitted</h2>'+
+      '<p style="color:#666;margin-bottom:16px">Requires review and approval.</p>'+
+      '<table style="border-collapse:collapse;margin-bottom:16px">'+
+        '<tr><td style="padding:3px 12px 3px 0;color:#666">Employee</td><td style="font-weight:500">'+e(f['Employee Name']||'—')+'</td></tr>'+
+        '<tr><td style="padding:3px 12px 3px 0;color:#666">Entity</td><td>'+e(f['Entity']||'—')+'</td></tr>'+
+        '<tr><td style="padding:3px 12px 3px 0;color:#666">Period</td><td>'+fmtD(f['Period From'])+' — '+fmtD(f['Period To'])+'</td></tr>'+
+        '<tr><td style="padding:3px 12px 3px 0;color:#666">Total</td><td style="font-weight:700;color:#2980b9">AED '+fmt2(total)+'</td></tr>'+
+      '</table>'+
+      '<table style="border-collapse:collapse;width:100%;font-size:13px"><thead>'+
+        '<tr style="background:#f5f5f5"><th style="padding:6px 10px;text-align:left">Date</th><th style="padding:6px 10px;text-align:left">Type</th>'+
+        '<th style="padding:6px 10px;text-align:left">Project</th><th style="padding:6px 10px;text-align:left">Description</th>'+
+        '<th style="padding:6px 10px;text-align:right">Amount</th></tr></thead>'+
+        '<tbody>'+rowsHtml+'</tbody>'+
+        '<tfoot><tr style="background:#f0f4ff"><td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td>'+
+        '<td style="padding:8px 10px;font-weight:700;text-align:right;font-family:monospace;color:#2980b9">AED '+fmt2(total)+'</td></tr></tfoot>'+
+      '</table>'+
+      (f['Notes']?'<p style="margin-top:16px;color:#555"><strong>Notes:</strong> '+e(f['Notes'])+'</p>':'')+
+      '<p style="margin-top:20px"><a href="https://mbellab.github.io" style="color:#2980b9">Open in Portal →</a></p></div>';
+    await fetch(WORKER_URL+'/send-report',{method:'POST',headers:getHeaders(),body:JSON.stringify({
+      subject:'Expense Claim — '+e(f['Employee Name']||'Unknown')+' · '+fmtD(f['Period From'])+' to '+fmtD(f['Period To'])+' · AED '+fmt2(total),
+      html:html,
+    })});
+  } catch(err){ console.warn('Email failed:',err); }
+}
+
+async function duplicateClaim(id) {
+  var src=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
+  var sf=src.fields;
+  var ok=await appConfirm({
+    icon:'📋',
+    title:'Duplicate Claim',
+    body:'This will create a new <b>draft copy</b> of <b>'+e(sf['Employee Name']||'this claim')+'\'s</b> expense claim with all the same items attached.<br><br>You can edit and update it before submitting.',
+    confirmLabel:'Duplicate',
+    confirmStyle:'background:var(--blue);color:#fff;border:none',
+  });
+  if(!ok) return;
+  setSave('saving');
+  try {
+    var newHdr={
+      'Employee Name': sf['Employee Name']||'',
+      'Entity':        sf['Entity']||'',
+      'Period From':   sf['Period From']||null,
+      'Period To':     sf['Period To']||null,
+      'Notes':         sf['Notes']||null,
+      'Status':        'draft',
+      'Created By':    userName||'',
+    };
+    var r1=await fetch(WORKER_URL+'/expense-claims',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:newHdr})});
+    var d1=await r1.json(); if(!r1.ok) throw new Error((d1.error&&d1.error.message)||'HTTP '+r1.status);
+    var newId=d1.id;
+    ecRecords.push(d1);
+    // Fetch and copy items
+    var iRes=await fetch(WORKER_URL+'/expense-claim-items?claim_id='+id,{headers:getHeaders()});
+    var iData=await iRes.json();
+    var iRecs=iData.records||[];
+    for(var i=0;i<iRecs.length;i++){
+      var fi=iRecs[i].fields;
+      await fetch(WORKER_URL+'/expense-claim-items',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:{
+        'Claim':       newId,
+        'Item Date':   fi['Item Date']||null,
+        'Item Type':   fi['Item Type']||'FE',
+        'Project':     fi['Project']||null,
+        'Sub Station': fi['Sub Station']||null,
+        'Activity':    fi['Activity']||null,
+        'Description': fi['Description']||null,
+        'Amount':      fi['Amount']||0,
+        'Sort Order':  fi['Sort Order']||i,
+      }})});
+    }
+    setSave('saved');
+    toast('Claim duplicated','ok');
+    renderExpenseClaims();
+    openClaimForm(newId);
+  } catch(err){ setSave('err'); toast('Duplicate failed: '+err.message,'err'); }
+}
+
+async function deleteClaim(id) {
+  if(userRole!=='admin'){ toast('Admin only','err'); return; }
+  var src=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
+  var sf=src.fields;
+  var ok=await appConfirm({
+    icon:'🗑',
+    title:'Delete Expense Claim',
+    body:'This will <b>permanently delete</b> <b>'+e(sf['Employee Name']||'this claim')+'\'s</b> expense claim and all its line items. This cannot be undone.',
+    confirmLabel:'Delete',
+    confirmStyle:'background:#c0392b;color:#fff;border:none',
+  });
+  if(!ok) return;
+  setSave('saving');
+  try {
+    // Delete all items first
+    var iRes=await fetch(WORKER_URL+'/expense-claim-items?claim_id='+id,{headers:getHeaders()});
+    if(!iRes.ok) throw new Error('Could not fetch items: HTTP '+iRes.status);
+    var iData=await iRes.json();
+    var iRecs=iData.records||[];
+    await Promise.all(iRecs.map(function(ir){
+      return fetch(WORKER_URL+'/expense-claim-items/'+ir.id,{method:'DELETE',headers:getHeaders()});
+    }));
+    // Delete the claim header
+    var dRes=await fetch(WORKER_URL+'/expense-claims/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!dRes.ok) throw new Error('Delete failed: HTTP '+dRes.status);
+    ecRecords=ecRecords.filter(function(r){return r.id!==id;});
+    setSave('saved');
+    toast('Claim deleted','ok');
+    closeClaimForm();
+    renderExpenseClaims();
+  } catch(err){ setSave('err'); toast('Delete failed: '+err.message,'err'); }
+}
+
+function ecExportPrint() {
+  var overlay=document.getElementById('ec-form-overlay');
+  if(!overlay) return;
+
+  // ── Collect form data ────────────────────────────────────────────
+  var emp=(document.getElementById('ecf-employee')||{}).value||'';
+  var ent=(document.getElementById('ecf-entity')||{}).value||'';
+  var frm=(document.getElementById('ecf-from')||{}).value||'';
+  var to=(document.getElementById('ecf-to')||{}).value||'';
+  var payMethod=(document.getElementById('ecf-payment-method')||{}).value||'Cash';
+  var notes=(document.getElementById('ecf-notes')||{}).value||'';
+  var ec=ecFormId?(ecRecords.find(function(r){return r.id===ecFormId;})||{fields:{}}).fields:{};
+
+  var fmtDate=function(d){ return d?new Date(d+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'-'; };
+  var fmt2=function(n){ return (parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+
+  // ── Read items ───────────────────────────────────────────────────
+  var rows=Array.from(document.querySelectorAll('#ec-items-body tr'));
+  var items=rows.map(function(row,idx){
+    return {
+      num: idx+1,
+      date:(row.querySelector('.ec-idate')||{}).value||'',
+      type:(row.querySelector('.ec-itype')||{}).value||'',
+      proj:((row.querySelector('.ec-iproj')||{}).value||'').trim(),
+      subst:(row.querySelector('.ec-isubst')||{}).value||'',
+      activ:(row.querySelector('.ec-iactiv')||{}).value||'',
+      desc:(row.querySelector('.ec-idesc')||{}).value||'',
+      amt:parseFloat((row.querySelector('.ec-iamt')||{}).value)||0,
+    };
+  });
+  var grand=items.reduce(function(s,i){return s+i.amt;},0);
+
+  // ── Project-wise allocation ──────────────────────────────────────
+  var alloc={};
+  var allocTots={FE:0,EB:0,GRN:0};
+  items.forEach(function(i){
+    var proj=i.proj||'(No Project)';
+    if(!alloc[proj]) alloc[proj]={FE:0,EB:0,GRN:0};
+    if(alloc[proj][i.type]!==undefined) alloc[proj][i.type]+=i.amt;
+    if(allocTots[i.type]!==undefined) allocTots[i.type]+=i.amt;
+  });
+
+  // ── Styles ───────────────────────────────────────────────────────
+  var css=
+    '@page{size:A4 landscape;margin:9mm 12mm}'+
+    'body{font-family:Calibri,Arial,sans-serif;font-size:8.5pt;color:#1a1a1a;margin:0;padding:12px 16px}'+
+    'h1{font-size:12pt;font-weight:700;margin:0 0 1px;color:#1a1a1a}'+
+    '.subtitle{font-size:8pt;color:#555;margin-bottom:8px}'+
+    '.info-table{border-collapse:collapse;margin-bottom:10px;font-size:8.5pt}'+
+    '.info-table td{padding:2px 10px 2px 0}'+
+    '.info-table td:nth-child(odd){font-weight:600;color:#444;white-space:nowrap}'+
+    '.info-table td:nth-child(even){min-width:120px}'+
+    'table.data{border-collapse:collapse;width:100%;margin-bottom:12px;font-size:8pt}'+
+    'table.data th{background:#3a3a3a;color:#fff;padding:4px 6px;font-size:7.5pt;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border:1px solid #3a3a3a;white-space:nowrap}'+
+    'table.data td{padding:3px 6px;border:1px solid #c8c8c8;vertical-align:top}'+
+    'table.data tbody tr:nth-child(even) td{background:#f7f7f7}'+
+    'table.data tfoot td{border-top:2px solid #3a3a3a;font-weight:700;background:#f0f0f0;padding:4px 6px}'+
+    '.r{text-align:right;font-family:"Courier New",monospace;white-space:nowrap}'+
+    '.sec-title{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#555;margin:0 0 4px;padding-bottom:3px;border-bottom:2px solid #3a3a3a}'+
+    'table.alloc th{background:#5c5c5c;color:#fff;padding:4px 8px;font-size:7.5pt;font-weight:600;text-transform:uppercase;letter-spacing:.3px;border:1px solid #5c5c5c}'+
+    'table.alloc td{padding:3px 8px;border:1px solid #c8c8c8;font-size:8pt}'+
+    'table.alloc tbody tr:nth-child(even) td{background:#f7f7f7}'+
+    'table.alloc tfoot td{border-top:2px solid #5c5c5c;font-weight:700;background:#f0f0f0;padding:4px 8px}'+
+    '.sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #c8c8c8;margin-top:14px}'+
+    '.sig-cell{padding:8px 12px;border-right:1px solid #c8c8c8}'+
+    '.sig-cell:last-child{border-right:none}'+
+    '.sig-label{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#888;margin-bottom:6px}'+
+    '.sig-name{font-weight:600;font-size:8.5pt;margin-top:2px}'+
+    '.sig-date{font-size:7.5pt;color:#777;margin-top:1px}'+
+    '.sig-blank{height:28px;border-bottom:1px solid #aaa;margin-top:2px}'+
+    '.notes-box{background:#fffbe6;border:1px solid #e8d48a;border-radius:3px;padding:5px 10px;margin-bottom:10px;font-size:8pt}'+
+    '@media print{.no-print{display:none!important}}';
+
+  // ── Items rows ───────────────────────────────────────────────────
+  var itemRows=items.map(function(i){
+    return '<tr>'+
+      '<td style="text-align:center;color:#666">'+i.num+'</td>'+
+      '<td style="white-space:nowrap">'+fmtDate(i.date)+'</td>'+
+      '<td style="text-align:center;font-weight:600">'+e(i.type)+'</td>'+
+      '<td>'+e(i.proj)+'</td>'+
+      '<td>'+e(i.subst)+'</td>'+
+      '<td>'+e(i.activ)+'</td>'+
+      '<td>'+e(i.desc)+'</td>'+
+      '<td class="r">'+fmt2(i.amt)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // ── Allocation rows ──────────────────────────────────────────────
+  var allocRows=Object.keys(alloc).map(function(proj){
+    var r=alloc[proj];
+    var tot=r.FE+r.EB+r.GRN;
+    return '<tr>'+
+      '<td>'+e(proj)+'</td>'+
+      '<td class="r">'+fmt2(r.FE)+'</td>'+
+      '<td class="r">'+fmt2(r.EB)+'</td>'+
+      '<td class="r">'+fmt2(r.GRN)+'</td>'+
+      '<td class="r" style="font-weight:600">'+fmt2(tot)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // ── Signatures ───────────────────────────────────────────────────
+  var sigFmt=function(name,at){
+    if(!name) return '<div class="sig-blank"></div>';
+    var dt=at?new Date(at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
+    return '<div class="sig-name">'+e(name)+'</div>'+(dt?'<div class="sig-date">'+dt+'</div>':'');
+  };
+  var sigHtml=
+    ['Prepared By','Verified By','Approved By'].map(function(lbl,i){
+      var name=[ec['Submitted By'],ec['Verified By'],ec['Approved By']][i];
+      var at=[ec['Submitted At'],ec['Verified At'],ec['Approved At']][i];
+      return '<div class="sig-cell"><div class="sig-label">'+lbl+'</div>'+sigFmt(name,at)+'</div>';
+    }).join('');
+
+  // ── Assemble ─────────────────────────────────────────────────────
+  var statusLabel=(ec['Status']||'draft').charAt(0).toUpperCase()+(ec['Status']||'draft').slice(1);
+  var html=
+    '<h1>mBELLAb — Expense Claim</h1>'+
+    '<div class="subtitle">'+statusLabel+' &nbsp;|&nbsp; Printed '+new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+'</div>'+
+
+    '<table class="info-table">'+
+      '<tr><td>Employee</td><td>'+e(emp)+'</td><td style="padding-left:40px">Entity</td><td>'+e(ent)+'</td></tr>'+
+      '<tr><td>Period</td><td>'+fmtDate(frm)+' – '+fmtDate(to)+'</td><td style="padding-left:40px">Payment Method</td><td><strong>'+e(payMethod)+'</strong>'+(payMethod==='Credit Card'?' <span style="background:#c0392b;color:#fff;font-size:7.5pt;font-weight:700;padding:2px 7px;border-radius:3px;letter-spacing:.4px;vertical-align:middle">PAID WITH COMPANY CREDIT CARD</span>':'')+'</td></tr>'+
+    '</table>'+
+
+    '<p class="sec-title">Expense Items</p>'+
+    '<table class="data">'+
+      '<thead><tr>'+
+        '<th style="width:32px">#</th>'+
+        '<th style="width:90px">Date</th>'+
+        '<th style="width:48px">Type</th>'+
+        '<th>Project</th>'+
+        '<th style="width:100px">Sub-Station</th>'+
+        '<th style="width:100px">Activity</th>'+
+        '<th>Description</th>'+
+        '<th style="width:100px;text-align:right">Amount (AED)</th>'+
+      '</tr></thead>'+
+      '<tbody>'+itemRows+'</tbody>'+
+      '<tfoot><tr>'+
+        '<td colspan="7" style="text-align:right;padding-right:12px">TOTAL</td>'+
+        '<td class="r" style="font-size:11pt">'+fmt2(grand)+'</td>'+
+      '</tr></tfoot>'+
+    '</table>'+
+
+    (notes?'<div class="notes-box"><strong>Notes:</strong> '+e(notes)+'</div>':'')+
+
+    '<p class="sec-title">Project-Wise Allocation of Expenses</p>'+
+    '<table class="data alloc">'+
+      '<thead><tr>'+
+        '<th>Project</th>'+
+        '<th style="width:90px;text-align:right">FE</th>'+
+        '<th style="width:90px;text-align:right">EB</th>'+
+        '<th style="width:90px;text-align:right">GRN</th>'+
+        '<th style="width:100px;text-align:right">Total (AED)</th>'+
+      '</tr></thead>'+
+      '<tbody>'+allocRows+'</tbody>'+
+      '<tfoot><tr>'+
+        '<td style="font-weight:700">TOTAL</td>'+
+        '<td class="r">'+fmt2(allocTots.FE)+'</td>'+
+        '<td class="r">'+fmt2(allocTots.EB)+'</td>'+
+        '<td class="r">'+fmt2(allocTots.GRN)+'</td>'+
+        '<td class="r" style="font-size:11pt">'+fmt2(grand)+'</td>'+
+      '</tr></tfoot>'+
+    '</table>'+
+
+    '<div class="sig-row">'+sigHtml+'</div>'+
+
+    '<div class="no-print" style="margin-top:28px;display:flex;gap:10px">'+
+      '<button onclick="window.print()" style="padding:9px 24px;font-size:13px;cursor:pointer;background:#3a3a3a;color:#fff;border:none;border-radius:4px;font-family:Calibri,sans-serif">Print / Save PDF</button>'+
+      '<button onclick="window.close()" style="padding:9px 18px;font-size:13px;cursor:pointer;background:transparent;border:1px solid #aaa;border-radius:4px;font-family:Calibri,sans-serif">Close</button>'+
+    '</div>';
+
+  var printWin=window.open('','_blank','width=1100,height=750');
+  printWin.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expense Claim — '+e(emp)+'</title><style>'+css+'</style></head><body>'+html+'</body></html>');
+  printWin.document.close();
 }

@@ -267,6 +267,7 @@ const SCALAR = {
     'Expiry Date':     'expiry_date',
     'Comments':        'comments',
     'Link to Steps':   'link_to_steps',
+    'KB Article':      'kb_article_id',
   },
   company_docs: {
     'Name':          'name',
@@ -361,6 +362,36 @@ const SCALAR = {
     'sort_order':  'sort_order',
     'created_at':  'created_at',
   },
+  expense_claims: {
+    'Entity':         'entity',
+    'Employee Name':  'employee_name',
+    'Period From':    'period_from',
+    'Period To':      'period_to',
+    'Submitted By':   'submitted_by',
+    'Submitted At':   'submitted_at',
+    'Verified By':    'verified_by',
+    'Verified At':    'verified_at',
+    'Approved By':    'approved_by',
+    'Approved At':    'approved_at',
+    'Payment Date':    'payment_date',
+    'Payment Method':  'payment_method',
+    'Status':          'status',
+    'Total Amount':   'total_amount',
+    'Notes':          'notes',
+    'Created By':     'created_by',
+    'Created At':     'created_at',
+  },
+  expense_claim_items: {
+    'Claim':          'claim_id',
+    'Item Date':      'item_date',
+    'Item Type':      'item_type',
+    'Project':        'project',
+    'Sub Station':    'sub_station',
+    'Activity':       'activity',
+    'Description':    'description',
+    'Amount':         'amount',
+    'Sort Order':     'sort_order',
+  },
 };
 
 // Linked record fields (returned as [uuid] arrays in GET, first element stored in POST/PATCH)
@@ -433,6 +464,10 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
   try {
     if (method === 'GET') {
       let filter = '';
+      if (sbTable === 'expense_claim_items') {
+        const claimId = searchParams.get('claim_id');
+        if (claimId) filter = `claim_id=eq.${claimId}&order=sort_order.asc`;
+      }
       if (sbTable === 'quote_items') {
         const formula = searchParams.get('filterByFormula');
         if (formula) filter = parseQuoteFilter(formula);
@@ -442,14 +477,33 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
     }
 
     if (method === 'POST') {
-      const row      = fieldsToRow(sbTable, body?.fields || {});
-      const inserted = await sbInsert(sbTable, row);
+      let row = fieldsToRow(sbTable, body?.fields || {});
+      let inserted;
+      try {
+        inserted = await sbInsert(sbTable, row);
+      } catch (e) {
+        // PGRST204 = unknown column — strip it and retry once
+        if (e.message.includes('PGRST204') || e.message.includes('schema cache')) {
+          const col = (e.message.match(/the '([^']+)' column/) || [])[1];
+          if (col) { const r2 = { ...row }; delete r2[col]; inserted = await sbInsert(sbTable, r2); }
+          else throw e;
+        } else throw e;
+      }
       return json(rowToRecord(sbTable, inserted));
     }
 
     if (method === 'PATCH') {
-      const row     = fieldsToRow(sbTable, body?.fields || {});
-      const updated = await sbUpdate(sbTable, recordId, row);
+      let row = fieldsToRow(sbTable, body?.fields || {});
+      let updated;
+      try {
+        updated = await sbUpdate(sbTable, recordId, row);
+      } catch (e) {
+        if (e.message.includes('PGRST204') || e.message.includes('schema cache')) {
+          const col = (e.message.match(/the '([^']+)' column/) || [])[1];
+          if (col) { const r2 = { ...row }; delete r2[col]; updated = await sbUpdate(sbTable, recordId, r2); }
+          else throw e;
+        } else throw e;
+      }
       if (!updated) return json({ error: 'Record not found' }, 404);
       return json(rowToRecord(sbTable, updated));
     }
@@ -630,6 +684,16 @@ export default {
     let body = null;
     if (['POST', 'PATCH'].includes(method)) {
       try { body = await request.json(); } catch {}
+    }
+
+    // ── /expense-claims + /expense-claim-items ────────────────────
+    if (path === '/expense-claims' || path.startsWith('/expense-claims/')) {
+      const recordId = path.startsWith('/expense-claims/') ? path.slice('/expense-claims/'.length) : null;
+      return handleTable(method, 'expense_claims', recordId, body, search);
+    }
+    if (path === '/expense-claim-items' || path.startsWith('/expense-claim-items/')) {
+      const recordId = path.startsWith('/expense-claim-items/') ? path.slice('/expense-claim-items/'.length) : null;
+      return handleTable(method, 'expense_claim_items', recordId, body, search);
     }
 
     // ── /users — admin only ───────────────────────────────────────
