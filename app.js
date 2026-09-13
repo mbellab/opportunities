@@ -849,8 +849,8 @@ function mkDisplayRow(r){
     '<td class="c-mc">'+e(r.main_cont||'—')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
-    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
@@ -872,8 +872,8 @@ function mkEditRow(r){
     '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
     '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
-    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
@@ -7058,7 +7058,7 @@ function exportOpportunitiesExcel() {
   var todayStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
   var genStr   = pad(now.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
 
-  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','QTN','TP','PO Received','PO Sent'];
+  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','TP Sent','Quote Sent','PO Received','PO Sent'];
   var NC = COLS.length;
 
   function yesNo(v){ return (v==='✔'||v==='Yes') ? 'Yes' : (v==='✖'||v==='No') ? 'No' : ''; }

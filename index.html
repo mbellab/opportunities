@@ -836,8 +836,8 @@
           <th class="c-mc sortable" data-col="c-mc" data-sort="main_cont" style="white-space:normal;line-height:1.3">Main<br>Contractor<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-rtu ctr sortable" data-col="c-rtu" data-sort="rtu">RTU<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-status sortable" data-col="c-status" data-sort="status">Status<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
+          <th class="c-chk ctr" data-col="c-chk-tp" title="Technical Proposal Sent" style="white-space:normal;line-height:1.3">TP<br>Sent<div class="col-resizer"></div></th>
           <th class="c-qtn ctr" data-col="c-qtn" title="Quotes in system" style="white-space:normal;line-height:1.3">Quote<br>Sent<div class="col-resizer"></div></th>
-          <th class="c-chk ctr" data-col="c-chk-tp" title="Technical Proposal Sent">TP<div class="col-resizer"></div></th>
           <th class="c-qtn" data-col="c-chk-lpoc" title="PO Received from Client">PO<br>Received<div class="col-resizer"></div></th>
           <th class="c-chk ctr" data-col="c-chk-lpos" title="Purchase Order Sent by mBELLAb">PO<br>Sent<div class="col-resizer"></div></th>
           <th class="c-deadline sortable" data-col="c-deadline" data-sort="deadline">Deadline<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
@@ -3460,8 +3460,8 @@ function mkDisplayRow(r){
     '<td class="c-mc">'+e(r.main_cont||'—')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
-    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
@@ -3483,8 +3483,8 @@ function mkEditRow(r){
     '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
     '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
-    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
