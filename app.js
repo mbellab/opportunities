@@ -7058,7 +7058,7 @@ function exportOpportunitiesExcel() {
   var todayStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate());
   var genStr   = pad(now.getDate())+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]+' '+now.getFullYear()+' '+pad(now.getHours())+':'+pad(now.getMinutes());
 
-  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','QTN','TP','PO Received','LPO-S'];
+  var COLS = ['SR No.','Enquiry Date','Project Name','Main Contractor','Client','RTU','Status','QTN','TP','PO Received','PO Sent'];
   var NC = COLS.length;
 
   function yesNo(v){ return (v==='✔'||v==='Yes') ? 'Yes' : (v==='✖'||v==='No') ? 'No' : ''; }
