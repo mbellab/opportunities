@@ -839,7 +839,7 @@
           <th class="c-chk ctr" data-col="c-chk-tp" title="Technical Proposal Sent" style="white-space:normal;line-height:1.3">TP<br>Sent<div class="col-resizer"></div></th>
           <th class="c-qtn ctr" data-col="c-qtn" title="Quotes in system" style="white-space:normal;line-height:1.3">Quote<br>Sent<div class="col-resizer"></div></th>
           <th class="c-qtn" data-col="c-chk-lpoc" title="PO Received from Client">PO<br>Received<div class="col-resizer"></div></th>
-          <th class="c-chk ctr" data-col="c-chk-lpos" title="Purchase Order Sent by mBELLAb">PO<br>Sent<div class="col-resizer"></div></th>
+          <th class="c-qtn" data-col="c-chk-lpos" title="Purchase Order Sent by mBELLAb">PO<br>Sent<div class="col-resizer"></div></th>
           <th class="c-deadline sortable" data-col="c-deadline" data-sort="deadline">Deadline<span class="sort-icon">&#8597;</span><div class="col-resizer"></div></th>
           <th class="c-actions"><div class="col-resizer"></div></th>
         </tr></thead>
@@ -3463,7 +3463,7 @@ function mkDisplayRow(r){
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
+    '<td class="c-qtn">'+renderPOSBadge(r._id)+'</td>'+
     '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
       (r.docs ? '<a class="icon-btn docs-link has-link" href="'+r.docs+'" target="_blank" rel="noopener">'+IC_DOCS+'</a>' : '<span class="icon-btn docs-link">'+IC_DOCS+'</span>')+
@@ -3486,7 +3486,7 @@ function mkEditRow(r){
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
+    '<td class="c-qtn">'+renderPOSBadge(r._id)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
     '<td class="c-actions"><div class="row-actions">'+
       '<button class="icon-btn save" onclick="saveEditRow()">'+IC_SAVE+'</button>'+

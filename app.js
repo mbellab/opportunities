@@ -84,6 +84,7 @@ var allRecords = [], items = [], filtered = [];
 var allQuoteHeaders = [];   // quote records (no line items) — loaded at startup
 var quotesByOpp    = {};    // keyed by opp ID: [{status,date}]
 var poReceivedByOpp = {};   // keyed by opp ID: [{number,date}]
+var poSentByOpp     = {};   // keyed by opp ID: [{number,date}]
 var currentStatus = 'ALL';
 var currentException = '';
 var currentPage = 1;
@@ -564,8 +565,11 @@ async function loadAllQuotes() {
         quotesByOpp[oid].push({status:q.fields['Status']||'', date:q.fields['Date Submitted']||''});
       });
     });
-    // Load PO received in parallel
-    var porRes=await fetch(WORKER_URL+'/po-received?pageSize=200',{headers:getHeaders()});
+    // Load PO received and PO sent in parallel
+    var [porRes,posRes]=await Promise.all([
+      fetch(WORKER_URL+'/po-received?pageSize=200',{headers:getHeaders()}),
+      fetch(WORKER_URL+'/po-sent?pageSize=200',{headers:getHeaders()}),
+    ]);
     if(porRes.ok){
       var porData=await porRes.json();
       poReceivedByOpp={};
@@ -573,6 +577,16 @@ async function loadAllQuotes() {
         (p.fields['Opportunity']||[]).forEach(function(oid){
           if(!poReceivedByOpp[oid]) poReceivedByOpp[oid]=[];
           poReceivedByOpp[oid].push({number:p.fields['PO Number']||'', date:p.fields['Date']||''});
+        });
+      });
+    }
+    if(posRes.ok){
+      var posData=await posRes.json();
+      poSentByOpp={};
+      (posData.records||[]).forEach(function(p){
+        (p.fields['Opportunity']||[]).forEach(function(oid){
+          if(!poSentByOpp[oid]) poSentByOpp[oid]=[];
+          poSentByOpp[oid].push({number:p.fields['PO Number']||'', date:p.fields['Date']||''});
         });
       });
     }
@@ -614,6 +628,23 @@ function renderQtnBadge(oppId) {
   }
   return '<div style="line-height:1.2">'
     +'<div style="font-weight:700;font-size:12px;color:'+color+'">'+qs.length+'</div>'
+    +(dateLabel?'<div style="font-size:10px;color:var(--txt3);font-family:monospace">'+dateLabel+'</div>':'')
+    +'</div>';
+}
+
+function renderPOSBadge(oppId) {
+  var pos=poSentByOpp[oppId];
+  if(!pos||!pos.length) return '<span style="color:var(--txt3)">—</span>';
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var latest=pos.slice().sort(function(a,b){return (b.date||'')>(a.date||'')?1:-1;})[0];
+  var dateLabel='';
+  if(latest.date){
+    var d=new Date(latest.date);
+    dateLabel=d.getDate()+' '+M[d.getMonth()]+' '+String(d.getFullYear()).slice(2);
+  }
+  return '<div style="line-height:1.2">'
+    +'<div style="font-weight:700;font-size:12px;color:var(--blue)">'+pos.length+'</div>'
+    +(latest.number?'<div style="font-size:10px;color:var(--txt3);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px" title="'+e(latest.number)+'">'+e(latest.number)+'</div>':'')
     +(dateLabel?'<div style="font-size:10px;color:var(--txt3);font-family:monospace">'+dateLabel+'</div>':'')
     +'</div>';
 }
@@ -852,7 +883,7 @@ function mkDisplayRow(r){
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
+    '<td class="c-qtn">'+renderPOSBadge(r._id)+'</td>'+
     '<td class="c-deadline">'+renderDeadline(r.deadline)+'</td>'+
     '<td class="c-actions"><div class="row-actions">'+
       (r.docs ? '<a class="icon-btn docs-link has-link" href="'+r.docs+'" target="_blank" rel="noopener">'+IC_DOCS+'</a>' : '<span class="icon-btn docs-link">'+IC_DOCS+'</span>')+
@@ -875,7 +906,7 @@ function mkEditRow(r){
     '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
-    '<td class="c-chk">'+mkTick(r._id,'lpo_supplier',F.LPO_SUPPLIER,r.lpo_supplier)+'</td>'+
+    '<td class="c-qtn">'+renderPOSBadge(r._id)+'</td>'+
     '<td class="c-deadline" style="overflow:visible"><input class="ei" id="ei-deadline" type="date" value="'+e(r.deadline)+'" style="width:130px"></td>'+
     '<td class="c-actions"><div class="row-actions">'+
       '<button class="icon-btn save" onclick="saveEditRow()">'+IC_SAVE+'</button>'+
