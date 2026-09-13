@@ -7604,7 +7604,7 @@ async function runIntegrityChecks() {
     });
 
     // TP ticked but no quote in system
-    var tpNoQuote = diagItems.filter(function(r){ return r.tech_prop==='✔' && !quoteCountByOpp[r._id]; });
+    var tpNoQuote = diagItems.filter(function(r){ return r.tech_prop==='✔' && !quoteCountByOpp[r._id] && r.status!=='LOST' && r.status!=='CANCELLED'; });
     if(tpNoQuote.length) issues.push({
       sev:'amber',
       label:'Technical Proposal sent but no Quote in system ('+tpNoQuote.length+')',
