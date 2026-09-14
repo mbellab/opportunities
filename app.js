@@ -10514,11 +10514,15 @@ function renderKnowledge() {
       var f=r.fields;
       var hasUrl =!!(f['url']  && f['url'].trim());
       var hasBody=!!(f['body'] && f['body'].trim());
+      var co=f['company']||'';
+      var coColors={'BSAA':'background:#f5e6e8;color:#7a1c24','PS':'background:#e8f0fb;color:#1a56a8','SENCAP':'background:#e6f4ea;color:#1e6b3a','SENTINEL':'background:#fff3e0;color:#b35c00','GENERAL':'background:#f0f0f0;color:#555'};
+      var coStyle=coColors[co]||'background:#f0f0f0;color:#555';
+      var coLabel=co||'GENERAL';
       html+='<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 12px;margin-bottom:3px;display:flex;align-items:center;gap:10px">'+
+        '<span style="flex-shrink:0;font-size:10px;padding:2px 9px;border-radius:20px;font-family:monospace;font-weight:700;white-space:nowrap;'+coStyle+'">'+e(coLabel)+'</span>'+
         '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
         '<span style="font-weight:600;font-size:13px;color:var(--txt)">'+e(f['title']||'Untitled')+'</span>'+
-        (f['company']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3,#e8e8e8);color:var(--txt2);font-family:monospace;white-space:nowrap;font-weight:600">'+e(f['company'])+'</span>':'')+
         (f['subcategory']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);font-family:monospace;white-space:nowrap">'+e(f['subcategory'])+'</span>':'')+
         (f['description']?'<span style="font-size:12px;color:var(--txt3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:480px">'+e(f['description'])+'</span>':'')+
         '</div>'+
