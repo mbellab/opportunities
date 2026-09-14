@@ -6082,13 +6082,15 @@ function renderRenewals() {
   var cntEl  = document.getElementById('ren-count');
   if(!tbody) return;
 
-  var filterEntity = (document.getElementById('ren-filter-entity')||{}).value||'';
-  var filterStatus = (document.getElementById('ren-filter-status')||{}).value||'';
-  var searchQ      = ((document.getElementById('ren-search')||{}).value||'').toLowerCase().trim();
+  var filterEntity       = (document.getElementById('ren-filter-entity')||{}).value||'';
+  var filterStatus       = (document.getElementById('ren-filter-status')||{}).value||'';
+  var filterMissingLinks = !!(document.getElementById('ren-filter-missing-links')||{}).checked;
+  var searchQ            = ((document.getElementById('ren-search')||{}).value||'').toLowerCase().trim();
 
   var recs = renRecords.filter(function(r){
     var f = r.fields;
     if(filterEntity && f['Entity'] !== filterEntity) return false;
+    if(filterMissingLinks && (f['Link to Steps'] || f['KB Article'])) return false;
     if(searchQ && ![f['Renewal Details'],f['Entity'],f['Comments']].some(function(v){ return (v||'').toLowerCase().indexOf(searchQ)!==-1; })) return false;
     var days = daysUntil(f['Expiry Date']);
     if(filterStatus === 'overdue' && !(days !== null && days < 0)) return false;
@@ -10516,6 +10518,7 @@ function renderKnowledge() {
         '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
         '<span style="font-weight:600;font-size:13px;color:var(--txt)">'+e(f['title']||'Untitled')+'</span>'+
+        (f['company']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg3,#e8e8e8);color:var(--txt2);font-family:monospace;white-space:nowrap;font-weight:600">'+e(f['company'])+'</span>':'')+
         (f['subcategory']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);font-family:monospace;white-space:nowrap">'+e(f['subcategory'])+'</span>':'')+
         (f['description']?'<span style="font-size:12px;color:var(--txt3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:480px">'+e(f['description'])+'</span>':'')+
         '</div>'+
@@ -10567,6 +10570,7 @@ function openKnModal(id) {
   document.getElementById('knf-title').value       =f['title']||'';
   document.getElementById('knf-category').value    =f['category']||'Employee Services';
   document.getElementById('knf-subcategory').value =f['subcategory']||'';
+  document.getElementById('knf-company').value     =f['company']||'';
   document.getElementById('knf-description').value =f['description']||'';
   document.getElementById('knf-url').value         =f['url']||'';
   document.getElementById('knf-body').value        =f['body']||'';
@@ -10586,6 +10590,7 @@ async function saveKnArticle() {
     title:       title,
     category:    document.getElementById('knf-category').value||'Employee Services',
     subcategory: document.getElementById('knf-subcategory').value.trim()||null,
+    company:     document.getElementById('knf-company').value.trim()||null,
     description: document.getElementById('knf-description').value.trim()||null,
     url:         document.getElementById('knf-url').value.trim()||null,
     body:        document.getElementById('knf-body').value.trim()||null,

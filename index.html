@@ -726,7 +726,7 @@
         <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Title *</label>
         <input id="knf-title" type="text" style="width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--txt);outline:none;box-sizing:border-box" placeholder="Procedure or article name">
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
         <div>
           <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Category</label>
           <select id="knf-category" style="width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--txt);outline:none;box-sizing:border-box;font-family:inherit">
@@ -737,6 +737,17 @@
         <div>
           <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Subcategory</label>
           <input id="knf-subcategory" type="text" style="width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--txt);outline:none;box-sizing:border-box" placeholder="e.g. Employment Visas">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--txt3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Company</label>
+          <select id="knf-company" style="width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 10px;font-size:13px;color:var(--txt);outline:none;box-sizing:border-box;font-family:inherit">
+            <option value="">General</option>
+            <option value="BSAA">BSAA</option>
+            <option value="PS">PS</option>
+            <option value="SENCAP">SENCAP</option>
+            <option value="SENTINEL">SENTINEL</option>
+            <option value="GENERAL">GENERAL</option>
+          </select>
         </div>
       </div>
       <div>
@@ -1276,6 +1287,9 @@
         <option value="soon">Due within 90 days</option>
         <option value="ok">Valid</option>
       </select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2);white-space:nowrap;cursor:pointer">
+        <input type="checkbox" id="ren-filter-missing-links" onchange="renderRenewals()"> Missing Link/KB
+      </label>
       <div style="flex:1"></div>
       <span id="ren-count" style="font-size:11px;color:var(--txt3);font-family:monospace"></span>
     </div>
@@ -1508,6 +1522,9 @@
         <option value="soon">Due within 90 days</option>
         <option value="ok">Valid</option>
       </select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2);white-space:nowrap;cursor:pointer">
+        <input type="checkbox" id="ren-filter-missing-links" onchange="renderRenewals()"> Missing Link/KB
+      </label>
       <div style="flex:1"></div>
       <span id="ren-count" style="font-size:11px;color:var(--txt3);font-family:monospace"></span>
     </div>

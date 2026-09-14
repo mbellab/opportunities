@@ -361,6 +361,7 @@ const SCALAR = {
     'body':        'body',
     'sort_order':  'sort_order',
     'created_at':  'created_at',
+    'company':     'company',
   },
   payment_vouchers: {
     'Date':           'voucher_date',
