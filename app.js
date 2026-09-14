@@ -7848,7 +7848,7 @@ function renderPettyCash() {
     document.getElementById('pc-opening').textContent=fmtPCAED(openingBal);
     document.getElementById('pc-in').textContent=fmtPCAED(totalIn);
     document.getElementById('pc-out').textContent=fmtPCAED(totalOut);
-    document.getElementById('pc-balance').textContent=fmtPCAED(closing);
+    document.getElementById('pc-balance').textContent=(closing<0?'-':'')+fmtPCAED(closing);
     document.getElementById('pc-balance').style.color=closing>=0?'var(--amber)':'var(--red)';
   var S={
     row:  'display:flex;align-items:flex-start;border-bottom:1px solid var(--bdr);padding:2px 0',
@@ -7875,7 +7875,7 @@ function renderPettyCash() {
     '<div style="'+S.date+';color:var(--txt3)">01 '+PC_MONTHS[pcMonth].substring(0,3)+'</div>'+
     '<div style="'+S.vu+';color:var(--txt3)">—</div>'+
     '<div style="'+S.desc+';color:var(--txt3)">Balance B/F</div>'+
-    '<div style="'+S.amt+';color:var(--txt3)">'+fmtPCAED(openingBal)+'</div>'+
+    '<div style="'+S.amt+';color:var(--txt3)">'+(openingBal<0?'-':'')+fmtPCAED(openingBal)+'</div>'+
     '<div style="'+S.act+'"></div>'+
     '</div>';
   if(monthRecs.length===0){
