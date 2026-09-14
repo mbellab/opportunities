@@ -10764,6 +10764,10 @@ function renderExpenseClaims() {
     var st=f['Status']||'draft';
     var stBadge='<span style="font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:20px;background:var(--bg2);color:'+EC_STATUS_COLOR[st]+'">'+
       (EC_STATUS_LABEL[st]||st)+'</span>';
+    var pm=f['Payment Method']||'Cash';
+    var pmBadge=pm==='Credit Card'
+      ? '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fff3cd;color:#856404;margin-left:4px">&#x1F4B3; Credit Card</span>'
+      : '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#d1e7dd;color:#0a4e2a;margin-left:4px">&#x1F4B5; Cash</span>';
     var canVerify=(userRole==='admin'||userRole==='finance')&&st==='submitted';
     var canApprove=(userRole==='admin'||userRole==='finance')&&st==='verified';
     var canEdit=st==='draft'&&(isAdminFin||f['Created By']===userName);
@@ -10773,7 +10777,7 @@ function renderExpenseClaims() {
       '<td style="padding:8px"><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);font-weight:600;font-family:monospace">'+e(f['Entity']||'—')+'</span></td>'+
       '<td style="padding:8px;font-size:12px;color:var(--txt2);white-space:nowrap">'+from+' – '+to+'</td>'+
       '<td style="padding:8px;font-family:monospace;font-size:12px;text-align:right;white-space:nowrap">'+total+'</td>'+
-      '<td style="padding:8px">'+stBadge+'</td>'+
+      '<td style="padding:8px">'+stBadge+pmBadge+'</td>'+
       '<td style="padding:6px 8px;text-align:right;white-space:nowrap">'+
         (canEdit?'<button class="icon-btn edit" onclick="event.stopPropagation();openClaimForm(\''+r.id+'\')">'+IC_PENCIL+'</button>':'')+
         (canVerify?'<button class="btn-sec" style="font-size:11px;padding:4px 10px;margin-right:4px" onclick="event.stopPropagation();ecVerify(\''+r.id+'\')">Verify</button>':'')+
@@ -11145,10 +11149,13 @@ async function ecVerify(id) {
 async function ecApprove(id) {
   var rec=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
   var af=rec.fields;
+  var isCreditCard=(af['Payment Method']||'').toLowerCase().indexOf('credit')!==-1;
   var ok=await appConfirm({
     icon:'✔',
     title:'Approve Claim',
-    body:'You are approving <b>'+e(af['Employee Name']||'this employee')+'\'s</b> expense claim of <b>AED '+parseFloat(af['Total Amount']||0).toLocaleString('en-US',{minimumFractionDigits:2})+'</b> for payment.<br><br>This action will finalise the claim.',
+    body: isCreditCard
+      ? 'You are approving <b>'+e(af['Employee Name']||'this employee')+'\'s</b> expense claim of <b>AED '+parseFloat(af['Total Amount']||0).toLocaleString('en-US',{minimumFractionDigits:2})+'</b>.<br><br>&#x1F4B3; This was paid with the <b>company credit card</b> — no employee reimbursement is required.'
+      : 'You are approving <b>'+e(af['Employee Name']||'this employee')+'\'s</b> expense claim of <b>AED '+parseFloat(af['Total Amount']||0).toLocaleString('en-US',{minimumFractionDigits:2})+'</b> for payment.<br><br>This action will finalise the claim and the employee should be reimbursed.',
     confirmLabel:'Approve',
     confirmStyle:'background:var(--amber);color:#fff;border:none',
   });
