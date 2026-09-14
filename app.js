@@ -5801,7 +5801,7 @@ async function loadEmployees() {
     var res  = await fetch(WORKER_URL+'/employees?pageSize=100', {headers:getHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
     var data = await res.json();
-    empRecords = data.records||[];
+    empRecords = (data.records||[]).sort(function(a,b){ return (a.fields['Employee Name']||'').localeCompare(b.fields['Employee Name']||''); });
     empLoaded  = true;
     renderEmployees();
   } catch(err) {
