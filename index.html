@@ -1448,6 +1448,22 @@
       <div class="field"><label>Membership Number</label><input id="empf-hi-member" placeholder="Membership number"></div>
       <div class="field full"><label>Link to Insurance Card</label><input id="empf-hi-link" type="url" placeholder="https://..."></div>
     </div>
+    <!-- Emergency Contacts -->
+    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">&#128680; Emergency Contacts</div>
+    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin-bottom:6px">Local (UAE)</div>
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input id="empf-ec-local-name" placeholder="Full name"></div>
+      <div class="field"><label>Relationship</label><input id="empf-ec-local-rel" placeholder="e.g. Colleague, Spouse"></div>
+      <div class="field"><label>Phone</label><input id="empf-ec-local-phone" placeholder="+971 XX XXX XXXX"></div>
+      <div class="field"><label>Email</label><input id="empf-ec-local-email" type="email" placeholder="email@example.com"></div>
+    </div>
+    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin:8px 0 6px">Home Country</div>
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input id="empf-ec-home-name" placeholder="Full name"></div>
+      <div class="field"><label>Relationship</label><input id="empf-ec-home-rel" placeholder="e.g. Parent, Spouse"></div>
+      <div class="field"><label>Phone</label><input id="empf-ec-home-phone" placeholder="+XX XXXX XXXXXX"></div>
+      <div class="field"><label>Email</label><input id="empf-ec-home-email" type="email" placeholder="email@example.com"></div>
+    </div>
     <div class="modal-actions">
       <button id="emp-view-leave-btn" class="btn-ghost" onclick="empViewLeave()" style="margin-right:auto;display:none">&#128197; View Leave</button>
       <button class="btn-cancel" onclick="closeEmployeeModal()">Cancel</button>
@@ -1682,6 +1698,22 @@
       <div class="field"><label>Policy Number</label><input id="empf-hi-policy" placeholder="Policy number"></div>
       <div class="field"><label>Membership Number</label><input id="empf-hi-member" placeholder="Membership number"></div>
       <div class="field full"><label>Link to Insurance Card</label><input id="empf-hi-link" type="url" placeholder="https://..."></div>
+    </div>
+    <!-- Emergency Contacts -->
+    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">&#128680; Emergency Contacts</div>
+    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin-bottom:6px">Local (UAE)</div>
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input id="empf-ec-local-name" placeholder="Full name"></div>
+      <div class="field"><label>Relationship</label><input id="empf-ec-local-rel" placeholder="e.g. Colleague, Spouse"></div>
+      <div class="field"><label>Phone</label><input id="empf-ec-local-phone" placeholder="+971 XX XXX XXXX"></div>
+      <div class="field"><label>Email</label><input id="empf-ec-local-email" type="email" placeholder="email@example.com"></div>
+    </div>
+    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin:8px 0 6px">Home Country</div>
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input id="empf-ec-home-name" placeholder="Full name"></div>
+      <div class="field"><label>Relationship</label><input id="empf-ec-home-rel" placeholder="e.g. Parent, Spouse"></div>
+      <div class="field"><label>Phone</label><input id="empf-ec-home-phone" placeholder="+XX XXXX XXXXXX"></div>
+      <div class="field"><label>Email</label><input id="empf-ec-home-email" type="email" placeholder="email@example.com"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeEmployeeModal()">Cancel</button>
@@ -7985,7 +8017,9 @@ async function showEmployeeModal(recordId) {
   document.getElementById('emp-modal-title').textContent = isNew ? 'Add Employee' : 'Edit Employee';
   var f = isNew ? {} : (empRecords.find(function(r){return r.id===recordId;})||{}).fields||{};
   var fields = ['empf-name','empf-dob','empf-pp-num','empf-pp-exp','empf-eid-num','empf-eid-exp',
-    'empf-eid-link','empf-visa-num','empf-visa-exp','empf-visa-link','empf-hi-policy','empf-hi-member','empf-hi-link','empf-start'];
+    'empf-eid-link','empf-visa-num','empf-visa-exp','empf-visa-link','empf-hi-policy','empf-hi-member','empf-hi-link','empf-start',
+    'empf-ec-local-name','empf-ec-local-email','empf-ec-local-phone','empf-ec-local-rel',
+    'empf-ec-home-name','empf-ec-home-email','empf-ec-home-phone','empf-ec-home-rel'];
   var fmap   = {
     'empf-name':'Employee Name','empf-dob':'Date of Birth',
     'empf-pp-num':'Passport Number','empf-pp-exp':'Passport Expiry','empf-pp-link':'Link to Passport',
@@ -7993,7 +8027,11 @@ async function showEmployeeModal(recordId) {
     'empf-visa-num':'Visa File Number','empf-visa-exp':'Visa Expiry','empf-visa-link':'Link to Visa',
     'empf-hi-policy':'Health Insurance Policy Number','empf-hi-member':'Health Insurance Membership Number',
     'empf-hi-link':'Link to Health Insurance Card',
-    'empf-start':'Start Date'
+    'empf-start':'Start Date',
+    'empf-ec-local-name':'EC Local Name','empf-ec-local-email':'EC Local Email',
+    'empf-ec-local-phone':'EC Local Phone','empf-ec-local-rel':'EC Local Relationship',
+    'empf-ec-home-name':'EC Home Name','empf-ec-home-email':'EC Home Email',
+    'empf-ec-home-phone':'EC Home Phone','empf-ec-home-rel':'EC Home Relationship'
   };
   fields.forEach(function(id){
     var el=document.getElementById(id); if(!el) return;
@@ -8042,7 +8080,11 @@ async function saveEmployee() {
     'empf-hi-policy':'Health Insurance Policy Number','empf-hi-member':'Health Insurance Membership Number',
     'empf-hi-link':'Link to Health Insurance Card',
     'empf-start':'Start Date',
-    'empf-username':'Username'
+    'empf-username':'Username',
+    'empf-ec-local-name':'EC Local Name','empf-ec-local-email':'EC Local Email',
+    'empf-ec-local-phone':'EC Local Phone','empf-ec-local-rel':'EC Local Relationship',
+    'empf-ec-home-name':'EC Home Name','empf-ec-home-email':'EC Home Email',
+    'empf-ec-home-phone':'EC Home Phone','empf-ec-home-rel':'EC Home Relationship'
   };
   var fields={};
   Object.keys(fmap).forEach(function(id){

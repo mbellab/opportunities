@@ -1731,7 +1731,6 @@ async function renderDashboard() {
 
   document.getElementById('dash-kpis').innerHTML = [
     {label:'Total Opportunities', val:all.length,         sub:'all time',        cls:''},
-    {label:'Active (Working On)', val:active.length,      sub:'in progress',     cls:'blue'},
     {label:'Pipeline',            val:pipeline.length,    sub:'submitted',       cls:''},
     {label:'Won',                 val:won.length,         sub:'opportunities',   cls:'green'},
     {label:'Win Rate',            val:winRate+'%',        sub:decided+' decided',cls:'green'},
@@ -5754,7 +5753,7 @@ function renderFilteredEmployees(records) {
           (f['Username']?'<div style="margin-top:4px"><span style="font-size:10px;font-family:monospace;color:var(--green);background:var(--green-bg,rgba(40,167,69,.1));border:1px solid rgba(40,167,69,.3);border-radius:10px;padding:2px 7px">@'+e(f['Username'])+'</span></div>':'')+
         '</div>'+
       '</div>'+
-      '<div class="emp-body">'+
+      '<div class="emp-body" style="display:none">'+
         '<div class="emp-section-lbl">&#128246; Passport</div>'+
         '<div class="emp-row"><span class="emp-row-lbl">Number</span><span class="emp-row-val">'+e(f['Passport Number']||'—')+'</span></div>'+
         '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Passport Expiry'])+'">'+expiryLabel(f['Passport Expiry'])+'</span>'+docLink(f['Link to Passport'],'View Passport')+'</div>'+
@@ -5767,8 +5766,26 @@ function renderFilteredEmployees(records) {
         '<div class="emp-section-lbl">&#128138; Health Insurance</div>'+
         '<div class="emp-row"><span class="emp-row-lbl">Policy No.</span><span class="emp-row-val">'+e(f['Health Insurance Policy Number']||'—')+'</span></div>'+
         '<div class="emp-row"><span class="emp-row-lbl">Member No.</span><span class="emp-row-val">'+e(f['Health Insurance Membership Number']||'—')+'</span>'+docLink(f['Link to Health Insurance Card'],'View Card')+'</div>'+
+        (f['EC Local Name']||f['EC Home Name']?
+          '<div class="emp-section-lbl">&#128680; Emergency Contacts</div>'+
+          (f['EC Local Name']?
+            '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin:4px 0 2px;font-family:monospace">Local (UAE)</div>'+
+            '<div class="emp-row"><span class="emp-row-lbl">Name</span><span class="emp-row-val">'+e(f['EC Local Name'])+'</span></div>'+
+            (f['EC Local Relationship']?'<div class="emp-row"><span class="emp-row-lbl">Relationship</span><span class="emp-row-val">'+e(f['EC Local Relationship'])+'</span></div>':'')+
+            (f['EC Local Phone']?'<div class="emp-row"><span class="emp-row-lbl">Phone</span><span class="emp-row-val">'+e(f['EC Local Phone'])+'</span></div>':'')+
+            (f['EC Local Email']?'<div class="emp-row"><span class="emp-row-lbl">Email</span><span class="emp-row-val">'+e(f['EC Local Email'])+'</span></div>':'')
+          :'')+
+          (f['EC Home Name']?
+            '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin:4px 0 2px;font-family:monospace">Home Country</div>'+
+            '<div class="emp-row"><span class="emp-row-lbl">Name</span><span class="emp-row-val">'+e(f['EC Home Name'])+'</span></div>'+
+            (f['EC Home Relationship']?'<div class="emp-row"><span class="emp-row-lbl">Relationship</span><span class="emp-row-val">'+e(f['EC Home Relationship'])+'</span></div>':'')+
+            (f['EC Home Phone']?'<div class="emp-row"><span class="emp-row-lbl">Phone</span><span class="emp-row-val">'+e(f['EC Home Phone'])+'</span></div>':'')+
+            (f['EC Home Email']?'<div class="emp-row"><span class="emp-row-lbl">Email</span><span class="emp-row-val">'+e(f['EC Home Email'])+'</span></div>':'')
+          :'')
+        :'')+
       '</div>'+
       '<div class="emp-card-footer">'+
+        '<button class="btn-sm" onclick="empToggleDetails(this)">&#9660; Details</button>'+
         '<button class="btn-sm" data-emp-edit="'+r.id+'">&#9998; Edit</button>'+
         '<button class="btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="empViewLeaveFromCard(\''+r.id+'\')" >&#128197; Leave</button>'+
         '<button class="btn-sm" style="color:var(--red);border-color:var(--red)" data-emp-del="'+r.id+'" data-emp-name="'+e(name)+'">&#128465; Delete</button>'+
@@ -5825,6 +5842,13 @@ function docLink(url, label) {
 function initials(name) {
   if(!name) return '?';
   return name.trim().split(/\s+/).map(function(w){return w[0]||'';}).slice(0,2).join('').toUpperCase();
+}
+
+function empToggleDetails(btn) {
+  var body = btn.closest('.emp-card').querySelector('.emp-body');
+  var isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '▼ Details' : '▲ Hide';
 }
 
 function renderEmployees() {
@@ -5884,7 +5908,9 @@ async function showEmployeeModal(recordId) {
   document.getElementById('emp-modal-title').textContent = isNew ? 'Add Employee' : 'Edit Employee';
   var f = isNew ? {} : (empRecords.find(function(r){return r.id===recordId;})||{}).fields||{};
   var fields = ['empf-name','empf-dob','empf-pp-num','empf-pp-exp','empf-eid-num','empf-eid-exp',
-    'empf-eid-link','empf-visa-num','empf-visa-exp','empf-visa-link','empf-hi-policy','empf-hi-member','empf-hi-link','empf-start'];
+    'empf-eid-link','empf-visa-num','empf-visa-exp','empf-visa-link','empf-hi-policy','empf-hi-member','empf-hi-link','empf-start',
+    'empf-ec-local-name','empf-ec-local-email','empf-ec-local-phone','empf-ec-local-rel',
+    'empf-ec-home-name','empf-ec-home-email','empf-ec-home-phone','empf-ec-home-rel'];
   var fmap   = {
     'empf-name':'Employee Name','empf-dob':'Date of Birth',
     'empf-pp-num':'Passport Number','empf-pp-exp':'Passport Expiry','empf-pp-link':'Link to Passport',
@@ -5892,7 +5918,11 @@ async function showEmployeeModal(recordId) {
     'empf-visa-num':'Visa File Number','empf-visa-exp':'Visa Expiry','empf-visa-link':'Link to Visa',
     'empf-hi-policy':'Health Insurance Policy Number','empf-hi-member':'Health Insurance Membership Number',
     'empf-hi-link':'Link to Health Insurance Card',
-    'empf-start':'Start Date'
+    'empf-start':'Start Date',
+    'empf-ec-local-name':'EC Local Name','empf-ec-local-email':'EC Local Email',
+    'empf-ec-local-phone':'EC Local Phone','empf-ec-local-rel':'EC Local Relationship',
+    'empf-ec-home-name':'EC Home Name','empf-ec-home-email':'EC Home Email',
+    'empf-ec-home-phone':'EC Home Phone','empf-ec-home-rel':'EC Home Relationship'
   };
   fields.forEach(function(id){
     var el=document.getElementById(id); if(!el) return;
@@ -5942,18 +5972,18 @@ async function saveEmployee() {
     'empf-hi-policy':'Health Insurance Policy Number','empf-hi-member':'Health Insurance Membership Number',
     'empf-hi-link':'Link to Health Insurance Card',
     'empf-start':'Start Date',
-    'empf-username':'Username'
+    'empf-username':'Username',
+    'empf-ec-local-name':'EC Local Name','empf-ec-local-email':'EC Local Email',
+    'empf-ec-local-phone':'EC Local Phone','empf-ec-local-rel':'EC Local Relationship',
+    'empf-ec-home-name':'EC Home Name','empf-ec-home-email':'EC Home Email',
+    'empf-ec-home-phone':'EC Home Phone','empf-ec-home-rel':'EC Home Relationship'
   };
   var fields={};
   Object.keys(fmap).forEach(function(id){
     var el=document.getElementById(id); if(!el) return;
     var val=el.value.trim();
-    // Always include all fields so Airtable clears them when empty
     fields[fmap[id]] = val || null;
   });
-  // Build clean payload: exclude nulls for PATCH (Airtable ignores them anyway)
-  // but include for POST so new records are created cleanly
-  // For PATCH: include nulls so cleared fields actually get cleared in Airtable
   var cleanFields = fields;
   try {
     var url    = savedId ? WORKER_URL+'/employees/'+savedId : WORKER_URL+'/employees';
