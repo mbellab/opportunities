@@ -6604,16 +6604,15 @@ async function loadUpcomingEvents() {
         bday.setHours(0,0,0,0);
         if(bday < today) bday = new Date(thisYear+1, d.getMonth(), d.getDate());
         var days = Math.round((bday-today)/(1000*60*60*24));
-        if(days >= 0) {
+        if(days >= 0 && days <= windowDays) {
           var age = bday.getFullYear() - d.getFullYear();
           bdays.push({name: r.fields['Employee Name']||'Unknown', days: days, date: bday, age: age, id: r.id});
         }
       });
       bdays.sort(function(a,b){return a.days-b.days;});
-      bdays = bdays.slice(0,3);
       if(bthEl) {
         if(bdays.length===0) {
-          bthEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--txt3)">No upcoming birthdays</div>';
+          bthEl.innerHTML='<div style="padding:10px 14px;font-size:12px;color:var(--txt3)">No birthdays in the next '+windowDays+' days</div>';
         } else {
           hasAny = true;
           bthEl.innerHTML = bdays.map(function(b){
