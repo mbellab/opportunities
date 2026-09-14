@@ -10500,40 +10500,59 @@ function renderKnowledge() {
     return;
   }
 
-  var grouped={};
+  var coOrder=['BSAA','PS','SENCAP','SENTINEL','GENERAL'];
+  var coColors={
+    'BSAA':    {bg:'#f5e6e8',txt:'#7a1c24',bdr:'#d4a0a6'},
+    'PS':      {bg:'#e8f0fb',txt:'#1a56a8',bdr:'#9db8e8'},
+    'SENCAP':  {bg:'#e6f4ea',txt:'#1e6b3a',bdr:'#8fccaa'},
+    'SENTINEL':{bg:'#fff3e0',txt:'#b35c00',bdr:'#f0c070'},
+    'GENERAL': {bg:'#f4f4f4',txt:'#555',   bdr:'#ccc'},
+  };
+
+  // Group: company → category → articles
+  var byCompany={};
   recs.forEach(function(r){
+    var co=r.fields['company']||'GENERAL';
     var cat=r.fields['category']||'General';
-    if(!grouped[cat]) grouped[cat]=[];
-    grouped[cat].push(r);
+    if(!byCompany[co]) byCompany[co]={};
+    if(!byCompany[co][cat]) byCompany[co][cat]=[];
+    byCompany[co][cat].push(r);
   });
 
+  // Render in fixed company order, then alphabetical category
+  var companies=coOrder.filter(function(c){ return byCompany[c]; });
+  Object.keys(byCompany).forEach(function(c){ if(coOrder.indexOf(c)===-1) companies.push(c); });
+
   var html='';
-  Object.keys(grouped).sort().forEach(function(cat){
-    if(!knFilterCat) html+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;padding:10px 0 4px;border-bottom:1px solid var(--bdr);margin-bottom:4px">'+e(cat)+'</div>';
-    grouped[cat].forEach(function(r){
-      var f=r.fields;
-      var hasUrl =!!(f['url']  && f['url'].trim());
-      var hasBody=!!(f['body'] && f['body'].trim());
-      var co=f['company']||'';
-      var coColors={'BSAA':'background:#f5e6e8;color:#7a1c24','PS':'background:#e8f0fb;color:#1a56a8','SENCAP':'background:#e6f4ea;color:#1e6b3a','SENTINEL':'background:#fff3e0;color:#b35c00','GENERAL':'background:#f0f0f0;color:#555'};
-      var coStyle=coColors[co]||'background:#f0f0f0;color:#555';
-      var coLabel=co||'GENERAL';
-      html+='<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 12px;margin-bottom:3px;display:flex;align-items:center;gap:10px">'+
-        '<span style="flex-shrink:0;font-size:10px;padding:2px 9px;border-radius:20px;font-family:monospace;font-weight:700;white-space:nowrap;'+coStyle+'">'+e(coLabel)+'</span>'+
-        '<div style="flex:1;min-width:0">'+
-        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-        '<span style="font-weight:600;font-size:13px;color:var(--txt)">'+e(f['title']||'Untitled')+'</span>'+
-        (f['subcategory']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);font-family:monospace;white-space:nowrap">'+e(f['subcategory'])+'</span>':'')+
-        (f['description']?'<span style="font-size:12px;color:var(--txt3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:480px">'+e(f['description'])+'</span>':'')+
-        '</div>'+
-        '</div>'+
-        '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+
-        (hasBody?'<button class="btn-ghost" style="font-size:12px;padding:3px 9px" onclick="openKnReader(\''+r.id+'\')">Read</button>':'')+
-        (hasUrl?'<a href="'+e(f['url'])+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:12px;padding:3px 9px;text-decoration:none;display:inline-flex;align-items:center">Open ↗</a>':'')+
-        '<button class="icon-btn edit" onclick="openKnModal(\''+r.id+'\')" style="opacity:1">'+IC_PENCIL+'</button>'+
-        '<button class="icon-btn del"  onclick="deleteKnArticle(\''+r.id+'\')" style="opacity:1">'+IC_TRASH+'</button>'+
-        '</div>'+
-      '</div>';
+  companies.forEach(function(co,ci){
+    var clr=coColors[co]||coColors['GENERAL'];
+    html+='<div style="margin-top:'+(ci>0?'18px':'2px')+';margin-bottom:6px;padding:7px 14px;border-radius:var(--r);background:'+clr.bg+';border-left:4px solid '+clr.bdr+';display:flex;align-items:center;gap:10px">'+
+      '<span style="font-weight:700;font-size:12px;font-family:monospace;color:'+clr.txt+';text-transform:uppercase;letter-spacing:.6px">'+e(co)+'</span>'+
+      '<span style="font-size:11px;color:'+clr.txt+';opacity:.7">'+Object.values(byCompany[co]).reduce(function(s,a){return s+a.length;},0)+' article'+(Object.values(byCompany[co]).reduce(function(s,a){return s+a.length;},0)===1?'':'s')+'</span>'+
+    '</div>';
+    var cats=Object.keys(byCompany[co]).sort();
+    cats.forEach(function(cat){
+      if(cats.length>1) html+='<div style="font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;padding:6px 2px 3px;margin-bottom:2px">'+e(cat)+'</div>';
+      byCompany[co][cat].forEach(function(r){
+        var f=r.fields;
+        var hasUrl =!!(f['url']  && f['url'].trim());
+        var hasBody=!!(f['body'] && f['body'].trim());
+        html+='<div style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 12px;margin-bottom:3px;display:flex;align-items:center;gap:10px">'+
+          '<div style="flex:1;min-width:0">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span style="font-weight:600;font-size:13px;color:var(--txt)">'+e(f['title']||'Untitled')+'</span>'+
+          (f['subcategory']?'<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--blue-bg);color:var(--blue);font-family:monospace;white-space:nowrap">'+e(f['subcategory'])+'</span>':'')+
+          (f['description']?'<span style="font-size:12px;color:var(--txt3);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:480px">'+e(f['description'])+'</span>':'')+
+          '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+
+          (hasBody?'<button class="btn-ghost" style="font-size:12px;padding:3px 9px" onclick="openKnReader(\''+r.id+'\')">Read</button>':'')+
+          (hasUrl?'<a href="'+e(f['url'])+'" target="_blank" rel="noopener" class="btn-ghost" style="font-size:12px;padding:3px 9px;text-decoration:none;display:inline-flex;align-items:center">Open ↗</a>':'')+
+          '<button class="icon-btn edit" onclick="openKnModal(\''+r.id+'\')" style="opacity:1">'+IC_PENCIL+'</button>'+
+          '<button class="icon-btn del"  onclick="deleteKnArticle(\''+r.id+'\')" style="opacity:1">'+IC_TRASH+'</button>'+
+          '</div>'+
+        '</div>';
+      });
     });
   });
   list.innerHTML=html;
