@@ -1951,10 +1951,13 @@
       </div>
       <div class="opp-modal-name" id="edit-proj-name">Opportunity</div>
     </div>
+    <!-- Commercial workflow strip -->
+    <div id="opp-workflow-strip" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:10px 26px 10px;border-bottom:1px solid var(--bdr);background:var(--bg2);margin:0 -26px;flex-shrink:0"></div>
     <div class="modal-tabs">
       <div class="modal-tab active" data-tab="tab-details" onclick="switchTab('tab-details')">Details</div>
       <div class="modal-tab" data-tab="tab-bidders" onclick="switchTab('tab-bidders')">Bidders <span id="bidders-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-oem-enquiries" onclick="switchTab('tab-oem-enquiries')">OEM Enquiries <span id="oem-count-badge" style="font-size:10px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
+      <div class="modal-tab" data-tab="tab-tech-proposal" onclick="switchTab('tab-tech-proposal')">Tech Proposal</div>
       <div class="modal-tab" data-tab="tab-quotes" onclick="switchTab('tab-quotes')">Quotes <span id="quotes-count-badge" style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-po-received" onclick="switchTab('tab-po-received')">PO Received <span id="po-received-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-po-sent" onclick="switchTab('tab-po-sent')">PO Sent <span id="po-sent-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
@@ -2213,6 +2216,28 @@
         <textarea id="report-next-steps" placeholder="Describe the next actions required for this opportunity…" oninput="saveNextStepsDebounced()" style="width:100%;min-height:90px;padding:10px 12px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--bg2);color:var(--txt);font-size:13px;font-family:'IBM Plex Sans',sans-serif;resize:vertical;outline:none;box-sizing:border-box"></textarea>
       </div>
     </div><!-- /tab-report -->
+    <div id="tab-tech-proposal" class="tab-pane">
+      <div style="max-width:600px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--txt3);margin-bottom:16px">Technical Proposal</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <input id="ef-tp-sent" type="checkbox" style="width:17px;height:17px;accent-color:var(--green);cursor:pointer">
+          <label for="ef-tp-sent" style="font-size:14px;font-weight:600;cursor:pointer;margin:0">Technical Proposal Sent</label>
+        </div>
+        <div class="form-grid" style="margin-bottom:20px">
+          <div class="field">
+            <label>Date Sent</label>
+            <input id="ef-tp-date" type="date">
+          </div>
+        </div>
+        <div class="field">
+          <label>Document URL</label>
+          <input id="ef-tp-url" type="url" placeholder="Paste link to technical proposal document…" style="font-size:13px">
+        </div>
+        <div id="ef-tp-url-preview" style="margin-top:10px;display:none">
+          <a id="ef-tp-url-link" href="#" target="_blank" rel="noopener" style="font-size:12px;color:var(--blue)">&#128279; Open document</a>
+        </div>
+      </div>
+    </div><!-- /tab-tech-proposal -->
     <div id="tab-project" class="tab-pane">
       <div style="margin-bottom:18px">
         <div style="font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--txt3);margin-bottom:14px">Factory Acceptance Test</div>

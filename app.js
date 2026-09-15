@@ -73,8 +73,10 @@ var F = {
   AWARDED_PRICE: 'Awarded Price',
   LOSS_REASON:   'Loss Reason',
   NEXT_STEPS:    'Next Steps',
-  FAT_DATE:      'FAT Date',
-  FAT_COMPLETED: 'FAT Completed'
+  FAT_DATE:       'FAT Date',
+  FAT_COMPLETED:  'FAT Completed',
+  TECH_PROP_DATE: 'Technical Proposal Date',
+  TECH_PROP_URL:  'Technical Proposal URL'
 };
 // ================================================================
 
@@ -662,7 +664,8 @@ function parseItems() {
       docs:s(f[F.DOCS]),
       awarded_to:s(f[F.AWARDED_TO]), awarded_price:f[F.AWARDED_PRICE]||null, loss_reason:s(f[F.LOSS_REASON]),
       next_steps:s(f[F.NEXT_STEPS]),
-      fat_date:s(f[F.FAT_DATE]), fat_completed:!!(f[F.FAT_COMPLETED])
+      fat_date:s(f[F.FAT_DATE]), fat_completed:!!(f[F.FAT_COMPLETED]),
+      tech_prop_date:s(f[F.TECH_PROP_DATE]), tech_prop_url:s(f[F.TECH_PROP_URL])
     };
   });
   sortItems();
@@ -880,7 +883,7 @@ function mkDisplayRow(r){
     '<td class="c-mc">'+e(r.main_cont||'—')+'</td>'+
     '<td class="c-rtu">'+e(r.rtu)+'</td>'+
     '<td class="c-status"><span class="badge '+badgeCls(r.status)+'">'+badgeLbl(r.status)+'</span></td>'+
-    '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-chk">'+(r.tech_prop==='✔'?'<span style="color:var(--green);font-size:15px;line-height:1">✔</span>':'<span style="color:var(--bdr2);font-size:13px">–</span>')+'</td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPOSBadge(r._id)+'</td>'+
@@ -903,7 +906,7 @@ function mkEditRow(r){
     '<td class="c-mc" style="overflow:visible"><input class="ei" id="ei-mc" value="'+e(r.main_cont)+'" style="width:112px"></td>'+
     '<td class="c-rtu" style="overflow:visible"><input class="ei" id="ei-rtu" value="'+e(r.rtu)+'" style="width:50px;text-align:center"></td>'+
     '<td class="c-status" style="overflow:visible"><select class="ei-sel" id="ei-status" style="width:108px">'+opts+'</select></td>'+
-    '<td class="c-chk">'+mkTick(r._id,'tech_prop',F.TECH_PROP,r.tech_prop)+'</td>'+
+    '<td class="c-chk">'+(r.tech_prop==='✔'?'<span style="color:var(--green);font-size:15px;line-height:1">✔</span>':'<span style="color:var(--bdr2);font-size:13px">–</span>')+'</td>'+
     '<td class="c-qtn">'+renderQtnBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPORBadge(r._id)+'</td>'+
     '<td class="c-qtn">'+renderPOSBadge(r._id)+'</td>'+
@@ -1100,6 +1103,64 @@ async function showFieldNames(){
 
 
 // ── Edit Modal (double-click) ─────────────────────────────────────
+function refreshTpUrlPreview(url) {
+  var preview = document.getElementById('ef-tp-url-preview');
+  var link    = document.getElementById('ef-tp-url-link');
+  if(!preview || !link) return;
+  if(url && url.trim()) {
+    link.href = url.trim();
+    preview.style.display = '';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+function updateWorkflowStrip(item) {
+  var strip = document.getElementById('opp-workflow-strip');
+  if(!strip) return;
+  var id = item._id;
+  var canCommercial = (userRole==='admin' || userRole==='finance');
+  var stages = [
+    {
+      key:'tp', label:'Tech Proposal', tab:'tab-tech-proposal',
+      done: item.tech_prop==='✔',
+      sub:  item.tech_prop==='✔' && item.tech_prop_date ? fmtDate(item.tech_prop_date) : null,
+      show: true
+    },
+    {
+      key:'qt', label:'Quote', tab:'tab-quotes',
+      done: !!(quotesByOpp[id] && quotesByOpp[id].length),
+      sub:  quotesByOpp[id] && quotesByOpp[id].length ? quotesByOpp[id].length+' submitted' : null,
+      show: canCommercial
+    },
+    {
+      key:'por', label:'PO Received', tab:'tab-po-received',
+      done: !!(poReceivedByOpp[id] && poReceivedByOpp[id].length),
+      sub:  poReceivedByOpp[id] && poReceivedByOpp[id].length ? poReceivedByOpp[id].length+' received' : null,
+      show: canCommercial
+    },
+    {
+      key:'pos', label:'PO Sent', tab:'tab-po-sent',
+      done: !!(poSentByOpp[id] && poSentByOpp[id].length),
+      sub:  poSentByOpp[id] && poSentByOpp[id].length ? poSentByOpp[id].length+' sent' : null,
+      show: canCommercial
+    }
+  ].filter(function(s){ return s.show; });
+  strip.innerHTML = stages.map(function(st, i){
+    var dot = st.done
+      ? '<span style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">✔</span>'
+      : '<span style="width:22px;height:22px;border-radius:50%;border:2px solid var(--bdr2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--txt3);flex-shrink:0">'+(i+1)+'</span>';
+    var lbl = '<span style="font-size:11px;font-weight:600;color:'+(st.done?'var(--txt)':'var(--txt3)')+'">'+st.label+'</span>';
+    var sub = st.sub ? '<span style="font-size:10px;color:'+(st.done?'var(--green)':'var(--txt3)')+'">'+st.sub+'</span>' : '';
+    var arrow = i < stages.length-1
+      ? '<span style="color:var(--bdr2);font-size:14px;flex-shrink:0;margin:0 6px">›</span>'
+      : '';
+    return '<div onclick="switchTab(\''+st.tab+'\')" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .15s" onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'\'">'+
+      dot+'<div style="display:flex;flex-direction:column;gap:1px">'+lbl+sub+'</div>'+
+    '</div>'+arrow;
+  }).join('');
+}
+
 function openEditModal(id) {
   var item = items.find(function(i){ return i._id === id; });
   if(!item) return;
@@ -1131,8 +1192,15 @@ function openEditModal(id) {
   document.getElementById('ef-awarded-price').value = item.awarded_price != null ? item.awarded_price : '';
   document.getElementById('ef-loss-reason').value   = item.loss_reason || '';
   updateLossSection();
-  document.getElementById('ef-fat-date').value      = item.fat_date || '';
+  document.getElementById('ef-fat-date').value        = item.fat_date || '';
   document.getElementById('ef-fat-completed').checked = !!(item.fat_completed);
+  document.getElementById('ef-tp-sent').checked       = item.tech_prop === '✔';
+  document.getElementById('ef-tp-date').value         = item.tech_prop_date || '';
+  var tpUrlEl = document.getElementById('ef-tp-url');
+  tpUrlEl.value = item.tech_prop_url || '';
+  tpUrlEl.oninput = function(){ refreshTpUrlPreview(this.value); };
+  refreshTpUrlPreview(item.tech_prop_url || '');
+  updateWorkflowStrip(item);
   document.getElementById('edit-modal').style.display = 'flex';
   setTimeout(function(){ document.getElementById('ef-proj').focus(); }, 50);
 }
@@ -1171,6 +1239,10 @@ async function saveEditModal() {
   var fatDateVal = document.getElementById('ef-fat-date').value;
   fields[F.FAT_DATE]      = fatDateVal || null;
   fields[F.FAT_COMPLETED] = document.getElementById('ef-fat-completed').checked;
+  var tpSent = document.getElementById('ef-tp-sent').checked;
+  fields[F.TECH_PROP]      = tpSent ? '✔' : '✖';
+  fields[F.TECH_PROP_DATE] = tpSent ? (document.getElementById('ef-tp-date').value || null) : null;
+  fields[F.TECH_PROP_URL]  = document.getElementById('ef-tp-url').value || null;
   // Update local item
   var item = items.find(function(i){ return i._id === id; });
   if(item){
@@ -1186,6 +1258,9 @@ async function saveEditModal() {
     item.loss_reason = fields[F.LOSS_REASON] || '';
     item.fat_date = fatDateVal || '';
     item.fat_completed = fields[F.FAT_COMPLETED];
+    item.tech_prop = fields[F.TECH_PROP];
+    item.tech_prop_date = fields[F.TECH_PROP_DATE] || '';
+    item.tech_prop_url  = fields[F.TECH_PROP_URL]  || '';
     var rec=allRecords.find(function(r){return r.id===id;});
     if(rec){
       Object.keys(fields).forEach(function(k){ rec.fields[k]=fields[k]; });

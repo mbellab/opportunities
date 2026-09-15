@@ -105,8 +105,10 @@ const SCALAR = {
     'Awarded Price':         'awarded_price',
     'Loss Reason':           'loss_reason',
     'Next Steps':            'next_steps',
-    'FAT Date':              'fat_date',
-    'FAT Completed':         'fat_completed',
+    'FAT Date':                   'fat_date',
+    'FAT Completed':              'fat_completed',
+    'Technical Proposal Date':    'technical_proposal_date',
+    'Technical Proposal URL':     'technical_proposal_url',
   },
   activity_log: {
     'Name':   'name',
