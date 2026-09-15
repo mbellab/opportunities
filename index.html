@@ -924,6 +924,7 @@
       <select id="exception-filter" onchange="setException(this.value)" style="font-size:12px;padding:4px 8px;border:1px solid var(--bdr2);border-radius:var(--r);background:var(--bg);color:var(--txt);cursor:pointer;height:28px;max-width:240px">
         <option value="">Exception filters…</option>
         <option value="tp_no_quote">TP sent, no Quote in system</option>
+        <option value="tp_no_url">TP sent, no link to document</option>
         <option value="quoted_no_po">Quote sent, no PO received</option>
         <option value="po_rec_no_sent">PO Received, no PO Sent</option>
         <option value="pipeline_no_quote">Pipeline: no Quote sent yet</option>
@@ -1951,16 +1952,19 @@
       </div>
       <div class="opp-modal-name" id="edit-proj-name">Opportunity</div>
     </div>
-    <!-- Commercial workflow strip -->
-    <div id="opp-workflow-strip" style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;padding:10px 26px 10px;border-bottom:1px solid var(--bdr);background:var(--bg2);margin:0 -26px;flex-shrink:0"></div>
     <div class="modal-tabs">
       <div class="modal-tab active" data-tab="tab-details" onclick="switchTab('tab-details')">Details</div>
       <div class="modal-tab" data-tab="tab-bidders" onclick="switchTab('tab-bidders')">Bidders <span id="bidders-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-oem-enquiries" onclick="switchTab('tab-oem-enquiries')">OEM Enquiries <span id="oem-count-badge" style="font-size:10px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-tech-proposal" onclick="switchTab('tab-tech-proposal')">Tech Proposal</div>
-      <div class="modal-tab" data-tab="tab-quotes" onclick="switchTab('tab-quotes')">Quotes <span id="quotes-count-badge" style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
-      <div class="modal-tab" data-tab="tab-po-received" onclick="switchTab('tab-po-received')">PO Received <span id="po-received-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
-      <div class="modal-tab" data-tab="tab-po-sent" onclick="switchTab('tab-po-sent')">PO Sent <span id="po-sent-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
+      <div style="display:flex;flex-direction:column;align-self:stretch;border-left:2px solid var(--amber);margin-left:6px;flex-shrink:0">
+        <div style="font-size:8px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--amber);padding:4px 10px 0;white-space:nowrap">Commercial Flow</div>
+        <div style="display:flex;flex:1;align-items:flex-end">
+          <div class="modal-tab" data-tab="tab-quotes" onclick="switchTab('tab-quotes')">Quotes <span id="quotes-count-badge" style="font-size:10px;background:var(--green-bg);color:var(--green);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
+          <div class="modal-tab" data-tab="tab-po-received" onclick="switchTab('tab-po-received')">PO Received <span id="po-received-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
+          <div class="modal-tab" data-tab="tab-po-sent" onclick="switchTab('tab-po-sent')">PO Sent <span id="po-sent-count-badge" style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
+        </div>
+      </div>
       <div class="modal-tab" data-tab="tab-inv-received" onclick="switchTab('tab-inv-received')">Invoice Received <span id="inv-received-count-badge" style="font-size:10px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-invoices" onclick="switchTab('tab-invoices')">Invoice Sent <span id="invoices-count-badge" style="font-size:10px;background:var(--amber-bg);color:var(--amber);padding:1px 6px;border-radius:20px;margin-left:4px"></span></div>
       <div class="modal-tab" data-tab="tab-report" onclick="switchTab('tab-report')">Report</div>

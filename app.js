@@ -862,6 +862,7 @@ function applyFilters(){
     if(dateFrom||dateTo){var rd=parseDateStr(r.date);if(!rd){inDate=!dateFrom;}else{if(dateFrom&&rd<dateFrom)inDate=false;if(dateTo&&rd>dateTo)inDate=false;}}
     if(!ms||!mq||!inDate) return false;
     if(currentException==='tp_no_quote')      return r.tech_prop==='✔' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length) && r.status!=='LOST' && r.status!=='CANCELLED';
+    if(currentException==='tp_no_url')        return r.tech_prop==='✔' && !r.tech_prop_url;
     if(currentException==='quoted_no_po')     return (r.status==='PIPELINE'||r.status==='WON') && quotesByOpp[r._id]&&quotesByOpp[r._id].length && r.lpo_client!=='✔';
     if(currentException==='po_rec_no_sent')   return !!(poReceivedByOpp[r._id]&&poReceivedByOpp[r._id].length) && !(poSentByOpp[r._id]&&poSentByOpp[r._id].length);
     if(currentException==='pipeline_no_quote') return r.status==='PIPELINE' && !(quotesByOpp[r._id]&&quotesByOpp[r._id].length);
@@ -1115,51 +1116,6 @@ function refreshTpUrlPreview(url) {
   }
 }
 
-function updateWorkflowStrip(item) {
-  var strip = document.getElementById('opp-workflow-strip');
-  if(!strip) return;
-  var id = item._id;
-  var canCommercial = (userRole==='admin' || userRole==='finance');
-  var stages = [
-    {
-      key:'tp', label:'Tech Proposal', tab:'tab-tech-proposal',
-      done: item.tech_prop==='✔',
-      sub:  item.tech_prop==='✔' && item.tech_prop_date ? fmtDate(item.tech_prop_date) : null,
-      show: true
-    },
-    {
-      key:'qt', label:'Quote', tab:'tab-quotes',
-      done: !!(quotesByOpp[id] && quotesByOpp[id].length),
-      sub:  quotesByOpp[id] && quotesByOpp[id].length ? quotesByOpp[id].length+' submitted' : null,
-      show: canCommercial
-    },
-    {
-      key:'por', label:'PO Received', tab:'tab-po-received',
-      done: !!(poReceivedByOpp[id] && poReceivedByOpp[id].length),
-      sub:  poReceivedByOpp[id] && poReceivedByOpp[id].length ? poReceivedByOpp[id].length+' received' : null,
-      show: canCommercial
-    },
-    {
-      key:'pos', label:'PO Sent', tab:'tab-po-sent',
-      done: !!(poSentByOpp[id] && poSentByOpp[id].length),
-      sub:  poSentByOpp[id] && poSentByOpp[id].length ? poSentByOpp[id].length+' sent' : null,
-      show: canCommercial
-    }
-  ].filter(function(s){ return s.show; });
-  strip.innerHTML = stages.map(function(st, i){
-    var dot = st.done
-      ? '<span style="width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0">✔</span>'
-      : '<span style="width:22px;height:22px;border-radius:50%;border:2px solid var(--bdr2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--txt3);flex-shrink:0">'+(i+1)+'</span>';
-    var lbl = '<span style="font-size:11px;font-weight:600;color:'+(st.done?'var(--txt)':'var(--txt3)')+'">'+st.label+'</span>';
-    var sub = st.sub ? '<span style="font-size:10px;color:'+(st.done?'var(--green)':'var(--txt3)')+'">'+st.sub+'</span>' : '';
-    var arrow = i < stages.length-1
-      ? '<span style="color:var(--bdr2);font-size:14px;flex-shrink:0;margin:0 6px">›</span>'
-      : '';
-    return '<div onclick="switchTab(\''+st.tab+'\')" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background .15s" onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'\'">'+
-      dot+'<div style="display:flex;flex-direction:column;gap:1px">'+lbl+sub+'</div>'+
-    '</div>'+arrow;
-  }).join('');
-}
 
 function openEditModal(id) {
   var item = items.find(function(i){ return i._id === id; });
@@ -1200,7 +1156,6 @@ function openEditModal(id) {
   tpUrlEl.value = item.tech_prop_url || '';
   tpUrlEl.oninput = function(){ refreshTpUrlPreview(this.value); };
   refreshTpUrlPreview(item.tech_prop_url || '');
-  updateWorkflowStrip(item);
   document.getElementById('edit-modal').style.display = 'flex';
   setTimeout(function(){ document.getElementById('ef-proj').focus(); }, 50);
 }
