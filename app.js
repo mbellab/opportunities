@@ -8068,14 +8068,19 @@ var pvRecords=[],pvLoaded=false,pvFormId=null,pvCanvas=null,pvCtx=null,pvDrawing
 function switchPCTab(tab) {
   var ledger=document.getElementById('pc-ledger-panel');
   var vouchers=document.getElementById('pc-vouchers-panel');
+  var supplies=document.getElementById('pc-supplies-panel');
   var tL=document.getElementById('pc-tab-ledger');
   var tV=document.getElementById('pc-tab-vouchers');
-  var isLedger=(tab==='ledger');
-  if(ledger) ledger.style.display=isLedger?'':'none';
-  if(vouchers) vouchers.style.display=isLedger?'none':'';
-  if(tL){ tL.style.borderBottom=isLedger?'2px solid var(--amber)':'2px solid transparent'; tL.style.color=isLedger?'var(--txt)':'var(--txt3)'; }
-  if(tV){ tV.style.borderBottom=isLedger?'2px solid transparent':'2px solid var(--amber)'; tV.style.color=isLedger?'var(--txt3)':'var(--txt)'; }
-  if(!isLedger){ if(!pvLoaded) loadPaymentVouchers(); else renderPaymentVouchers(); }
+  var tS=document.getElementById('pc-tab-supplies');
+  if(ledger)   ledger.style.display   = tab==='ledger'   ? '' : 'none';
+  if(vouchers) vouchers.style.display = tab==='vouchers' ? '' : 'none';
+  if(supplies) supplies.style.display = tab==='supplies' ? '' : 'none';
+  [tL,tV,tS].forEach(function(btn,i){
+    var active=['ledger','vouchers','supplies'][i]===tab;
+    if(btn){ btn.style.borderBottom=active?'2px solid var(--amber)':'2px solid transparent'; btn.style.color=active?'var(--txt)':'var(--txt3)'; }
+  });
+  if(tab==='vouchers'){ if(!pvLoaded) loadPaymentVouchers(); else renderPaymentVouchers(); }
+  if(tab==='supplies'){ noonInitSupplies(); }
 }
 
 async function loadPaymentVouchers() {
@@ -8367,6 +8372,289 @@ async function deleteVoucher(id){
 }
 
 // ── END PAYMENT VOUCHERS ──────────────────────────────────────────────────────
+
+// ── OFFICE SUPPLIES (Noon Invoice Parser) ─────────────────────────────────────
+
+var noonOrdersRecords=[], noonOrdersLoaded=false, noonParsed=null;
+
+function noonInitSupplies() {
+  if(!noonOrdersLoaded) noonLoadOrders();
+}
+
+async function noonLoadOrders() {
+  var el=document.getElementById('noon-orders-list');
+  if(el) el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:20px 0">Loading…</div>';
+  try {
+    var res=await fetch(WORKER_URL+'/noon-orders?pageSize=200&sort[0][field]=Order+Date&sort[0][direction]=desc',{headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    noonOrdersRecords=(data&&data.records)?data.records:[];
+    noonOrdersLoaded=true;
+    noonRenderOrders();
+  } catch(err) {
+    if(el) el.innerHTML='<div style="color:var(--red);font-size:13px;padding:20px 0">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function noonRenderOrders() {
+  var el=document.getElementById('noon-orders-list');
+  if(!el) return;
+  var fmtAED=function(n){ return 'AED '+(parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  if(!noonOrdersRecords.length){
+    el.innerHTML='<div style="color:var(--txt3);font-size:13px;padding:20px 0">No orders saved yet. Drop a Noon PDF above to get started.</div>';
+    return;
+  }
+  var sorted=noonOrdersRecords.slice().sort(function(a,b){
+    var da=new Date(a.fields['Order Date']||0), db=new Date(b.fields['Order Date']||0);
+    return db-da;
+  });
+  el.innerHTML=sorted.map(function(r){
+    var f=r.fields;
+    var items=f['Items']||[];
+    var dateStr=f['Order Date']?new Date(f['Order Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    var entity=f['Entity']||'';
+    var entityBadge=entity?'<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);font-weight:600;margin-left:6px">'+e(entity)+'</span>':'';
+    var itemsHtml=items.map(function(it){
+      var desc=it.description||'';
+      return '<tr style="border-bottom:1px solid var(--bdr)">'
+        +'<td style="padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(desc)+'">'+e(desc)+'</td>'
+        +'<td style="padding:6px 10px;text-align:center;color:var(--txt3);white-space:nowrap;width:44px">'+e(String(it.qty||1))+'</td>'
+        +'<td style="padding:6px 10px;text-align:right;font-family:monospace;font-weight:600;white-space:nowrap;width:110px">'+fmtAED(it.priceInclVat)+'</td>'
+        +'</tr>';
+    }).join('');
+    return '<div style="border:1px solid var(--bdr2);border-radius:10px;margin-bottom:12px;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg2);cursor:pointer;gap:12px" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'\':\' none\'">'
+        +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+          +'<span style="font-size:12px;font-family:monospace;font-weight:700;color:var(--txt)">'+e(f['Order Ref']||'—')+'</span>'
+          +entityBadge
+          +'<span style="font-size:12px;color:var(--txt3)">'+dateStr+'</span>'
+          +(f['Notes']?'<span style="font-size:12px;color:var(--txt2);font-style:italic">'+e(f['Notes'])+'</span>':'')
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:12px;flex-shrink:0">'
+          +'<span style="font-size:13px;font-weight:700;font-family:monospace;color:var(--amber)">'+fmtAED(f['Total Amount'])+'</span>'
+          +'<span style="font-size:12px;color:var(--txt3)">'+items.length+' item'+(items.length===1?'':'s')+'</span>'
+          +(userRole==='admin'?'<button class="icon-btn" onclick="event.stopPropagation();noonDeleteOrder(\''+r.id+'\')" style="opacity:.6;color:#c0392b;font-size:11px">&#128465;</button>':'')
+          +'<span style="color:var(--txt3);font-size:12px">&#9660;</span>'
+        +'</div>'
+      +'</div>'
+      +'<div style="display:none;overflow-x:auto">'
+        +'<table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;min-width:0">'
+          +'<thead><tr style="border-bottom:2px solid var(--bdr2)">'
+            +'<th style="text-align:left;padding:8px 10px;color:var(--txt3);font-weight:600">Description</th>'
+            +'<th style="text-align:center;padding:8px 10px;color:var(--txt3);font-weight:600;width:50px">Qty</th>'
+            +'<th style="text-align:right;padding:8px 10px;color:var(--txt3);font-weight:600;white-space:nowrap;width:120px">Total incl. VAT</th>'
+          +'</tr></thead>'
+          +'<tbody>'+itemsHtml+'</tbody>'
+          +'<tfoot><tr style="background:var(--bg2)">'
+            +'<td colspan="2" style="padding:8px 10px;text-align:right;font-weight:600;color:var(--txt3)">Order Total</td>'
+            +'<td style="padding:8px 10px;text-align:right;font-weight:700;font-family:monospace;color:var(--amber)">'+fmtAED(f['Total Amount'])+'</td>'
+          +'</tr></tfoot>'
+        +'</table>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+async function noonDeleteOrder(id) {
+  var ok=await appConfirm({icon:'🗑️',title:'Delete Order',body:'Remove this Noon order record?',confirmLabel:'Delete',confirmStyle:'background:#c0392b;color:#fff;border:none'});
+  if(!ok) return;
+  try {
+    var res=await fetch(WORKER_URL+'/noon-orders/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    noonOrdersRecords=noonOrdersRecords.filter(function(r){return r.id!==id;});
+    noonRenderOrders();
+    toast('Deleted','ok');
+  } catch(err){ toast('Failed: '+err.message,'err'); }
+}
+
+// ── PDF.js loader (lazy) ──────────────────────────────────────────────────────
+
+function noonLoadPdfJs(cb) {
+  if(window.pdfjsLib) { cb(); return; }
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  s.onload=function(){
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    cb();
+  };
+  s.onerror=function(){ toast('Failed to load PDF.js','err'); };
+  document.head.appendChild(s);
+}
+
+// ── Drop / file input handlers ────────────────────────────────────────────────
+
+function noonHandleDrop(event) {
+  event.preventDefault();
+  document.getElementById('noon-drop-zone').classList.remove('noon-drag-over');
+  var file=event.dataTransfer.files[0];
+  if(file&&file.type==='application/pdf') noonHandleFile(file);
+  else toast('Please drop a PDF file','err');
+}
+
+function noonHandleFile(file) {
+  if(!file) return;
+  var status=document.getElementById('noon-parse-status');
+  var preview=document.getElementById('noon-preview');
+  if(status){ status.style.display=''; status.textContent='Parsing PDF…'; }
+  if(preview) preview.style.display='none';
+  noonLoadPdfJs(function(){
+    noonParsePDF(file).then(function(parsed){
+      noonParsed=parsed;
+      if(status) status.style.display='none';
+      noonShowPreview(parsed);
+    }).catch(function(err){
+      if(status){ status.textContent='Parse error: '+err.message; }
+      toast('Failed to parse PDF: '+err.message,'err');
+    });
+  });
+}
+
+// ── PDF text extraction + parsing ─────────────────────────────────────────────
+
+async function noonParsePDF(file) {
+  var ab=await file.arrayBuffer();
+  var pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  var allLines=[];
+  for(var p=1;p<=pdf.numPages;p++){
+    var page=await pdf.getPage(p);
+    var tc=await page.getTextContent();
+    var byY={};
+    tc.items.forEach(function(item){
+      var y=Math.round(item.transform[5]);
+      if(!byY[y]) byY[y]=[];
+      byY[y].push({x:item.transform[4],text:item.str});
+    });
+    Object.keys(byY).sort(function(a,b){return b-a;}).forEach(function(y){
+      var line=byY[y].sort(function(a,b){return a.x-b.x;}).map(function(i){return i.text;}).join(' ').trim();
+      if(line) allLines.push(line);
+    });
+  }
+
+  // Header fields (first occurrence)
+  var orderRef='', orderDate='';
+  allLines.forEach(function(line){
+    var m;
+    if(!orderRef&&(m=line.match(/Source\s+Document\s+(\S+)/))) orderRef=m[1];
+    if(!orderDate&&(m=line.match(/Invoice\s+Date\s+([\d-]+)/))) orderDate=m[1];
+  });
+
+  // Line items — match by numeric tail pattern (works even when product code is on a separate PDF line)
+  // Tail: <qty(int)> <priceExcl> <vatPct>% <vatAmt> <priceIncl>
+  // Validate: priceIncl ≈ priceExcl + vatAmt to avoid false positives
+  var items=[], inItems=false;
+  var tailRe=/^(.*?)\s+(\d{1,4})\s+([\d.]+)\s+([\d.]+)%\s+([\d.]+)\s+([\d.]+)$/;
+  allLines.forEach(function(line){
+    if(/Price\s+incl/i.test(line)||/Product\s+Code/i.test(line)||/Line\s+Nr/i.test(line)||/Price\s+excl/i.test(line)){
+      inItems=true; return;
+    }
+    if(/^Subtotal\b/i.test(line)||/^Tax\s+Invoice\b/i.test(line)){
+      inItems=false; return;
+    }
+    if(!inItems) return;
+    var m=line.match(tailRe);
+    if(!m) return;
+    var priceExcl=parseFloat(m[3]), vatAmt=parseFloat(m[5]), priceIncl=parseFloat(m[6]);
+    if(Math.abs(priceIncl-priceExcl-vatAmt)>0.05) return; // not a valid item row
+    var desc=m[1].trim();
+    desc=desc.replace(/^\d+\s+/,'').trim();             // strip leading line number
+    desc=desc.replace(/^Z[A-Z0-9\-]{8,}\S*/i,'').trim(); // strip Noon product code
+    if(!desc) return;
+    if(/^(Line|Product|Code|Description|Qty|Price|VAT|Buyer|Seller|Tax\s+Invoice)/i.test(desc)) return;
+    items.push({description:desc, qty:parseInt(m[2]), priceExclVat:priceExcl, vatAmount:vatAmt, priceInclVat:priceIncl});
+  });
+
+  // Aggregate totals across all invoice pages
+  var subtotal=0,vatTotal=0,grandTotal=0;
+  allLines.forEach(function(line){
+    var m;
+    if((m=line.match(/^Subtotal\s+([\d.]+)/))) subtotal+=parseFloat(m[1]);
+    else if((m=line.match(/^VAT\s+([\d.]+)/))) vatTotal+=parseFloat(m[1]);
+    else if((m=line.match(/^Total\s+([\d.]+)/))) grandTotal+=parseFloat(m[1]);
+  });
+
+  return {orderRef:orderRef, orderDate:orderDate, items:items, subtotal:subtotal, vatTotal:vatTotal, grandTotal:grandTotal};
+}
+
+// ── Preview rendering ─────────────────────────────────────────────────────────
+
+function noonShowPreview(p) {
+  var fmtAED=function(n){ return 'AED '+(parseFloat(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+  var el=function(id){ return document.getElementById(id); };
+  if(el('noon-prev-ref'))   el('noon-prev-ref').textContent   = p.orderRef||'—';
+  if(el('noon-prev-date'))  el('noon-prev-date').textContent  = p.orderDate||'—';
+  if(el('noon-prev-sub'))   el('noon-prev-sub').textContent   = fmtAED(p.subtotal);
+  if(el('noon-prev-vat'))   el('noon-prev-vat').textContent   = fmtAED(p.vatTotal);
+  if(el('noon-prev-total')) el('noon-prev-total').textContent = fmtAED(p.grandTotal);
+  var tbody=el('noon-prev-items');
+  if(tbody){
+    tbody.innerHTML=p.items.map(function(it){
+      return '<tr style="border-bottom:1px solid var(--bdr)">'
+        +'<td style="padding:7px 10px">'+e(it.description)+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;color:var(--txt3)">'+it.qty+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:monospace;color:var(--txt2)">'+fmtAED(it.priceExclVat)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:monospace;color:var(--txt3)">'+fmtAED(it.vatAmount)+'</td>'
+        +'<td style="padding:7px 10px;text-align:right;font-family:monospace;font-weight:600">'+fmtAED(it.priceInclVat)+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+  var preview=el('noon-preview');
+  if(preview) preview.style.display='';
+  if(!p.items.length) toast('No line items found in PDF — check format','err');
+}
+
+function noonClearPreview() {
+  noonParsed=null;
+  var preview=document.getElementById('noon-preview');
+  if(preview) preview.style.display='none';
+  var status=document.getElementById('noon-parse-status');
+  if(status) status.style.display='none';
+  var fi=document.getElementById('noon-file-input');
+  if(fi) fi.value='';
+}
+
+// ── Save order ────────────────────────────────────────────────────────────────
+
+async function noonSaveOrder() {
+  if(!noonParsed) return;
+  var entity=(document.getElementById('noon-entity')||{}).value||'';
+  var notes=(document.getElementById('noon-notes')||{}).value||'';
+  var fields={
+    'Order Ref':    noonParsed.orderRef||'',
+    'Order Date':   noonParsed.orderDate||null,
+    'Entity':       entity||null,
+    'Notes':        notes||null,
+    'Subtotal':     noonParsed.subtotal||0,
+    'VAT Amount':   noonParsed.vatTotal||0,
+    'Total Amount': noonParsed.grandTotal||0,
+    'Items':        noonParsed.items,
+    'Created By':   userName,
+    'Created At':   new Date().toISOString(),
+  };
+  try {
+    setSave('saving');
+    var res=await fetch(WORKER_URL+'/noon-orders',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    setSave('saved');
+    toast('Order saved','ok');
+    noonClearPreview();
+    if(data&&data.id) noonOrdersRecords.unshift(data);
+    noonRenderOrders();
+  } catch(err){ setSave('err'); toast('Failed to save: '+err.message,'err'); }
+}
+
+// ── Drag-over style ───────────────────────────────────────────────────────────
+// (CSS class added inline via style block appended once)
+(function(){
+  var style=document.getElementById('noon-dz-style');
+  if(style) return;
+  var s=document.createElement('style');
+  s.id='noon-dz-style';
+  s.textContent='.noon-drag-over{border-color:var(--amber)!important;background:var(--amber-bg,#fff8e6)!important}';
+  document.head.appendChild(s);
+})();
+
+// ── END OFFICE SUPPLIES ───────────────────────────────────────────────────────
 
 var pwdRecords=[],pwdLoaded=false,pwdEditId=null;
 

@@ -384,6 +384,18 @@ const SCALAR = {
     'Created By':     'created_by',
     'Created At':     'created_at',
   },
+  noon_orders: {
+    'Order Ref':    'order_ref',
+    'Order Date':   'order_date',
+    'Entity':       'entity',
+    'Notes':        'notes',
+    'Subtotal':     'subtotal',
+    'VAT Amount':   'vat_amount',
+    'Total Amount': 'total_amount',
+    'Items':        'items',
+    'Created By':   'created_by',
+    'Created At':   'created_at',
+  },
   expense_claims: {
     'Entity':         'entity',
     'Employee Name':  'employee_name',
@@ -570,6 +582,7 @@ const ROUTES = [
   { prefix: '/payment-terms',        sbTable: 'payment_terms'            },
   { prefix: '/payment-vouchers',    sbTable: 'payment_vouchers'         },
   { prefix: '/knowledge',            sbTable: 'knowledge_articles'       },
+  { prefix: '/noon-orders',          sbTable: 'noon_orders'              },
 ];
 
 // ── Renewals report ───────────────────────────────────────────────
