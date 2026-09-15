@@ -241,6 +241,7 @@ tbody tr:hover .icon-btn{opacity:1}
 .modal-title span{font-size:11px;color:var(--txt3);font-weight:400;font-family:'IBM Plex Mono',monospace}
 /* Opportunity edit modal: fixed-height flex column so size never changes between tabs */
 #edit-modal .modal{display:flex;flex-direction:column;height:92vh;overflow-y:hidden;max-width:1380px}
+#edit-modal .modal-tabs{align-items:flex-end}
 /* Opportunity modal header */
 .opp-modal-header{margin:-26px -26px 0;border-top:3px solid var(--amber);background:var(--bg2);border-bottom:1px solid var(--bdr);padding:16px 26px 14px;flex-shrink:0}
 .opp-modal-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
