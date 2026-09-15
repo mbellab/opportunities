@@ -8913,14 +8913,12 @@ function renderLeaveRequests() {
     body.innerHTML='<div style="padding:32px;text-align:center;color:var(--txt3)">No '+lrFilter+' requests</div>';
     return;
   }
-  var rowSt='display:grid;grid-template-columns:1fr 130px 190px 60px 90px auto;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--bdr)';
-  var html='<div style="'+rowSt.replace('padding:10px 16px','padding:7px 16px')+';background:var(--bg2)">'+
-    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Employee</span>'+
-    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Type</span>'+
-    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Dates</span>'+
+  var hdrSt='display:grid;grid-template-columns:200px 110px 1fr 50px 90px auto;align-items:center;gap:12px;padding:7px 16px;border-bottom:1px solid var(--bdr);background:var(--bg2)';
+  var rowSt='display:grid;grid-template-columns:200px 110px 1fr 50px 90px auto;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--bdr)';
+  var lbl=function(t){ return '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">'+t+'</span>'; };
+  var html='<div style="'+hdrSt+'">'+lbl('Employee')+lbl('Type')+lbl('Dates')+
     '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;text-align:center">Days</span>'+
-    '<span style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px">Status</span>'+
-    '<span></span></div>';
+    lbl('Status')+'<span></span></div>';
   filtered.forEach(function(r){
     var f=r.fields;
     var status=f['Status']||'Pending';
@@ -8928,21 +8926,22 @@ function renderLeaveRequests() {
     var empName=getEmpNameById(elEmpId(f['Employee']));
     var d1=f['Date_Out']?elFmtDate(f['Date_Out']):'?';
     var d2=f['Date_In']&&f['Date_In']!==f['Date_Out']?' → '+elFmtDate(f['Date_In']):'';
+    var sm='font-size:11px;padding:3px 8px';
     html+='<div style="'+rowSt+'">'+
-      '<div><div style="font-size:13px;font-weight:500">'+e(empName)+'</div>'+
+      '<div><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(empName)+'</div>'+
         '<div style="font-size:11px;color:var(--txt3)">'+elFmtDate(f['Submission_Date'])+'</div></div>'+
-      '<span style="font-size:13px">'+e(f['Leave_Type']||'—')+'</span>'+
+      '<span style="font-size:13px;white-space:nowrap">'+e(f['Leave_Type']||'—')+'</span>'+
       '<span style="font-size:12px;white-space:nowrap">'+d1+d2+'</span>'+
       '<span style="font-size:14px;font-weight:700;font-family:monospace;text-align:center">'+e(String(f['Days']||'—'))+'</span>'+
       '<span style="font-size:12px;font-weight:600;color:'+sc+'">'+e(status)+'</span>'+
-      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap">'+
         (status==='Pending' && userRole==='admin'?
-          '<button onclick="approveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--green);border-color:var(--green-bdr)">✓ Approve</button>'+
-          '<button onclick="openRejectModal(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">✗ Reject</button>':'')+
-        '<button onclick="printLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Print</button>'+
+          '<button onclick="approveRequest(\''+r.id+'\')" class="btn-ghost" style="'+sm+';color:var(--green);border-color:var(--green-bdr)">✓ Approve</button>'+
+          '<button onclick="openRejectModal(\''+r.id+'\')" class="btn-ghost" style="'+sm+';color:var(--red)">✗ Reject</button>':'')+
+        '<button onclick="printLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="'+sm+'">Print</button>'+
         (userRole==='admin'?
-          '<button onclick="openEditLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Edit</button>'+
-          '<button onclick="deleteLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">Delete</button>':'')+
+          '<button onclick="openEditLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="'+sm+'">Edit</button>'+
+          '<button onclick="deleteLeaveRequest(\''+r.id+'\')" class="icon-btn" style="color:var(--red);font-size:13px" title="Delete">&#128465;</button>':'')+
       '</div></div>';
   });
   body.innerHTML=html;
