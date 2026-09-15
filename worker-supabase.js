@@ -579,7 +579,6 @@ const ROUTES = [
   { prefix: '/annual-tickets',      sbTable: 'annual_tickets'           },
   { prefix: '/bank-holidays',       sbTable: 'bank_holidays'            },
   { prefix: '/annual-entitlements', sbTable: 'annual_entitlements'      },
-  { prefix: '/leave-requests',      sbTable: 'leave_requests'           },
   { prefix: '/price-book',          sbTable: 'price_book'               },
   { prefix: '/payment-terms',        sbTable: 'payment_terms'            },
   { prefix: '/payment-vouchers',    sbTable: 'payment_vouchers'         },
@@ -816,6 +815,58 @@ export default {
       if (!r.ok) return json({ error: 'Failed to fetch DB stats' }, 500);
       const data = await r.json();
       return json(data);
+    }
+
+    // ── /leave-requests — with email notification on POST ────────
+    if (path === '/leave-requests' || path.startsWith('/leave-requests/')) {
+      const recordId = path.startsWith('/leave-requests/') ? path.slice('/leave-requests/'.length) : null;
+      const result   = await handleTable(method, 'leave_requests', recordId, body, search);
+      if (method === 'POST' && result.status === 200 && env.RESEND_API_KEY) {
+        const fields  = body?.fields || {};
+        const empId   = Array.isArray(fields['Employee']) ? fields['Employee'][0] : fields['Employee'];
+        let empName   = 'Unknown';
+        if (empId) {
+          try {
+            const sbHdr = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+            const empRes = await fetch(`${SUPABASE_URL}/rest/v1/employees?id=eq.${empId}&select=employee_name`, { headers: sbHdr });
+            if (empRes.ok) {
+              const empData = await empRes.json();
+              if (empData[0]?.employee_name) empName = empData[0].employee_name;
+            }
+          } catch (_) {}
+        }
+        const leaveType = fields['Leave_Type']      || '—';
+        const dateOut   = fields['Date_Out']        || '—';
+        const dateIn    = fields['Date_In']         || dateOut;
+        const days      = fields['Days']            || '—';
+        const detail    = fields['Detail']          || '';
+        const subDate   = fields['Submission_Date'] || '';
+        const dateRange = dateOut === dateIn ? dateOut : `${dateOut} → ${dateIn}`;
+        const dayLabel  = days === 1 ? '1 day' : `${days} days`;
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            from:    'mBELLAb Portal <onboarding@resend.dev>',
+            to:      [NOTIFY_EMAIL],
+            subject: `Leave Request — ${empName} — ${leaveType} (${dayLabel})`,
+            html: `
+              <p>A new leave request has been submitted in the <strong>mBELLAb Operations Portal</strong>.</p>
+              <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
+                <tr><td style="padding:4px 12px 4px 0;color:#666">Employee</td><td><strong>${empName}</strong></td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#666">Leave Type</td><td>${leaveType}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#666">Dates</td><td>${dateRange}</td></tr>
+                <tr><td style="padding:4px 12px 4px 0;color:#666">Days</td><td><strong>${dayLabel}</strong></td></tr>
+                ${subDate ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Submitted</td><td>${subDate}</td></tr>` : ''}
+                ${detail  ? `<tr><td style="padding:4px 12px 4px 0;color:#666">Detail</td><td>${detail}</td></tr>` : ''}
+              </table>
+              <p style="margin-top:16px">Please <strong>review and approve or reject</strong> this request in the portal.</p>
+              <p><a href="https://mbellab.github.io" style="color:#e36209">Open Portal →</a></p>
+            `,
+          }),
+        });
+      }
+      return result;
     }
 
     // ── Named routes ──────────────────────────────────────────────
