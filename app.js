@@ -8824,7 +8824,7 @@ async function deletePassword(id){
 
 // ── EMPLOYEE LEAVE MODULE ─────────────────────────────────────────
 var elRecords = [], elTickets = [], elHolidays = [], elEntitlements = [], elLoaded = false;
-var leaveRequests = [], lrFilter = 'pending', lrRejectId = null;
+var leaveRequests = [], lrFilter = 'pending', lrRejectId = null, lrEditId = null;
 var elCurrentEmpId = null, elCurrentEditId = null, elHolEditId = null, elActiveTab = 'all';
 var elHolYear = new Date().getFullYear();
 var elPeriodOffset = 0;  // 0 = current period, -1 = previous
@@ -8940,6 +8940,9 @@ function renderLeaveRequests() {
           '<button onclick="approveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--green);border-color:var(--green-bdr)">✓ Approve</button>'+
           '<button onclick="openRejectModal(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">✗ Reject</button>':'')+
         '<button onclick="printLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Print</button>'+
+        (userRole==='admin'?
+          '<button onclick="openEditLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px">Edit</button>'+
+          '<button onclick="deleteLeaveRequest(\''+r.id+'\')" class="btn-ghost" style="font-size:12px;color:var(--red)">Delete</button>':'')+
       '</div></div>';
   });
   body.innerHTML=html;
@@ -9042,6 +9045,7 @@ async function openLeaveRequestForm(empId) {
   document.getElementById('lr-form-detail').value='';
   document.getElementById('lr-form-coverage').value='';
   var prev=document.getElementById('lr-days-preview'); if(prev) prev.style.display='none';
+  lrEditId=null;
   var btn=document.getElementById('lr-form-submit-btn'); if(btn){btn.disabled=false;btn.textContent='Submit Request';}
   document.getElementById('lr-form-modal').style.display='flex';
 }
@@ -9072,28 +9076,81 @@ async function saveLeaveRequest() {
   var coverage=document.getElementById('lr-form-coverage').value.trim();
   var subDate=document.getElementById('lr-form-submitted').value;
   if(!empId||!type||!dateOut){ toast('Fill in all required fields','err'); return; }
-  // Auto-calculate days (working days excluding weekends + bank holidays)
   var days = elWorkingDays(dateOut, dateIn).length;
   if(!days){ toast('No working days in selected range — check dates and bank holidays','err'); return; }
-  if(btn){ btn.disabled=true; btn.textContent='Submitting…'; }
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   var fields={Employee:[empId],Leave_Type:type,Date_Out:dateOut,Date_In:dateIn,
-    Days:days,Status:'Pending',Submission_Date:subDate};
+    Days:days,Submission_Date:subDate};
   if(detail)   fields.Detail=detail;
   if(coverage) fields.Coverage=coverage;
   try {
-    var res=await fetch(WORKER_URL+'/leave-requests',{method:'POST',headers:getHeaders(),
-      body:JSON.stringify({records:[{fields:fields}]})});
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var data=await res.json();
-    leaveRequests=(data.records||[]).concat(leaveRequests);
-    document.getElementById('lr-form-modal').style.display='none';
-    toast('Leave request submitted ('+days+' day'+(days!==1?'s':'')+')','ok');
+    if(lrEditId) {
+      // EDIT mode — PATCH existing record, preserve status
+      var res=await fetch(WORKER_URL+'/leave-requests/'+lrEditId,{method:'PATCH',headers:getHeaders(),
+        body:JSON.stringify({fields:fields})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      var data=await res.json();
+      leaveRequests=leaveRequests.map(function(r){ return r.id===lrEditId?data:r; });
+      document.getElementById('lr-form-modal').style.display='none';
+      toast('Leave request updated','ok');
+    } else {
+      // ADD mode — POST new record
+      fields.Status='Pending';
+      var res=await fetch(WORKER_URL+'/leave-requests',{method:'POST',headers:getHeaders(),
+        body:JSON.stringify({fields:fields})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      var data=await res.json();
+      if(data&&data.id) leaveRequests.unshift(data);
+      document.getElementById('lr-form-modal').style.display='none';
+      toast('Leave request submitted ('+days+' day'+(days!==1?'s':'')+')','ok');
+    }
     renderLeaveRequests(); updateLRBadge();
   } catch(err){
     toast('Error: '+err.message,'err');
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='Submit Request'; }
+    if(btn){ btn.disabled=false; btn.textContent=lrEditId?'Save Changes':'Submit Request'; }
   }
+}
+
+function openEditLeaveRequest(id) {
+  var req=leaveRequests.find(function(r){ return r.id===id; });
+  if(!req) return;
+  lrEditId=id;
+  var f=req.fields;
+  var empSel=document.getElementById('lr-form-employee');
+  var empRow=document.getElementById('lr-form-employee-row');
+  if(empSel){
+    var empId=elEmpId(f['Employee']);
+    empSel.value=empId||'';
+    if(empRow) empRow.style.display='';
+  }
+  var typeEl=document.getElementById('lr-form-type');
+  if(typeEl) typeEl.value=f['Leave_Type']||'Annual';
+  var doEl=document.getElementById('lr-form-date-out');
+  if(doEl) doEl.value=f['Date_Out']||'';
+  var diEl=document.getElementById('lr-form-date-in');
+  if(diEl) diEl.value=f['Date_In']||'';
+  var detEl=document.getElementById('lr-form-detail');
+  if(detEl) detEl.value=f['Detail']||'';
+  var covEl=document.getElementById('lr-form-coverage');
+  if(covEl) covEl.value=f['Coverage']||'';
+  var subEl=document.getElementById('lr-form-submitted');
+  if(subEl) subEl.value=f['Submission_Date']||'';
+  var btn=document.getElementById('lr-form-submit-btn');
+  if(btn){ btn.disabled=false; btn.textContent='Save Changes'; }
+  document.getElementById('lr-form-modal').style.display='flex';
+}
+
+async function deleteLeaveRequest(id) {
+  var ok=await appConfirm({icon:'🗑️',title:'Delete Leave Request',body:'Permanently remove this leave request?',confirmLabel:'Delete',confirmStyle:'background:#c0392b;color:#fff;border:none'});
+  if(!ok) return;
+  try {
+    var res=await fetch(WORKER_URL+'/leave-requests/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    leaveRequests=leaveRequests.filter(function(r){ return r.id!==id; });
+    toast('Deleted','ok');
+    renderLeaveRequests(); updateLRBadge();
+  } catch(err){ toast('Delete failed: '+err.message,'err'); }
 }
 
 function printLeaveRequest(id) {
