@@ -5753,8 +5753,67 @@ function filterEmployees() {
     var name = (r.fields['Employee Name']||'').toLowerCase();
     return name.indexOf(q) !== -1;
   }) : all;
-  if(cntEl) cntEl.textContent = filtered.length+' employee'+(filtered.length===1?'':'s');
+  var activeCount = filtered.filter(function(r){ return r.fields['Active'] !== false; }).length;
+  if(cntEl) cntEl.textContent = activeCount+' active'+(filtered.length > activeCount ? ', '+(filtered.length-activeCount)+' former' : '');
   renderFilteredEmployees(filtered);
+}
+
+function empCardHtml(r, isInactive) {
+  var f = r.fields;
+  var name = f['Employee Name']||'Unknown';
+  var cardStyle = isInactive ? 'opacity:.65;filter:grayscale(.4)' : '';
+  return '<div class="emp-card" style="'+cardStyle+'">'+
+    '<div class="emp-card-header">'+
+      '<div class="emp-avatar" style="'+(isInactive?'background:var(--txt3)':'')+'">'+initials(name)+'</div>'+
+      '<div>'+
+        '<div class="emp-name">'+e(name)+'</div>'+
+        (f['Date of Birth']?'<div class="emp-dob">DOB: '+fmtDate(f['Date of Birth'])+'</div>':'')+
+        (f['Start Date']?'<div class="emp-dob" style="color:var(--amber)">Joined: '+fmtDate(f['Start Date'])+'</div>':'')+
+        (f['Username']?'<div style="margin-top:4px"><span style="font-size:10px;font-family:monospace;color:var(--green);background:var(--green-bg,rgba(40,167,69,.1));border:1px solid rgba(40,167,69,.3);border-radius:10px;padding:2px 7px">@'+e(f['Username'])+'</span></div>':'')+
+        (isInactive?'<div style="margin-top:4px"><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bdr2);color:var(--txt3);font-weight:600">Inactive</span></div>':'')+
+      '</div>'+
+    '</div>'+
+    '<div class="emp-body" style="display:none">'+
+      '<div class="emp-section-lbl">&#128246; Passport</div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Number</span><span class="emp-row-val">'+e(f['Passport Number']||'—')+'</span></div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Passport Expiry'])+'">'+expiryLabel(f['Passport Expiry'])+'</span>'+docLink(f['Link to Passport'],'View Passport')+'</div>'+
+      '<div class="emp-section-lbl">&#127482;&#127462; Emirates ID</div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Number</span><span class="emp-row-val">'+e(f['Emirates ID Number']||'—')+'</span></div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Emirates ID Expiry'])+'">'+expiryLabel(f['Emirates ID Expiry'])+'</span>'+docLink(f['Link to Emirates ID'],'View ID')+'</div>'+
+      '<div class="emp-section-lbl">&#128222; Visa</div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">File No.</span><span class="emp-row-val">'+e(f['Visa File Number']||'—')+'</span></div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Visa Expiry'])+'">'+expiryLabel(f['Visa Expiry'])+'</span>'+docLink(f['Link to Visa'],'View Visa')+'</div>'+
+      '<div class="emp-section-lbl">&#128138; Health Insurance</div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Policy No.</span><span class="emp-row-val">'+e(f['Health Insurance Policy Number']||'—')+'</span></div>'+
+      '<div class="emp-row"><span class="emp-row-lbl">Member No.</span><span class="emp-row-val">'+e(f['Health Insurance Membership Number']||'—')+'</span>'+docLink(f['Link to Health Insurance Card'],'View Card')+'</div>'+
+      (f['EC Local Name']||f['EC Home Name']?
+        '<div class="emp-section-lbl">&#128680; Emergency Contacts</div>'+
+        (f['EC Local Name']?
+          '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin:4px 0 2px;font-family:monospace">Local (UAE)</div>'+
+          '<div class="emp-row"><span class="emp-row-lbl">Name</span><span class="emp-row-val">'+e(f['EC Local Name'])+'</span></div>'+
+          (f['EC Local Relationship']?'<div class="emp-row"><span class="emp-row-lbl">Relationship</span><span class="emp-row-val">'+e(f['EC Local Relationship'])+'</span></div>':'')+
+          (f['EC Local Phone']?'<div class="emp-row"><span class="emp-row-lbl">Phone</span><span class="emp-row-val">'+e(f['EC Local Phone'])+'</span></div>':'')+
+          (f['EC Local Email']?'<div class="emp-row"><span class="emp-row-lbl">Email</span><span class="emp-row-val">'+e(f['EC Local Email'])+'</span></div>':'')
+        :'')+
+        (f['EC Home Name']?
+          '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin:4px 0 2px;font-family:monospace">Home Country</div>'+
+          '<div class="emp-row"><span class="emp-row-lbl">Name</span><span class="emp-row-val">'+e(f['EC Home Name'])+'</span></div>'+
+          (f['EC Home Relationship']?'<div class="emp-row"><span class="emp-row-lbl">Relationship</span><span class="emp-row-val">'+e(f['EC Home Relationship'])+'</span></div>':'')+
+          (f['EC Home Phone']?'<div class="emp-row"><span class="emp-row-lbl">Phone</span><span class="emp-row-val">'+e(f['EC Home Phone'])+'</span></div>':'')+
+          (f['EC Home Email']?'<div class="emp-row"><span class="emp-row-lbl">Email</span><span class="emp-row-val">'+e(f['EC Home Email'])+'</span></div>':'')
+        :'')
+      :'')+
+    '</div>'+
+    '<div class="emp-card-footer">'+
+      '<button class="btn-sm" onclick="empToggleDetails(this)">&#9660; Details</button>'+
+      '<button class="btn-sm" data-emp-edit="'+r.id+'">&#9998; Edit</button>'+
+      (isInactive
+        ? '<button class="btn-sm" style="color:var(--green);border-color:var(--green)" onclick="setEmployeeActive(\''+r.id+'\',true)">&#10003; Reactivate</button>'
+        : '<button class="btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="empViewLeaveFromCard(\''+r.id+'\')" >&#128197; Leave</button>'
+      )+
+      '<button class="btn-sm" style="color:var(--red);border-color:var(--red)" data-emp-del="'+r.id+'" data-emp-name="'+e(name)+'">&#128465; Delete</button>'+
+    '</div>'+
+  '</div>';
 }
 
 function renderFilteredEmployees(records) {
@@ -5764,65 +5823,24 @@ function renderFilteredEmployees(records) {
     grid.innerHTML='<div style="padding:48px;text-align:center;color:var(--txt3);grid-column:1/-1">No employees match your search</div>';
     return;
   }
-  // Reuse existing card rendering logic
   grid.onclick = function(ev){
     var eb=ev.target.closest('[data-emp-edit]');
     var db=ev.target.closest('[data-emp-del]');
     if(eb){ showEmployeeModal(eb.dataset.empEdit); return; }
     if(db){ deleteEmployee(db.dataset.empDel, db.dataset.empName); return; }
   };
-  grid.innerHTML = records.map(function(r){
-    var f = r.fields;
-    var name = f['Employee Name']||'Unknown';
-    return '<div class="emp-card">'+
-      '<div class="emp-card-header">'+
-        '<div class="emp-avatar">'+initials(name)+'</div>'+
-        '<div>'+
-          '<div class="emp-name">'+e(name)+'</div>'+
-          (f['Date of Birth']?'<div class="emp-dob">DOB: '+fmtDate(f['Date of Birth'])+'</div>':'')+
-          (f['Start Date']?'<div class="emp-dob" style="color:var(--amber)">Joined: '+fmtDate(f['Start Date'])+'</div>':'')+
-          (f['Username']?'<div style="margin-top:4px"><span style="font-size:10px;font-family:monospace;color:var(--green);background:var(--green-bg,rgba(40,167,69,.1));border:1px solid rgba(40,167,69,.3);border-radius:10px;padding:2px 7px">@'+e(f['Username'])+'</span></div>':'')+
-        '</div>'+
-      '</div>'+
-      '<div class="emp-body" style="display:none">'+
-        '<div class="emp-section-lbl">&#128246; Passport</div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Number</span><span class="emp-row-val">'+e(f['Passport Number']||'—')+'</span></div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Passport Expiry'])+'">'+expiryLabel(f['Passport Expiry'])+'</span>'+docLink(f['Link to Passport'],'View Passport')+'</div>'+
-        '<div class="emp-section-lbl">&#127482;&#127462; Emirates ID</div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Number</span><span class="emp-row-val">'+e(f['Emirates ID Number']||'—')+'</span></div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Emirates ID Expiry'])+'">'+expiryLabel(f['Emirates ID Expiry'])+'</span>'+docLink(f['Link to Emirates ID'],'View ID')+'</div>'+
-        '<div class="emp-section-lbl">&#128222; Visa</div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">File No.</span><span class="emp-row-val">'+e(f['Visa File Number']||'—')+'</span></div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Expiry</span><span class="emp-row-val '+expiryClass(f['Visa Expiry'])+'">'+expiryLabel(f['Visa Expiry'])+'</span>'+docLink(f['Link to Visa'],'View Visa')+'</div>'+
-        '<div class="emp-section-lbl">&#128138; Health Insurance</div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Policy No.</span><span class="emp-row-val">'+e(f['Health Insurance Policy Number']||'—')+'</span></div>'+
-        '<div class="emp-row"><span class="emp-row-lbl">Member No.</span><span class="emp-row-val">'+e(f['Health Insurance Membership Number']||'—')+'</span>'+docLink(f['Link to Health Insurance Card'],'View Card')+'</div>'+
-        (f['EC Local Name']||f['EC Home Name']?
-          '<div class="emp-section-lbl">&#128680; Emergency Contacts</div>'+
-          (f['EC Local Name']?
-            '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin:4px 0 2px;font-family:monospace">Local (UAE)</div>'+
-            '<div class="emp-row"><span class="emp-row-lbl">Name</span><span class="emp-row-val">'+e(f['EC Local Name'])+'</span></div>'+
-            (f['EC Local Relationship']?'<div class="emp-row"><span class="emp-row-lbl">Relationship</span><span class="emp-row-val">'+e(f['EC Local Relationship'])+'</span></div>':'')+
-            (f['EC Local Phone']?'<div class="emp-row"><span class="emp-row-lbl">Phone</span><span class="emp-row-val">'+e(f['EC Local Phone'])+'</span></div>':'')+
-            (f['EC Local Email']?'<div class="emp-row"><span class="emp-row-lbl">Email</span><span class="emp-row-val">'+e(f['EC Local Email'])+'</span></div>':'')
-          :'')+
-          (f['EC Home Name']?
-            '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3);margin:4px 0 2px;font-family:monospace">Home Country</div>'+
-            '<div class="emp-row"><span class="emp-row-lbl">Name</span><span class="emp-row-val">'+e(f['EC Home Name'])+'</span></div>'+
-            (f['EC Home Relationship']?'<div class="emp-row"><span class="emp-row-lbl">Relationship</span><span class="emp-row-val">'+e(f['EC Home Relationship'])+'</span></div>':'')+
-            (f['EC Home Phone']?'<div class="emp-row"><span class="emp-row-lbl">Phone</span><span class="emp-row-val">'+e(f['EC Home Phone'])+'</span></div>':'')+
-            (f['EC Home Email']?'<div class="emp-row"><span class="emp-row-lbl">Email</span><span class="emp-row-val">'+e(f['EC Home Email'])+'</span></div>':'')
-          :'')
-        :'')+
-      '</div>'+
-      '<div class="emp-card-footer">'+
-        '<button class="btn-sm" onclick="empToggleDetails(this)">&#9660; Details</button>'+
-        '<button class="btn-sm" data-emp-edit="'+r.id+'">&#9998; Edit</button>'+
-        '<button class="btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="empViewLeaveFromCard(\''+r.id+'\')" >&#128197; Leave</button>'+
-        '<button class="btn-sm" style="color:var(--red);border-color:var(--red)" data-emp-del="'+r.id+'" data-emp-name="'+e(name)+'">&#128465; Delete</button>'+
-      '</div>'+
+  var active   = records.filter(function(r){ return r.fields['Active'] !== false; });
+  var inactive = records.filter(function(r){ return r.fields['Active'] === false; });
+  var html = active.map(function(r){ return empCardHtml(r, false); }).join('');
+  if(inactive.length) {
+    html += '<div style="grid-column:1/-1;margin:24px 0 12px;display:flex;align-items:center;gap:12px">'+
+      '<div style="flex:1;height:1px;background:var(--bdr)"></div>'+
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--txt3);white-space:nowrap">&#128683; Former Employees ('+inactive.length+')</div>'+
+      '<div style="flex:1;height:1px;background:var(--bdr)"></div>'+
     '</div>';
-  }).join('');
+    html += inactive.map(function(r){ return empCardHtml(r, true); }).join('');
+  }
+  grid.innerHTML = html;
 }
 
 async function loadEmployees() {
@@ -5880,6 +5898,20 @@ function empToggleDetails(btn) {
   var isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   btn.textContent = isOpen ? '▼ Details' : '▲ Hide';
+}
+
+async function setEmployeeActive(id, isActive) {
+  try {
+    var res = await fetch(WORKER_URL+'/employees/'+id, {
+      method:'PATCH', headers:getHeaders(),
+      body: JSON.stringify({fields:{'Active': isActive}})
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var rec = empRecords.find(function(r){ return r.id===id; });
+    if(rec) rec.fields['Active'] = isActive;
+    renderEmployees();
+    toast(isActive ? 'Employee reactivated' : 'Employee marked as inactive', 'ok');
+  } catch(err){ toast('Failed: '+err.message,'err'); }
 }
 
 function renderEmployees() {
@@ -5961,6 +5993,8 @@ async function showEmployeeModal(recordId) {
     if(el.type==='date') el.value=(val||'').substring(0,10);
     else el.value=val;
   });
+  var activeEl = document.getElementById('empf-active');
+  if(activeEl) activeEl.checked = (f['Active'] !== false);
   // Populate username dropdown
   var unameEl = document.getElementById('empf-username');
   if(unameEl) {
@@ -6015,6 +6049,8 @@ async function saveEmployee() {
     var val=el.value.trim();
     fields[fmap[id]] = val || null;
   });
+  var activeEl = document.getElementById('empf-active');
+  if(activeEl) fields['Active'] = activeEl.checked;
   var cleanFields = fields;
   try {
     var url    = savedId ? WORKER_URL+'/employees/'+savedId : WORKER_URL+'/employees';

@@ -252,6 +252,7 @@ const SCALAR = {
     'EC Home Email':                      'ec_home_email',
     'EC Home Phone':                      'ec_home_phone',
     'EC Home Relationship':               'ec_home_relationship',
+    'Active':                             'active',
   },
   users: {
     'Name':     'name',
