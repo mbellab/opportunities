@@ -498,6 +498,7 @@ function applyRoleRestrictions() {
     rules.push('#tab-inv-received{display:none!important}');
     rules.push('.modal-tab[data-tab="tab-invoices"]{display:none!important}');
     rules.push('#tab-invoices{display:none!important}');
+    rules.push('#commercial-flow-group{display:none!important}');
   }
   style.textContent = rules.join('\n');
 }
