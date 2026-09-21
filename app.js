@@ -3434,7 +3434,7 @@ function renderOemList(opportunityId) {
     return ad < bd ? -1 : ad > bd ? 1 : 0;
   });
 
-  var COLS = 'display:grid;grid-template-columns:1.5fr 100px 100px 110px 2fr 80px;align-items:center';
+  var COLS = 'display:grid;grid-template-columns:1.5fr 120px 120px 150px 2fr 80px;align-items:center';
   var TH   = 'padding:5px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace';
   var ROW  = COLS+';border-bottom:1px solid var(--bdr)';
   var CELL = 'padding:10px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0';
@@ -3459,10 +3459,10 @@ function renderOemList(opportunityId) {
 
       var statusStyle, statusLabel;
       if(received) {
-        statusStyle = 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;background:var(--green-bg);color:var(--green)';
+        statusStyle = 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;white-space:nowrap;background:var(--green-bg);color:var(--green)';
         statusLabel = received;
       } else {
-        statusStyle = 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;background:var(--amber-bg);color:var(--amber)';
+        statusStyle = 'font-size:10px;font-family:monospace;padding:2px 7px;border-radius:4px;white-space:nowrap;background:var(--amber-bg);color:var(--amber)';
         statusLabel = 'Awaiting';
       }
 
@@ -6202,15 +6202,17 @@ function renderRenewals() {
 
   if(cntEl) cntEl.textContent = recs.length + ' item' + (recs.length===1?'':'s');
 
-  // Summary strip
-  var overdue = renRecords.filter(function(r){ var d=daysUntil(r.fields['Expiry Date']); return d!==null&&d<0; }).length;
-  var soon30  = renRecords.filter(function(r){ var d=daysUntil(r.fields['Expiry Date']); return d!==null&&d>=0&&d<=30; }).length;
-  var soon90  = renRecords.filter(function(r){ var d=daysUntil(r.fields['Expiry Date']); return d!==null&&d>30&&d<=90; }).length;
+  // Summary strip (snoozed excluded from counts)
+  var overdue  = renRecords.filter(function(r){ var d=daysUntil(r.fields['Expiry Date']); return !r.fields['Snoozed']&&d!==null&&d<0; }).length;
+  var soon30   = renRecords.filter(function(r){ var d=daysUntil(r.fields['Expiry Date']); return !r.fields['Snoozed']&&d!==null&&d>=0&&d<=30; }).length;
+  var soon90   = renRecords.filter(function(r){ var d=daysUntil(r.fields['Expiry Date']); return !r.fields['Snoozed']&&d!==null&&d>30&&d<=90; }).length;
+  var snoozed  = renRecords.filter(function(r){ return !!r.fields['Snoozed']; }).length;
   if(sumEl) sumEl.innerHTML = [
     {label:'Total',         val:renRecords.length,  cls:''},
     {label:'Expired',       val:overdue,            cls:overdue>0?'red':''},
     {label:'Due &le; 30d',  val:soon30,             cls:soon30>0?'red':''},
     {label:'Due 31–90d',    val:soon90,             cls:soon90>0?'process':''},
+    {label:'On Hold',       val:snoozed,            cls:''},
   ].map(function(k){
     return '<div class="dash-kpi '+k.cls+'" style="padding:10px 14px;flex:0;min-width:80px;text-align:center">'+
       '<div class="dash-kpi-lbl">'+k.label+'</div>'+
@@ -6226,8 +6228,9 @@ function renderRenewals() {
   tbody.innerHTML = recs.map(function(r){
     var f    = r.fields;
     var days = daysUntil(f['Expiry Date']);
-    var st   = renStatusStyle(days);
-    var bg   = renRowBg(days);
+    var isSnoozed = !!f['Snoozed'];
+    var st   = isSnoozed ? {cls:'color:var(--txt3)', label:'💤 On Hold'} : renStatusStyle(days);
+    var bg   = isSnoozed ? 'opacity:.6' : renRowBg(days);
     var expiryStr = f['Expiry Date'] ? new Date(f['Expiry Date']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
     var cost = f['Estimated Cost'] ? 'AED '+parseFloat(f['Estimated Cost']).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
     return '<tr style="border-bottom:1px solid var(--bdr);'+bg+'" data-ren-id="'+r.id+'">'+
@@ -6272,6 +6275,8 @@ async function showRenewalModal(recordId) {
   document.getElementById('renf-expiry').value   = (f['Expiry Date']||'').substring(0,10);
   document.getElementById('renf-steps').value    = f['Link to Steps']||'';
   document.getElementById('renf-comments').value = f['Comments']||'';
+  var snoozeEl = document.getElementById('renf-snoozed');
+  if(snoozeEl) snoozeEl.checked = !!f['Snoozed'];
   // KB article dropdown
   if(!knowledgeLoaded) await loadKnowledge();
   var currentKb = f['KB Article']||'';
@@ -6321,6 +6326,7 @@ async function saveRenewal() {
     'Link to Steps':   document.getElementById('renf-steps').value.trim() || null,
     'KB Article':      document.getElementById('renf-kb').value || null,
     'Comments':        document.getElementById('renf-comments').value.trim() || null,
+    'Snoozed':         !!(document.getElementById('renf-snoozed')||{}).checked,
   };
   var cleanFields = {};
   Object.keys(fields).forEach(function(k){ if(fields[k]!==undefined) cleanFields[k]=fields[k]; });
@@ -10640,7 +10646,7 @@ async function toggleUserActive(id, active) {
 
 // ── Admin tabs ────────────────────────────────────────────────────
 function adminShowTab(tab) {
-  ['admin-tab-users','admin-tab-perms','admin-tab-payment-terms'].forEach(function(t){
+  ['admin-tab-users','admin-tab-perms','admin-tab-payment-terms','admin-tab-tools'].forEach(function(t){
     var btn = document.getElementById('admintab-'+t.replace('admin-tab-',''));
     var pnl = document.getElementById(t);
     var active = t.replace('admin-tab-','') === tab;
@@ -10649,6 +10655,24 @@ function adminShowTab(tab) {
   });
   if(tab==='perms') loadPermissionsGrid();
   if(tab==='payment-terms') adminLoadPaymentTerms();
+}
+
+async function adminSendDailyReport() {
+  var btn = document.getElementById('admin-send-daily-btn');
+  var status = document.getElementById('admin-send-daily-status');
+  if(btn) btn.disabled = true;
+  if(status) status.textContent = 'Sending…';
+  try {
+    var res = await fetch(WORKER_URL+'/send-daily-report', {method:'POST', headers:getHeaders()});
+    var data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'HTTP '+res.status);
+    if(status) { status.textContent = 'Sent ✓'; status.style.color = 'var(--green)'; }
+    setTimeout(function(){ if(status){ status.textContent=''; status.style.color='var(--txt3)'; } }, 4000);
+  } catch(err) {
+    if(status) { status.textContent = 'Failed: '+err.message; status.style.color = 'var(--red)'; }
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 
 // ── Payment Terms admin ───────────────────────────────────────────
@@ -11195,7 +11219,7 @@ function renderExpenseClaims() {
         (canApprove?'<button class="btn-sec" style="font-size:11px;padding:4px 10px;margin-right:4px" onclick="event.stopPropagation();ecApprove(\''+r.id+'\')">Approve</button>':'')+
         '<button class="icon-btn" onclick="event.stopPropagation();openClaimForm(\''+r.id+'\')" style="opacity:.7">'+IC_DOCS+'</button>'+
         '<button class="icon-btn" onclick="event.stopPropagation();duplicateClaim(\''+r.id+'\')" title="Duplicate" style="opacity:.7">&#128203;</button>'+
-        (userRole==='admin'?'<button class="icon-btn" onclick="event.stopPropagation();deleteClaim(\''+r.id+'\')" title="Delete" style="opacity:.7;color:#c0392b">&#128465;</button>':'')+
+        (userRole==='admin'||st==='draft'?'<button class="icon-btn" onclick="event.stopPropagation();deleteClaim(\''+r.id+'\')" title="Delete" style="opacity:.7;color:#c0392b">&#128465;</button>':'')+
       '</td>'+
     '</tr>';
   }).join('');
@@ -11679,9 +11703,9 @@ async function duplicateClaim(id) {
 }
 
 async function deleteClaim(id) {
-  if(userRole!=='admin'){ toast('Admin only','err'); return; }
   var src=ecRecords.find(function(r){return r.id===id;})||{fields:{}};
   var sf=src.fields;
+  if(userRole!=='admin'&&(sf['Status']||'draft')!=='draft'){ toast('Only draft claims can be deleted','err'); return; }
   var ok=await appConfirm({
     icon:'🗑',
     title:'Delete Expense Claim',
