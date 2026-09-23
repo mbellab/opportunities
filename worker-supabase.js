@@ -2,8 +2,7 @@
 // Drop-in replacement for mbb-enquiry-proxy — identical API contract, Supabase storage.
 
 const SUPABASE_URL = 'https://wflcmaygrbpuxerikijm.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmbGNtYXlncmJwdXhlcmlraWptIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzU2MjA1MywiZXhwIjoyMTAzMTM4MDUzfQ.1_Ziz05z7A0sB_IZENdKLjq8YAu-NKx-EnVQcBtRzmA';
-// RESEND_API_KEY is set as a Cloudflare Worker Secret (not hardcoded)
+// SUPABASE_KEY and RESEND_API_KEY are set as Cloudflare Worker Secrets (not hardcoded)
 const NOTIFY_EMAIL = 'paul.winick@mbellab.com';
 
 const CORS = {
@@ -14,11 +13,8 @@ const CORS = {
 
 // ── Supabase helpers ──────────────────────────────────────────────
 
-const SB_HEADERS = {
-  apikey:        SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-  'Content-Type':'application/json',
-};
+// Initialised per-request in the fetch handler from env.SUPABASE_KEY
+let SB_HEADERS = {};
 
 async function sbQuery(table, filter = '') {
   const qs  = filter ? `select=*&${filter}` : 'select=*';
@@ -279,6 +275,7 @@ const SCALAR = {
     'Comments':        'comments',
     'Link to Steps':   'link_to_steps',
     'KB Article':      'kb_article_id',
+    'Snoozed':         'snoozed',
   },
   company_docs: {
     'Name':          'name',
@@ -587,98 +584,139 @@ const ROUTES = [
   { prefix: '/noon-orders',          sbTable: 'noon_orders'              },
 ];
 
-// ── Renewals report ───────────────────────────────────────────────
+// ── Daily operations report ───────────────────────────────────────
 
-async function sendRenewalsReport(RESEND_API_KEY) {
-  const today  = new Date(); today.setHours(0, 0, 0, 0);
-  const in30   = new Date(today); in30.setDate(today.getDate() + 30);
-  const fmt    = d => d.toISOString().slice(0, 10);
-  const sbHdr  = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
-
-  const [overdueRes, upcomingRes] = await Promise.all([
-    fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=lt.${fmt(today)}&order=expiry_date.asc`, { headers: sbHdr }),
-    fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=gte.${fmt(today)}&expiry_date=lte.${fmt(in30)}&order=expiry_date.asc`, { headers: sbHdr }),
-  ]);
-  const overdue  = overdueRes.ok  ? await overdueRes.json()  : [];
-  const upcoming = upcomingRes.ok ? await upcomingRes.json() : [];
-
-  if (!overdue.length && !upcoming.length) {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from:    'mBELLAb Portal <onboarding@resend.dev>',
-        to:      [NOTIFY_EMAIL],
-        subject: 'Daily Renewals Report — No upcoming renewals in next 30 days',
-        html:    '<p style="font-family:sans-serif">No renewals are overdue or due in the next 30 days.</p>',
-      }),
-    });
-    return;
-  }
-
+async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const in30  = new Date(today); in30.setDate(today.getDate() + 30);
+  const fmt   = d => d.toISOString().slice(0, 10);
+  const sbHdr = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
   const daysDiff = d => Math.ceil((new Date(d) - today) / 86400000);
 
-  const fmtDate = d => d
-    ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-    : '—';
+  const [overdueRes, upcomingRes, employeesRes, leaveRes, expenseRes] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=lt.${fmt(today)}&order=expiry_date.asc`, { headers: sbHdr }),
+    fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=gte.${fmt(today)}&expiry_date=lte.${fmt(in30)}&order=expiry_date.asc`, { headers: sbHdr }),
+    fetch(`${SUPABASE_URL}/rest/v1/employees?select=id,employee_name,date_of_birth,active`, { headers: sbHdr }),
+    fetch(`${SUPABASE_URL}/rest/v1/leave_requests?status=eq.Pending&order=date_out.asc`, { headers: sbHdr }),
+    fetch(`${SUPABASE_URL}/rest/v1/expense_claims?status=eq.verified&order=submitted_at.desc`, { headers: sbHdr }),
+  ]);
 
-  const tableHead = `
-    <tr style="color:#666;font-size:12px;text-transform:uppercase;letter-spacing:.5px">
-      <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Item</th>
-      <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Entity</th>
-      <th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">Due Date</th>
-      <th style="padding:4px 0 8px 0;text-align:left;font-weight:600">Status</th>
-    </tr>`;
+  const overdueAll       = overdueRes.ok       ? await overdueRes.json()       : [];
+  const upcomingAll      = upcomingRes.ok       ? await upcomingRes.json()      : [];
+  const allEmployees     = employeesRes.ok      ? await employeesRes.json()     : [];
+  const pendingLeave     = leaveRes.ok          ? await leaveRes.json()         : [];
+  const verifiedExpenses = expenseRes.ok        ? await expenseRes.json()       : [];
 
-  const mkRow = (r, isOverdue) => {
-    const days  = daysDiff(r.expiry_date);
-    const color = isOverdue ? '#c0392b' : days <= 7 ? '#c0392b' : days <= 14 ? '#e67e22' : '#2980b9';
-    const label = isOverdue ? `${Math.abs(days)}d overdue` : `${days}d`;
-    const bg    = isOverdue ? '#fff5f5' : 'transparent';
-    return `<tr style="background:${bg}">
-      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.renewal_details || '—'}</td>
-      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${r.entity || '—'}</td>
-      <td style="padding:6px 14px 6px 0;border-bottom:1px solid #eee">${fmtDate(r.expiry_date)}</td>
-      <td style="padding:6px 0 6px 0;border-bottom:1px solid #eee;font-weight:700;color:${color}">${label}</td>
-    </tr>`;
-  };
+  // Exclude snoozed renewals from report
+  const overdue  = overdueAll.filter(r => !r.snoozed);
+  const upcoming = upcomingAll.filter(r => !r.snoozed);
 
-  let sections = '';
+  const activeEmployees = allEmployees.filter(e => e.active !== false);
+  const empMap = Object.fromEntries(allEmployees.map(e => [e.id, e.employee_name]));
 
-  if (overdue.length) {
-    sections += `
-      <p style="font-family:sans-serif;font-weight:600;color:#c0392b;margin:16px 0 6px">⚠ Overdue (${overdue.length})</p>
-      <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px;width:100%;max-width:600px">
-        <thead>${tableHead}</thead>
-        <tbody>${overdue.map(r => mkRow(r, true)).join('')}</tbody>
-      </table>`;
+  // Upcoming birthdays in next 30 days
+  const birthdays = [];
+  for (const emp of activeEmployees) {
+    if (!emp.date_of_birth) continue;
+    const dob = new Date(emp.date_of_birth);
+    const thisYearBday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate());
+    const bday = thisYearBday >= today ? thisYearBday : new Date(today.getFullYear() + 1, dob.getMonth(), dob.getDate());
+    const days = Math.ceil((bday - today) / 86400000);
+    if (days >= 0 && days <= 30) birthdays.push({ name: emp.employee_name, bday, days });
+  }
+  birthdays.sort((a, b) => a.days - b.days);
+
+  const summaryParts = [];
+  let html = `<p style="font-family:sans-serif;color:#444;margin:0 0 8px">Good morning. Here is today's operations summary.</p>`;
+
+  const sHead = (icon, title, color) =>
+    `<p style="font-family:sans-serif;font-weight:600;color:${color};margin:20px 0 6px;font-size:15px">${icon} ${title}</p>`;
+  const tHead = (...cols) =>
+    `<tr style="color:#666;font-size:11px;text-transform:uppercase;letter-spacing:.5px">${cols.map(c =>
+      `<th style="padding:4px 14px 8px 0;text-align:left;font-weight:600">${c}</th>`).join('')}</tr>`;
+  const tbl = (head, rows) =>
+    `<table style="border-collapse:collapse;font-family:sans-serif;font-size:13px;width:100%;max-width:600px"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+  const td = (v, extra='') => `<td style="padding:5px 14px 5px 0;border-bottom:1px solid #eee;${extra}">${v}</td>`;
+
+  // ── Renewals ──────────────────────────────────────────────────────
+  if (overdue.length || upcoming.length) {
+    const mkRenRow = (r, isOverdue) => {
+      const days  = daysDiff(r.expiry_date);
+      const color = isOverdue ? '#c0392b' : days <= 7 ? '#c0392b' : days <= 14 ? '#e67e22' : '#2980b9';
+      const label = isOverdue ? `${Math.abs(days)}d overdue` : `${days}d`;
+      return `<tr style="background:${isOverdue ? '#fff5f5' : 'transparent'}">
+        ${td(r.renewal_details || '—')}${td(r.entity || '—')}${td(fmtDate(r.expiry_date))}
+        ${td(label, `font-weight:700;color:${color}`)}
+      </tr>`;
+    };
+    if (overdue.length) {
+      summaryParts.push(`${overdue.length} overdue renewal${overdue.length > 1 ? 's' : ''}`);
+      html += sHead('⚠', `Overdue Renewals (${overdue.length})`, '#c0392b');
+      html += tbl(tHead('Item','Entity','Due Date','Status'), overdue.map(r => mkRenRow(r, true)).join(''));
+    }
+    if (upcoming.length) {
+      summaryParts.push(`${upcoming.length} renewal${upcoming.length > 1 ? 's' : ''} due in 30 days`);
+      html += sHead('🔄', `Renewals Due in 30 Days (${upcoming.length})`, '#333');
+      html += tbl(tHead('Item','Entity','Due Date','Status'), upcoming.map(r => mkRenRow(r, false)).join(''));
+    }
   }
 
-  if (upcoming.length) {
-    sections += `
-      <p style="font-family:sans-serif;font-weight:600;color:#333;margin:${overdue.length ? '24' : '0'}px 0 6px">Due in next 30 days (${upcoming.length})</p>
-      <table style="border-collapse:collapse;font-family:sans-serif;font-size:14px;width:100%;max-width:600px">
-        <thead>${tableHead}</thead>
-        <tbody>${upcoming.map(r => mkRow(r, false)).join('')}</tbody>
-      </table>`;
+  // ── Birthdays ─────────────────────────────────────────────────────
+  if (birthdays.length) {
+    summaryParts.push(`${birthdays.length} upcoming birthday${birthdays.length > 1 ? 's' : ''}`);
+    html += sHead('🎂', `Upcoming Birthdays (${birthdays.length})`, '#8e44ad');
+    html += tbl(tHead('Employee','Date','In'),
+      birthdays.map(b => `<tr>
+        ${td(`<strong>${b.name || '—'}</strong>`)}${td(fmtDate(b.bday))}
+        ${td(b.days === 0 ? 'Today! 🎉' : `${b.days}d`, 'font-weight:700;color:#8e44ad')}
+      </tr>`).join(''));
   }
 
-  const parts = [];
-  if (overdue.length)  parts.push(`${overdue.length} overdue`);
-  if (upcoming.length) parts.push(`${upcoming.length} due in 30 days`);
+  // ── Pending Leave Requests ────────────────────────────────────────
+  if (pendingLeave.length) {
+    summaryParts.push(`${pendingLeave.length} pending leave request${pendingLeave.length > 1 ? 's' : ''}`);
+    html += sHead('🏖', `Pending Leave Requests (${pendingLeave.length})`, '#e67e22');
+    html += tbl(tHead('Employee','Type','From','To','Days'),
+      pendingLeave.map(lr => `<tr>
+        ${td(`<strong>${empMap[lr.employee_id] || '—'}</strong>`)}
+        ${td(lr.leave_type || '—')}${td(fmtDate(lr.date_out))}${td(fmtDate(lr.date_in))}
+        ${td(lr.days || '—', 'font-weight:700;color:#e67e22')}
+      </tr>`).join(''));
+  }
+
+  // ── Verified Expense Claims ───────────────────────────────────────
+  if (verifiedExpenses.length) {
+    summaryParts.push(`${verifiedExpenses.length} verified expense claim${verifiedExpenses.length > 1 ? 's' : ''}`);
+    html += sHead('💰', `Verified Expense Claims Awaiting Approval (${verifiedExpenses.length})`, '#27ae60');
+    html += tbl(tHead('Employee','Entity','Period','Total'),
+      verifiedExpenses.map(ex => `<tr>
+        ${td(`<strong>${ex.employee_name || '—'}</strong>`)}
+        ${td(ex.entity || '—')}
+        ${td(ex.period_from ? fmtDate(ex.period_from) + (ex.period_to && ex.period_to !== ex.period_from ? ' → ' + fmtDate(ex.period_to) : '') : '—')}
+        ${td(ex.total_amount ? 'AED ' + parseFloat(ex.total_amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—', 'font-weight:700;color:#27ae60')}
+      </tr>`).join(''));
+  }
+
+  html += `<p style="margin-top:20px"><a href="https://mbellab.github.io" style="color:#5c1f25;font-family:sans-serif">Open Portal →</a></p>`;
+
+  const subject = summaryParts.length
+    ? `Daily Operations Summary — ${summaryParts.join(', ')}`
+    : `Daily Operations Summary — Nothing to action today`;
+
+  if (!summaryParts.length) {
+    html = `<p style="font-family:sans-serif">Good morning. Nothing requires attention today.</p>
+      <p style="margin-top:12px"><a href="https://mbellab.github.io" style="color:#5c1f25;font-family:sans-serif">Open Portal →</a></p>`;
+  }
 
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from:    'mBELLAb Portal <onboarding@resend.dev>',
-      to:      [NOTIFY_EMAIL],
-      subject: `Daily Renewals Report — ${parts.join(', ')}`,
-      html: `
-        <p style="font-family:sans-serif">Good morning. Here is today's renewals summary.</p>
-        ${sections}
-        <p style="margin-top:16px"><a href="https://mbellab.github.io" style="color:#5c1f25;font-family:sans-serif">Open Portal →</a></p>
-      `,
+      from: 'mBELLAb Portal <onboarding@resend.dev>',
+      to:   [NOTIFY_EMAIL],
+      subject,
+      html,
     }),
   });
 }
@@ -687,6 +725,11 @@ async function sendRenewalsReport(RESEND_API_KEY) {
 
 export default {
   async fetch(request, env) {
+    SB_HEADERS = {
+      apikey:        env.SUPABASE_KEY,
+      Authorization: `Bearer ${env.SUPABASE_KEY}`,
+      'Content-Type':'application/json',
+    };
     const method = request.method;
     if (method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
@@ -799,6 +842,13 @@ export default {
       });
       const rd = await r.json();
       if (!r.ok) return json({ error: rd.message || 'Send failed' }, 500);
+      return json({ ok: true });
+    }
+
+    // ── /send-daily-report — manual trigger ──────────────────────
+    if (path === '/send-daily-report' && method === 'POST') {
+      if (!env.RESEND_API_KEY) return json({ error: 'Email not configured' }, 500);
+      await sendRenewalsReport(env.RESEND_API_KEY, env.SUPABASE_KEY);
       return json({ ok: true });
     }
 
