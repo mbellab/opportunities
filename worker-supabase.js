@@ -962,6 +962,6 @@ export default {
 
   // ── Cron: daily renewals report ─────────────────────────────────
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(sendRenewalsReport(env.RESEND_API_KEY));
+    ctx.waitUntil(sendRenewalsReport(env.RESEND_API_KEY, env.SUPABASE_KEY));
   },
 };
