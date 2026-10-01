@@ -599,12 +599,13 @@ async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
   const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
   const daysDiff = d => Math.ceil((new Date(d) - today) / 86400000);
 
-  const [overdueRes, upcomingRes, employeesRes, leaveRes, expenseRes] = await Promise.all([
+  const [overdueRes, upcomingRes, employeesRes, leaveRes, expenseRes, pcRes] = await Promise.all([
     fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=lt.${fmt(today)}&order=expiry_date.asc`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=gte.${fmt(today)}&expiry_date=lte.${fmt(in30)}&order=expiry_date.asc`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/employees?select=id,employee_name,date_of_birth,active`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/leave_requests?status=eq.Pending&order=date_out.asc`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/expense_claims?status=eq.verified&order=submitted_at.desc`, { headers: sbHdr }),
+    fetch(`${SUPABASE_URL}/rest/v1/petty_cash?select=type,amount`, { headers: sbHdr }),
   ]);
 
   const overdueAll       = overdueRes.ok       ? await overdueRes.json()       : [];
@@ -612,6 +613,13 @@ async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
   const allEmployees     = employeesRes.ok      ? await employeesRes.json()     : [];
   const pendingLeave     = leaveRes.ok          ? await leaveRes.json()         : [];
   const verifiedExpenses = expenseRes.ok        ? await expenseRes.json()       : [];
+  const pcTxns           = pcRes.ok             ? await pcRes.json()            : [];
+
+  const pcBalance = pcTxns.reduce((sum, r) => {
+    const amt = parseFloat(r.amount) || 0;
+    return sum + (r.type === 'In' ? amt : -amt);
+  }, 0);
+  const fmtAED = n => 'AED ' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Exclude snoozed renewals from report
   const overdue  = overdueAll.filter(r => !r.snoozed);
@@ -703,7 +711,12 @@ async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
       </tr>`).join(''));
   }
 
-  html += `<p style="margin-top:20px"><a href="https://mbellab.github.io" style="color:#5c1f25;font-family:sans-serif">Open Portal →</a></p>`;
+  // ── Petty Cash Balance ────────────────────────────────────────────
+  const pcColor = pcBalance >= 0 ? '#27ae60' : '#c0392b';
+  html += sHead('💵', 'Petty Cash Balance', '#555');
+  html += `<p style="font-family:sans-serif;font-size:22px;font-weight:700;color:${pcColor};margin:4px 0 16px">${fmtAED(pcBalance)}${pcBalance < 0 ? ' (deficit)' : ''}</p>`;
+
+  html += `<p style="margin-top:20px"><a href="https://mbellab.github.io/opportunities/" style="color:#5c1f25;font-family:sans-serif">Open Portal →</a></p>`;
 
   const subject = summaryParts.length
     ? `Daily Operations Summary — ${summaryParts.join(', ')}`
@@ -967,6 +980,8 @@ export default {
 
   // ── Cron: daily renewals report ─────────────────────────────────
   async scheduled(_event, env, ctx) {
+    const day = new Date().getDay(); // 0 = Sun, 6 = Sat
+    if (day === 0 || day === 6) return;
     ctx.waitUntil(sendRenewalsReport(env.RESEND_API_KEY, env.SUPABASE_KEY));
   },
 };

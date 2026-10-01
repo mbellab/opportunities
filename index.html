@@ -43,7 +43,10 @@
     </div>
     <div class="lfield">
       <label>Password</label>
-      <input class="linput" id="login-pwd" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')attemptLogin()">
+      <div style="position:relative">
+        <input class="linput" id="login-pwd" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')attemptLogin()" style="width:100%;box-sizing:border-box;padding-right:40px">
+        <button type="button" onclick="(function(){var i=document.getElementById('login-pwd');var b=document.getElementById('login-pwd-eye');i.type=i.type==='password'?'text':'password';b.textContent=i.type==='password'?'👁':'🙈';})()" id="login-pwd-eye" tabindex="-1" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1;color:var(--txt3)">👁</button>
+      </div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
       <input type="checkbox" id="login-remember" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent)">
