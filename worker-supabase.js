@@ -105,6 +105,8 @@ const SCALAR = {
     'FAT Completed':              'fat_completed',
     'Technical Proposal Date':    'technical_proposal_date',
     'Technical Proposal URL':     'technical_proposal_url',
+    'TAQA Username':              'taqa_username',
+    'TAQA Password':              'taqa_password',
   },
   activity_log: {
     'Name':   'name',
@@ -513,15 +515,16 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
     if (method === 'POST') {
       let row = fieldsToRow(sbTable, body?.fields || {});
       let inserted;
-      try {
-        inserted = await sbInsert(sbTable, row);
-      } catch (e) {
-        // PGRST204 = unknown column — strip it and retry once
-        if (e.message.includes('PGRST204') || e.message.includes('schema cache')) {
-          const col = (e.message.match(/the '([^']+)' column/) || [])[1];
-          if (col) { const r2 = { ...row }; delete r2[col]; inserted = await sbInsert(sbTable, r2); }
-          else throw e;
-        } else throw e;
+      // Strip unknown columns (PGRST204) one at a time until the insert succeeds
+      for (let attempts = 0; attempts < 10; attempts++) {
+        try { inserted = await sbInsert(sbTable, row); break; }
+        catch (e) {
+          if (e.message.includes('PGRST204') || e.message.includes('schema cache')) {
+            const col = (e.message.match(/the '([^']+)' column/) || [])[1];
+            if (col) { row = { ...row }; delete row[col]; continue; }
+          }
+          throw e;
+        }
       }
       return json(rowToRecord(sbTable, inserted));
     }
@@ -529,14 +532,16 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
     if (method === 'PATCH') {
       let row = fieldsToRow(sbTable, body?.fields || {});
       let updated;
-      try {
-        updated = await sbUpdate(sbTable, recordId, row);
-      } catch (e) {
-        if (e.message.includes('PGRST204') || e.message.includes('schema cache')) {
-          const col = (e.message.match(/the '([^']+)' column/) || [])[1];
-          if (col) { const r2 = { ...row }; delete r2[col]; updated = await sbUpdate(sbTable, recordId, r2); }
-          else throw e;
-        } else throw e;
+      // Strip unknown columns (PGRST204) one at a time until the update succeeds
+      for (let attempts = 0; attempts < 10; attempts++) {
+        try { updated = await sbUpdate(sbTable, recordId, row); break; }
+        catch (e) {
+          if (e.message.includes('PGRST204') || e.message.includes('schema cache')) {
+            const col = (e.message.match(/the '([^']+)' column/) || [])[1];
+            if (col) { row = { ...row }; delete row[col]; continue; }
+          }
+          throw e;
+        }
       }
       if (!updated) return json({ error: 'Record not found' }, 404);
       return json(rowToRecord(sbTable, updated));
@@ -878,7 +883,7 @@ export default {
         let empName   = 'Unknown';
         if (empId) {
           try {
-            const sbHdr = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+            const sbHdr = { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}` };
             const empRes = await fetch(`${SUPABASE_URL}/rest/v1/employees?id=eq.${empId}&select=employee_name`, { headers: sbHdr });
             if (empRes.ok) {
               const empData = await empRes.json();

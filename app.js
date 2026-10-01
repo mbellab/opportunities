@@ -76,7 +76,9 @@ var F = {
   FAT_DATE:       'FAT Date',
   FAT_COMPLETED:  'FAT Completed',
   TECH_PROP_DATE: 'Technical Proposal Date',
-  TECH_PROP_URL:  'Technical Proposal URL'
+  TECH_PROP_URL:  'Technical Proposal URL',
+  TAQA_USER:      'TAQA Username',
+  TAQA_PASS:      'TAQA Password'
 };
 // ================================================================
 
@@ -666,7 +668,8 @@ function parseItems() {
       awarded_to:s(f[F.AWARDED_TO]), awarded_price:f[F.AWARDED_PRICE]||null, loss_reason:s(f[F.LOSS_REASON]),
       next_steps:s(f[F.NEXT_STEPS]),
       fat_date:s(f[F.FAT_DATE]), fat_completed:!!(f[F.FAT_COMPLETED]),
-      tech_prop_date:s(f[F.TECH_PROP_DATE]), tech_prop_url:s(f[F.TECH_PROP_URL])
+      tech_prop_date:s(f[F.TECH_PROP_DATE]), tech_prop_url:s(f[F.TECH_PROP_URL]),
+      taqa_user:s(f[F.TAQA_USER]), taqa_pass:s(f[F.TAQA_PASS])
     };
   });
   sortItems();
@@ -1157,6 +1160,8 @@ function openEditModal(id) {
   tpUrlEl.value = item.tech_prop_url || '';
   tpUrlEl.oninput = function(){ refreshTpUrlPreview(this.value); };
   refreshTpUrlPreview(item.tech_prop_url || '');
+  document.getElementById('ef-taqa-user').value = item.taqa_user || '';
+  document.getElementById('ef-taqa-pass').value = item.taqa_pass || '';
   document.getElementById('edit-modal').style.display = 'flex';
   setTimeout(function(){ document.getElementById('ef-proj').focus(); }, 50);
 }
@@ -1199,6 +1204,8 @@ async function saveEditModal() {
   fields[F.TECH_PROP]      = tpSent ? '✔' : '✖';
   fields[F.TECH_PROP_DATE] = tpSent ? (document.getElementById('ef-tp-date').value || null) : null;
   fields[F.TECH_PROP_URL]  = document.getElementById('ef-tp-url').value || null;
+  fields[F.TAQA_USER] = g('ef-taqa-user') || null;
+  fields[F.TAQA_PASS] = g('ef-taqa-pass') || null;
   // Update local item
   var item = items.find(function(i){ return i._id === id; });
   if(item){
@@ -1217,6 +1224,8 @@ async function saveEditModal() {
     item.tech_prop = fields[F.TECH_PROP];
     item.tech_prop_date = fields[F.TECH_PROP_DATE] || '';
     item.tech_prop_url  = fields[F.TECH_PROP_URL]  || '';
+    item.taqa_user = fields[F.TAQA_USER] || '';
+    item.taqa_pass = fields[F.TAQA_PASS] || '';
     var rec=allRecords.find(function(r){return r.id===id;});
     if(rec){
       Object.keys(fields).forEach(function(k){ rec.fields[k]=fields[k]; });
