@@ -612,6 +612,7 @@
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead><tr style="border-bottom:2px solid var(--bdr2)">
           <th style="padding:8px 12px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Employee</th>
+          <th style="padding:8px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Date</th>
           <th style="padding:8px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Entity</th>
           <th style="padding:8px;text-align:left;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Period</th>
           <th style="padding:8px;text-align:right;font-size:11px;color:var(--txt3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Total</th>
@@ -636,6 +637,7 @@
       <button id="ec-btn-verify" class="viewer-ok" onclick="ecVerify(ecFormId)" style="display:none;background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap;align-items:center;gap:6px;letter-spacing:.01em" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">&#10003; Verify</button>
       <button id="ec-btn-approve" class="viewer-ok" onclick="ecApprove(ecFormId)" style="display:none;background:var(--amber);color:#fff;border:none;border-radius:var(--r);padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap;align-items:center;gap:6px;letter-spacing:.01em" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">&#10004; Approve</button>
       <button id="ec-btn-export" class="btn-cancel" onclick="ecExportPrint()" style="display:none">Print / Export</button>
+      <button id="ec-btn-resend" class="btn-cancel viewer-ok" onclick="ecResendEmail()" style="display:none">&#9993; Resend Email</button>
       <button id="ec-btn-delete" onclick="deleteClaim(ecFormId)" style="display:none;background:#c0392b;color:#fff;border:none;border-radius:var(--r);padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;white-space:nowrap;align-items:center;gap:6px" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">&#128465; Delete</button>
     </div>
   </div>

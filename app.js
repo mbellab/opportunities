@@ -11154,7 +11154,7 @@ function showExpenseClaims() {
 
 async function loadExpenseClaims() {
   var tbody=document.getElementById('ec-tbody');
-  if(tbody) tbody.innerHTML='<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--txt3)">Loading…</td></tr>';
+  if(tbody) tbody.innerHTML='<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--txt3)">Loading…</td></tr>';
   try {
     var res=await fetch(WORKER_URL+'/expense-claims?pageSize=200',{headers:getHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
@@ -11163,7 +11163,7 @@ async function loadExpenseClaims() {
     ecLoaded=true;
     renderExpenseClaims();
   } catch(err){
-    if(tbody) tbody.innerHTML='<tr><td colspan="6" style="padding:20px;color:var(--red)">Failed: '+err.message+'</td></tr>';
+    if(tbody) tbody.innerHTML='<tr><td colspan="7" style="padding:20px;color:var(--red)">Failed: '+err.message+'</td></tr>';
   }
 }
 
@@ -11181,6 +11181,8 @@ function renderExpenseClaims() {
     if(filterStatus && f['Status']!==filterStatus) return false;
     if(searchQ && [f['Employee Name'],f['Entity'],f['Notes']].join(' ').toLowerCase().indexOf(searchQ)===-1) return false;
     return true;
+  }).sort(function(a,b){
+    return new Date(b.fields['Created At']||0)-new Date(a.fields['Created At']||0);
   });
   if(cntEl) cntEl.textContent=recs.length+' claim'+(recs.length===1?'':'s');
   if(sumEl){
@@ -11197,12 +11199,13 @@ function renderExpenseClaims() {
     }).join('');
   }
   if(!recs.length){
-    tbody.innerHTML='<tr><td colspan="6" style="padding:40px;text-align:center;color:var(--txt3)">No expense claims found</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--txt3)">No expense claims found</td></tr>';
     return;
   }
   var fmt2=function(n){ return n?parseFloat(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; };
   tbody.innerHTML=recs.map(function(r){
     var f=r.fields;
+    var submDate=f['Created At']?new Date(f['Created At']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
     var from=f['Period From']?new Date(f['Period From']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
     var to=f['Period To']?new Date(f['Period To']).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
     var st=f['Status']||'draft';
@@ -11218,6 +11221,7 @@ function renderExpenseClaims() {
     var total=f['Total Amount']?'AED '+fmt2(f['Total Amount']):'—';
     return '<tr style="border-bottom:1px solid var(--bdr);cursor:pointer" ondblclick="openClaimForm(\''+r.id+'\')">'+
       '<td style="padding:10px 12px;font-weight:500">'+e(f['Employee Name']||'—')+'</td>'+
+      '<td style="padding:8px;font-size:12px;color:var(--txt2);white-space:nowrap">'+submDate+'</td>'+
       '<td style="padding:8px"><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);font-weight:600;font-family:monospace">'+e(f['Entity']||'—')+'</span></td>'+
       '<td style="padding:8px;font-size:12px;color:var(--txt2);white-space:nowrap">'+from+' – '+to+'</td>'+
       '<td style="padding:8px;font-family:monospace;font-size:12px;text-align:right;white-space:nowrap">'+total+'</td>'+
@@ -11337,7 +11341,7 @@ function closeClaimForm() {
 
 async function saveAndCloseClaim() {
   var id=await saveClaimDraft();
-  if(id) closeClaimForm();
+  if(id) { closeClaimForm(); renderExpenseClaims(); }
 }
 
 function ecAddRow(f) {
@@ -11458,10 +11462,11 @@ function ecShowBtns(f) {
     'ec-btn-save':       st==='draft'||isAdmin,
     'ec-btn-save-close': st==='draft'||isAdmin,
     'ec-btn-submit':     st==='draft',
-    'ec-btn-verify':  st==='submitted'&&isAdminFin,
-    'ec-btn-approve': st==='verified'&&(userRole==='admin'||userRole==='finance'),
-    'ec-btn-export':  st!=='draft',
-    'ec-btn-delete':  isAdmin,
+    'ec-btn-verify':     st==='submitted'&&isAdminFin,
+    'ec-btn-approve':    st==='verified'&&(userRole==='admin'||userRole==='finance'),
+    'ec-btn-export':     st!=='draft',
+    'ec-btn-resend':     st!=='draft'&&isAdminFin,
+    'ec-btn-delete':     isAdmin,
   };
   Object.keys(btns).forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display=btns[id]?'inline-flex':'none';
@@ -11627,29 +11632,40 @@ async function ecSendEmail(claimId) {
     var iRecs=iData.records||[];
     var rowsHtml=iRecs.map(function(ir){
       var fi=ir.fields;
-      return '<tr><td style="padding:5px 10px;border-bottom:1px solid #eee">'+fmtD(fi['Item Date'])+'</td>'+
-        '<td style="padding:5px 10px;border-bottom:1px solid #eee;font-family:monospace;font-size:11px">'+e(fi['Item Type']||'')+'</td>'+
-        '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+e(fi['Project']||'—')+'</td>'+
-        '<td style="padding:5px 10px;border-bottom:1px solid #eee">'+e(fi['Description']||'—')+'</td>'+
-        '<td style="padding:5px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">AED '+fmt2(fi['Amount'])+'</td></tr>';
+      return '<tr>'+
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;width:80px;white-space:nowrap">'+fmtD(fi['Item Date'])+'</td>'+
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;width:45px;font-family:monospace;font-size:11px">'+e(fi['Item Type']||'')+'</td>'+
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;min-width:260px">'+e(fi['Project']||'—')+'</td>'+
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;min-width:160px">'+e(fi['Description']||'—')+'</td>'+
+        '<td style="padding:6px 10px;border-bottom:1px solid #eee;width:110px;text-align:right;font-family:monospace;white-space:nowrap">AED '+fmt2(fi['Amount'])+'</td>'+
+      '</tr>';
     }).join('');
     var total=iRecs.reduce(function(s,ir){ return s+(parseFloat(ir.fields['Amount'])||0); },0);
-    var html='<div style="font-family:sans-serif;font-size:14px;max-width:680px">'+
+    var submDate=f['Created At']?fmtD(f['Created At']):'—';
+    var html='<div style="font-family:sans-serif;font-size:14px;max-width:820px">'+
       '<h2 style="color:#333;margin-bottom:4px">Expense Claim Submitted</h2>'+
       '<p style="color:#666;margin-bottom:16px">Requires review and approval.</p>'+
-      '<table style="border-collapse:collapse;margin-bottom:16px">'+
-        '<tr><td style="padding:3px 12px 3px 0;color:#666">Employee</td><td style="font-weight:500">'+e(f['Employee Name']||'—')+'</td></tr>'+
-        '<tr><td style="padding:3px 12px 3px 0;color:#666">Entity</td><td>'+e(f['Entity']||'—')+'</td></tr>'+
-        '<tr><td style="padding:3px 12px 3px 0;color:#666">Period</td><td>'+fmtD(f['Period From'])+' — '+fmtD(f['Period To'])+'</td></tr>'+
-        '<tr><td style="padding:3px 12px 3px 0;color:#666">Total</td><td style="font-weight:700;color:#2980b9">AED '+fmt2(total)+'</td></tr>'+
+      '<table style="border-collapse:collapse;margin-bottom:20px">'+
+        '<tr><td style="padding:4px 16px 4px 0;color:#666">Employee</td><td style="font-weight:500">'+e(f['Employee Name']||'—')+'</td></tr>'+
+        '<tr><td style="padding:4px 16px 4px 0;color:#666">Entity</td><td>'+e(f['Entity']||'—')+'</td></tr>'+
+        '<tr><td style="padding:4px 16px 4px 0;color:#666">Submission Date</td><td>'+submDate+'</td></tr>'+
+        '<tr><td style="padding:4px 16px 4px 0;color:#666">Period</td><td>'+fmtD(f['Period From'])+' — '+fmtD(f['Period To'])+'</td></tr>'+
+        '<tr><td style="padding:4px 16px 4px 0;color:#666">Payment Method</td><td>'+e(f['Payment Method']||'Cash')+'</td></tr>'+
+        '<tr><td style="padding:4px 16px 4px 0;color:#666">Total</td><td style="font-weight:700;color:#2980b9">AED '+fmt2(total)+'</td></tr>'+
       '</table>'+
-      '<table style="border-collapse:collapse;width:100%;font-size:13px"><thead>'+
-        '<tr style="background:#f5f5f5"><th style="padding:6px 10px;text-align:left">Date</th><th style="padding:6px 10px;text-align:left">Type</th>'+
-        '<th style="padding:6px 10px;text-align:left">Project</th><th style="padding:6px 10px;text-align:left">Description</th>'+
-        '<th style="padding:6px 10px;text-align:right">Amount</th></tr></thead>'+
+      '<table style="border-collapse:collapse;width:100%;min-width:660px;font-size:13px"><thead>'+
+        '<tr style="background:#f5f5f5">'+
+          '<th style="padding:7px 10px;text-align:left;width:80px">Date</th>'+
+          '<th style="padding:7px 10px;text-align:left;width:45px">Type</th>'+
+          '<th style="padding:7px 10px;text-align:left;min-width:260px">Project</th>'+
+          '<th style="padding:7px 10px;text-align:left;min-width:160px">Description</th>'+
+          '<th style="padding:7px 10px;text-align:right;width:110px">Amount</th>'+
+        '</tr></thead>'+
         '<tbody>'+rowsHtml+'</tbody>'+
-        '<tfoot><tr style="background:#f0f4ff"><td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td>'+
-        '<td style="padding:8px 10px;font-weight:700;text-align:right;font-family:monospace;color:#2980b9">AED '+fmt2(total)+'</td></tr></tfoot>'+
+        '<tfoot><tr style="background:#f0f4ff">'+
+          '<td colspan="4" style="padding:8px 10px;font-weight:700;text-align:right">TOTAL</td>'+
+          '<td style="padding:8px 10px;font-weight:700;text-align:right;font-family:monospace;color:#2980b9;white-space:nowrap">AED '+fmt2(total)+'</td>'+
+        '</tr></tfoot>'+
       '</table>'+
       (f['Notes']?'<p style="margin-top:16px;color:#555"><strong>Notes:</strong> '+e(f['Notes'])+'</p>':'')+
       '<p style="margin-top:20px"><a href="https://mbellab.github.io" style="color:#2980b9">Open in Portal →</a></p></div>';
@@ -11658,6 +11674,24 @@ async function ecSendEmail(claimId) {
       html:html,
     })});
   } catch(err){ console.warn('Email failed:',err); }
+}
+
+async function ecResendEmail() {
+  if(!ecFormId) return;
+  var rec=ecRecords.find(function(r){return r.id===ecFormId;})||{fields:{}};
+  var name=rec.fields['Employee Name']||'this claim';
+  var ok=await appConfirm({
+    icon:'✉',
+    title:'Resend Notification Email',
+    body:'This will resend the expense claim notification email for <b>'+e(name)+'</b> to the finance team.',
+    confirmLabel:'Resend Email',
+    confirmStyle:'background:var(--blue);color:#fff;border:none',
+  });
+  if(!ok) return;
+  try {
+    await ecSendEmail(ecFormId);
+    toast('Email resent','ok');
+  } catch(err){ toast('Failed: '+err.message,'err'); }
 }
 
 async function duplicateClaim(id) {
