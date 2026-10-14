@@ -204,6 +204,7 @@ const SCALAR = {
     'Price':            'price',
     'Last Quoted Date': 'last_quoted_date',
     'Active':           'active',
+    'Notes':            'notes',
   },
   contractors: {
     'Company Name':   'company_name',
@@ -362,6 +363,29 @@ const SCALAR = {
     'Schedule':        'schedule',
     'Notes':           'notes',
   },
+  supplier_quotes: {
+    'SupplierId':      'supplier_id',
+    'SupplierName':    'supplier_name',
+    'DocumentTitle':   'document_title',
+    'DocumentUrl':     'document_url',
+    'ProposalDate':    'proposal_date',
+    'ValidUntil':      'valid_until',
+    'Currency':        'currency',
+    'OpportunityId':   'opportunity_id',
+    'OpportunityName': 'opportunity_name',
+    'Notes':           'notes',
+    'CreatedAt':       'created_at',
+  },
+  supplier_quote_items: {
+    'QuoteId':     'quote_id',
+    'Description': 'description',
+    'Quantity':    'quantity',
+    'Unit':        'unit',
+    'UnitPrice':   'unit_price',
+    'TotalPrice':  'total_price',
+    'Notes':       'notes',
+    'SortOrder':   'sort_order',
+  },
   knowledge_articles: {
     'title':       'title',
     'category':    'category',
@@ -508,6 +532,14 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
         const formula = searchParams.get('filterByFormula');
         if (formula) filter = parseQuoteFilter(formula);
       }
+      if (sbTable === 'supplier_quotes') {
+        const supplierId = searchParams.get('supplier_id');
+        if (supplierId) filter = `supplier_id=eq.${supplierId}&order=created_at.desc`;
+      }
+      if (sbTable === 'supplier_quote_items') {
+        const quoteId = searchParams.get('quote_id');
+        if (quoteId) filter = `quote_id=eq.${quoteId}&order=sort_order.asc`;
+      }
       const rows = await sbQuery(sbTable, recordId ? `id=eq.${recordId}` : filter);
       return json({ records: rows.map(r => rowToRecord(sbTable, r)) });
     }
@@ -587,6 +619,8 @@ const ROUTES = [
   { prefix: '/payment-vouchers',    sbTable: 'payment_vouchers'         },
   { prefix: '/knowledge',            sbTable: 'knowledge_articles'       },
   { prefix: '/noon-orders',          sbTable: 'noon_orders'              },
+  { prefix: '/supplier-quotes',      sbTable: 'supplier_quotes'          },
+  { prefix: '/supplier-quote-items', sbTable: 'supplier_quote_items'     },
 ];
 
 // ── Daily operations report ───────────────────────────────────────

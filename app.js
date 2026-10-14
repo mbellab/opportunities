@@ -1557,7 +1557,7 @@ function populateSupplierDropdown(selectedId) {
 function showVendorModal() {
   vndEditId = null;
   document.getElementById('vendor-modal-title').textContent = 'Add Vendor Item';
-  ['vf-vendor','vf-item','vf-desc','vf-rate','vf-price'].forEach(function(id){
+  ['vf-vendor','vf-item','vf-desc','vf-rate','vf-price','vf-notes'].forEach(function(id){
     var el = document.getElementById(id); if(el) el.value='';
   });
   document.getElementById('vendor-modal').style.display = 'flex';
@@ -1578,6 +1578,7 @@ function openVendorModal(id) {
   document.getElementById('vf-pmake').value   = f['Product Make']||'';
   document.getElementById('vf-desc').value    = f['Description']||'';
   document.getElementById('vf-price').value   = f['Price']||'';
+  document.getElementById('vf-notes').value   = f['Notes']||'';
   document.getElementById('vendor-modal').style.display = 'flex';
 }
 
@@ -1606,6 +1607,8 @@ async function saveVendorItem() {
   fields['Product Make'] = pmake || null;
   fields['Description'] = desc || null;
   fields['Price'] = price || null;
+  var notes = document.getElementById('vf-notes').value.trim();
+  fields['Notes'] = notes || null;
 
   var savedEditId = vndEditId;
   closeVendorModal();
@@ -1627,6 +1630,7 @@ async function saveVendorItem() {
     setVndSave('saved');
     renderVendorKPIs();
     renderVendorTable();
+    if(drawerSupplierId) renderSupDetailEquipment();
     toast((savedEditId?'Item updated':'Item added'),'ok');
   } catch(err) {
     setVndSave('err');
@@ -2266,6 +2270,11 @@ function showSuppliers() {
     document.getElementById(id).style.display='none';
   });
   document.getElementById('suppliers-screen').style.display='flex';
+  var _sdv=document.getElementById('sup-detail-view');
+  var _slv=document.getElementById('sup-list-view');
+  if(_sdv) _sdv.style.display='none';
+  if(_slv) _slv.style.display='flex';
+  drawerSupplierId=null; drawerSupplierName=null;
   loadSuppliers();
 }
 
@@ -2342,7 +2351,7 @@ function renderSuppliersTable() {
     var emailCell=email?'<a href="mailto:'+e(email)+'" style="color:var(--blue);text-decoration:none">'+e(email)+'</a>':'<span style="color:var(--txt3)">—</span>';
     var phone=f['Contact Number']||'';
     var phoneCell=phone?'<a href="tel:'+e(phone)+'" style="color:var(--txt);text-decoration:none">'+e(phone)+'</a>':'<span style="color:var(--txt3)">—</span>';
-    return '<tr data-sup-id="'+r.id+'" style="cursor:pointer">'+
+    return '<tr data-sup-id="'+r.id+'" data-sup-name="'+e(f['Supplier Name']||'')+'" style="cursor:pointer">'+
       '<td class="c-supplier">'+e(f['Supplier Name']||'')+'</td>'+
       '<td class="c-sup-person">'+e(f['Contact Person']||'—')+'</td>'+
       '<td class="c-sup-phone">'+phoneCell+'</td>'+
@@ -2351,7 +2360,6 @@ function renderSuppliersTable() {
       '<td class="c-website">'+(f['Website']?'<a href="'+e(f['Website'])+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--blue);text-decoration:none;font-size:12px">'+e(f['Website'].replace(/^https?:\/\//,''))+'</a>':'—')+'</td>'+
       '<td style="text-align:center;width:40px">'+(f['Link to Evaluation']?'<a href="'+e(f['Link to Evaluation'])+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--blue);font-size:18px;text-decoration:none">&#128279;</a>':'<span style="opacity:.15;font-size:18px">&#128279;</span>')+'</td>'+
       '<td class="c-actions"><div class="row-actions">'+
-        '<button class="icon-btn" data-sup-drawer-id="'+r.id+'" data-sup-drawer-name="'+e(f['Supplier Name']||'')+'" style="opacity:1;color:var(--amber)">'+IC_DOCS+'</button>'+
         '<button class="icon-btn edit" data-sup-edit="'+r.id+'">'+IC_PENCIL+'</button>'+
         '<button class="icon-btn del" data-sup-del="'+r.id+'" data-sup-name="'+e(f['Supplier Name']||'')+'">'+IC_TRASH+'</button>'+
       '</div></td>'+
@@ -2375,17 +2383,17 @@ function renderSuppliersTable() {
     });
   });
 
-  tbody.addEventListener('dblclick',function(ev){
-    var row=ev.target.closest('tr[data-sup-id]');
-    if(row) openSupplierModal(row.dataset.supId);
-  });
   tbody.addEventListener('click',function(ev){
-    var pb=ev.target.closest('[data-sup-drawer-id]');
-    if(pb){ openPricingDrawer(pb.dataset.supDrawerId, pb.dataset.supDrawerName); return; }
     var eb=ev.target.closest('[data-sup-edit]');
     if(eb){openSupplierModal(eb.dataset.supEdit);return;}
     var db=ev.target.closest('[data-sup-del]');
     if(db){deleteSupplier(db.dataset.supDel,db.dataset.supName);return;}
+  });
+  tbody.addEventListener('dblclick',function(ev){
+    var row=ev.target.closest('tr[data-sup-id]');
+    if(row && !ev.target.closest('a') && !ev.target.closest('[data-sup-edit]') && !ev.target.closest('[data-sup-del]')){
+      openPricingDrawer(row.dataset.supId, row.dataset.supName);
+    }
   });
 
   renderSupplierKPIs();
@@ -2530,136 +2538,502 @@ function jumpToSupplierFromVendor(vndRecordId) {
 }
 
 // ================================================================
-// PRICING DRAWER
+// SUPPLIER DETAIL PANEL (replaces old Pricing Drawer)
 // ================================================================
 var drawerSupplierId   = null;
 var pendingActivityDeleteId = null;
 var drawerSupplierName = null;
+var drawerActiveTab    = 'info';
+var supQuotes          = [];
+var supQuotesLoaded    = false;
+var sqEditId           = null;
+var sqFormItems        = [];
+var sqExpandedId       = null;
 
 function openPricingDrawer(supplierId, supplierName) {
   drawerSupplierId   = supplierId;
   drawerSupplierName = supplierName;
+  supQuotes          = [];
+  supQuotesLoaded    = false;
+  sqEditId           = null;
+  sqExpandedId       = null;
 
-  document.getElementById('drawer-title').textContent    = supplierName || 'Supplier Pricing';
-  document.getElementById('drawer-subtitle').textContent = 'Equipment & pricing records';
+  document.getElementById('drawer-title').textContent    = supplierName || 'Supplier';
+  document.getElementById('drawer-subtitle').textContent = '';
   document.getElementById('drawer-body').innerHTML       = '<div class="drawer-empty">Loading…</div>';
 
-  // Wire up add button
-  var addBtn = document.getElementById('drawer-add-btn');
-  addBtn.onclick = function() { openDrawerAddModal(supplierId, supplierName); };
+  document.getElementById('sup-list-view').style.display = 'none';
+  document.getElementById('sup-detail-view').style.display = 'flex';
 
-  document.getElementById('pricing-drawer').classList.add('open');
-  document.getElementById('pricing-overlay').classList.add('open');
-
-  // Load vendor records if not yet loaded, then render
-  if(vndRecords.length === 0) {
-    loadVendors().then(function(){
-      renderPricingDrawer(supplierId);
-    }).catch(function(err){
-      document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">Failed to load: ' + err.message + '</div>';
-    });
-  } else {
-    renderPricingDrawer(supplierId);
-  }
+  switchSupDetailTab(drawerActiveTab);
 }
 
 function closePricingDrawer() {
-  document.getElementById('pricing-drawer').classList.remove('open');
-  document.getElementById('pricing-overlay').classList.remove('open');
+  document.getElementById('sup-detail-view').style.display = 'none';
+  document.getElementById('sup-list-view').style.display = 'flex';
   drawerSupplierId = null;
   drawerSupplierName = null;
 }
 
-function renderPricingDrawer(supplierId) {
+function switchSupDetailTab(tab) {
+  drawerActiveTab = tab;
+  document.querySelectorAll('.sup-dtab').forEach(function(b){
+    b.classList.toggle('active', b.dataset.sdt === tab);
+  });
+  var addBtn = document.getElementById('drawer-add-btn');
+
+  if(tab === 'info') {
+    if(addBtn) addBtn.style.display = 'none';
+    renderSupDetailInfo();
+  } else if(tab === 'equipment') {
+    if(addBtn){ addBtn.style.display=''; addBtn.textContent='+ Add Equipment Item'; addBtn.onclick=function(){ openDrawerAddModal(drawerSupplierId,drawerSupplierName); }; }
+    if(vndRecords.length === 0) {
+      document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">Loading…</div>';
+      loadVendors().then(function(){ renderSupDetailEquipment(); }).catch(function(err){
+        document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">Failed to load: '+err.message+'</div>';
+      });
+    } else {
+      renderSupDetailEquipment();
+    }
+  } else if(tab === 'quotes') {
+    if(addBtn){ addBtn.style.display=''; addBtn.textContent='+ Add Quote'; addBtn.onclick=function(){ showSqForm(null); }; }
+    if(supQuotesLoaded) {
+      renderSupDetailQuotes();
+    } else {
+      document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">Loading…</div>';
+      loadSupplierQuotes(drawerSupplierId);
+    }
+  }
+}
+
+function renderSupDetailInfo() {
   var body = document.getElementById('drawer-body');
   if(!body) return;
+  var rec = (supRecords||[]).find(function(r){ return r.id === drawerSupplierId; });
+  if(!rec) { body.innerHTML = '<div class="drawer-empty">Supplier info not found.</div>'; return; }
+  var f = rec.fields;
+  function row(lbl, val, isLink) {
+    if(!val) return '';
+    var valHtml = isLink
+      ? '<a href="'+e(val)+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:none;font-size:13px">'+e(val.replace(/^https?:\/\//,''))+'</a>'
+      : '<span style="font-size:13px;color:var(--txt)">'+e(val)+'</span>';
+    return '<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--bdr)">'
+      +'<span style="font-size:11px;font-family:monospace;color:var(--txt3);min-width:130px;padding-top:2px">'+e(lbl)+'</span>'
+      +valHtml+'</div>';
+  }
+  var phone = f['Contact Number']||'';
+  var email = f['Email']||'';
+  body.innerHTML = '<div style="margin-bottom:20px">'
+    + row('Contact Person', f['Contact Person'])
+    + (phone ? '<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--bdr)"><span style="font-size:11px;font-family:monospace;color:var(--txt3);min-width:130px;padding-top:2px">Phone</span><a href="tel:'+e(phone)+'" style="font-size:13px;color:var(--blue);text-decoration:none">'+e(phone)+'</a></div>' : '')
+    + (email ? '<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--bdr)"><span style="font-size:11px;font-family:monospace;color:var(--txt3);min-width:130px;padding-top:2px">Email</span><a href="mailto:'+e(email)+'" style="font-size:13px;color:var(--blue);text-decoration:none">'+e(email)+'</a></div>' : '')
+    + row('Website', f['Website'], true)
+    + row('Approved Products', f['Approved Products/Services'])
+    + row('Evaluation Link', f['Link to Evaluation'], true)
+    + '</div>'
+    + '<button class="btn-ghost" onclick="openSupplierModal(\''+drawerSupplierId+'\')" style="font-size:12px">Edit Supplier Info</button>';
+}
 
-  // Filter vendor records by this supplier's linked ID
-  // Airtable returns linked records as array of record ID strings
+function renderSupDetailEquipment() {
+  var body = document.getElementById('drawer-body');
+  if(!body) return;
   var items = vndRecords.filter(function(r) {
     var linked = r.fields['Supplier'] || [];
-    // Handle both array of strings and array of objects
     return linked.some(function(v){
-      return v === supplierId || (v && v.id && v.id === supplierId);
+      return v === drawerSupplierId || (v && v.id && v.id === drawerSupplierId);
     });
   });
-  // Show count in subtitle + debug first record fields
-  var fieldNames = items.length > 0 ? Object.keys(items[0].fields).join(', ') : 'no records';
-  document.getElementById('drawer-subtitle').textContent =
-    items.length + ' pricing record' + (items.length===1?'':'s');
-  console.log('[Drawer] Fields in first record:', fieldNames);
-  console.log('[Drawer] First record price field:', items.length > 0 ? items[0].fields['Price'] : 'N/A');
-
+  document.getElementById('drawer-subtitle').textContent = items.length + ' item' + (items.length===1?'':'s');
   if(items.length === 0) {
-    body.innerHTML = '<div class="drawer-empty">No pricing records found for this supplier.<br><br>Use the button below to add one.</div>';
+    body.innerHTML = '<div class="drawer-empty">No equipment items yet.<br><br>Click "+ Add Equipment Item" below to add one.</div>';
     return;
   }
-
   var rows = items.map(function(r) {
     var f = r.fields;
     var price = f['Price'] ? parseFloat(String(f['Price']).replace(/[^0-9.-]/g,'')).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
     return '<tr data-drawer-edit="'+r.id+'" style="cursor:pointer">'+
       '<td style="padding:7px 10px;font-size:12px;color:var(--txt2);border-bottom:1px solid var(--bdr);white-space:nowrap">'+e(f['Product Make']||'—')+'</td>'+
       '<td style="padding:7px 10px;font-size:12px;color:var(--txt2);border-bottom:1px solid var(--bdr);white-space:nowrap">'+e(f['Product Type']||'—')+'</td>'+
-      '<td style="padding:7px 10px;font-size:12px;color:var(--txt);border-bottom:1px solid var(--bdr);white-space:nowrap">'+e(f['Item']||'—')+'</td>'+
+      '<td style="padding:7px 10px;font-size:12px;color:var(--txt);border-bottom:1px solid var(--bdr)">'+e(f['Item']||'—')+'</td>'+
+      '<td style="padding:7px 10px;font-size:12px;color:var(--txt3);border-bottom:1px solid var(--bdr);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+e(f['Notes']||'')+'">'+e(f['Notes']||'')+'</td>'+
       '<td style="padding:7px 10px;font-size:12px;color:var(--green);font-family:monospace;border-bottom:1px solid var(--bdr);text-align:right;white-space:nowrap">'+price+'</td>'+
     '</tr>';
   }).join('');
   body.innerHTML =
-    '<table style="width:auto;min-width:100%;border-collapse:collapse;font-size:12px;table-layout:auto">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
     '<thead><tr>'+
-      '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap">Product Make</th>'+
-      '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap">Product Type</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap">Make</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2);white-space:nowrap">Type</th>'+
       '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2)">Item</th>'+
+      '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:left;border-bottom:2px solid var(--bdr2)">Note</th>'+
       '<th style="padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;text-align:right;border-bottom:2px solid var(--bdr2);white-space:nowrap">Unit Price</th>'+
     '</tr></thead>'+
     '<tbody>'+rows+'</tbody>'+
     '</table>';
-  // Click row to edit
   body.addEventListener('click', function(ev){
     var row = ev.target.closest('tr[data-drawer-edit]');
     if(row) openVendorModalFromDrawer(row.dataset.drawerEdit);
   });
 }
 
+async function loadSupplierQuotes(supplierId) {
+  try {
+    var res = await fetch(WORKER_URL+'/supplier-quotes?supplier_id='+encodeURIComponent(supplierId), {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    supQuotes = data.records || [];
+    supQuotesLoaded = true;
+    renderSupDetailQuotes();
+  } catch(err) {
+    document.getElementById('drawer-body').innerHTML = '<div class="drawer-empty">Failed to load quotes: '+e(err.message)+'</div>';
+  }
+}
+
+function renderSupDetailQuotes() {
+  var body = document.getElementById('drawer-body');
+  if(!body) return;
+  document.getElementById('drawer-subtitle').textContent = supQuotes.length + ' quote' + (supQuotes.length===1?'':'s');
+
+  var showForm = (sqEditId !== null);
+  var formHtml = showForm ? buildSqForm() : '';
+
+  if(supQuotes.length === 0 && !showForm) {
+    body.innerHTML = '<div class="drawer-empty">No quotes yet.<br><br>Click "+ Add Quote" below to record a supplier proposal.</div>';
+    return;
+  }
+
+  var cardsHtml = supQuotes.map(function(q) {
+    var f = q.fields;
+    var total = 0;
+    if(f['_items']) f['_items'].forEach(function(it){ total += parseFloat(it.fields['TotalPrice']||0)||0; });
+    var totalStr = total ? (f['Currency']||'AED')+' '+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+    var dateStr  = f['ProposalDate'] ? fmtDate(f['ProposalDate']) : '—';
+    var validStr = f['ValidUntil']   ? fmtDate(f['ValidUntil'])   : '';
+    var isOpen   = sqExpandedId === q.id;
+    var docLink  = f['DocumentUrl'] ? '<a href="'+e(f['DocumentUrl'])+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open document" style="color:var(--blue);font-size:16px;text-decoration:none;margin-left:4px">&#128279;</a>' : '';
+
+    var itemsHtml = '';
+    if(isOpen) {
+      itemsHtml = '<div class="sq-items" id="sq-items-'+q.id+'"><div class="sq-item-row sq-item-row-hdr">'
+        +'<span>Description</span><span style="text-align:right">Qty</span><span>Unit</span><span style="text-align:right">Unit Price</span><span style="text-align:right">Total</span></div>'
+        +'<div id="sq-items-body-'+q.id+'"><div style="padding:8px 0;font-size:12px;color:var(--txt3)">Loading items…</div></div>'
+        +'</div>';
+    }
+
+    return '<div class="sq-card" data-sq-id="'+q.id+'">'
+      +'<div class="sq-card-header" onclick="sqToggleExpand(\''+q.id+'\')">'
+        +'<span style="font-size:18px;color:var(--txt3)">'+(isOpen?'▾':'▸')+'</span>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div class="sq-card-title">'+e(f['DocumentTitle']||'—')+'</div>'
+          +'<div class="sq-card-meta">'+dateStr+(validStr?' · valid to '+validStr:'')+(f['OpportunityName']?' · '+e(f['OpportunityName']):'')+'</div>'
+        +'</div>'
+        +docLink
+        +'<span class="sq-card-total">'+totalStr+'</span>'
+        +'<button class="icon-btn edit" data-sq-edit="'+q.id+'" onclick="event.stopPropagation();showSqForm(\''+q.id+'\')" title="Edit">'+IC_PENCIL+'</button>'
+        +'<button class="icon-btn del" data-sq-del="'+q.id+'" onclick="event.stopPropagation();deleteSq(\''+q.id+'\')" title="Delete">'+IC_TRASH+'</button>'
+      +'</div>'
+      +itemsHtml
+    +'</div>';
+  }).join('');
+
+  body.innerHTML = formHtml + cardsHtml;
+
+  if(sqEditId && sqEditId !== 'hidden') {
+    setTimeout(function(){ document.getElementById('sq-doc-title') && document.getElementById('sq-doc-title').focus(); }, 50);
+  }
+
+  if(sqExpandedId) setTimeout(function(){ loadSqItems(sqExpandedId); }, 0);
+}
+
+function buildSqForm() {
+  var isNew = !sqEditId || sqEditId === 'new';
+  var q = isNew ? null : supQuotes.find(function(r){ return r.id === sqEditId; });
+  var f = q ? q.fields : {};
+  var currencies = ['USD','AED','EUR','GBP'];
+  var curOpts = currencies.map(function(c){
+    return '<option value="'+c+'"'+(( f['Currency']||'AED')===c?' selected':'')+'>'+c+'</option>';
+  }).join('');
+
+  var itemsHtml = sqFormItems.map(function(it, i){
+    return '<div class="sq-line-row" id="sq-line-'+i+'">'
+      +'<input type="text" placeholder="Description *" value="'+e(it.desc||'')+'" oninput="sqFormItems['+i+'].desc=this.value" style="font-size:12px">'
+      +'<input type="number" placeholder="Qty" value="'+(it.qty||'')+'" oninput="sqFormItems['+i+'].qty=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+      +'<input type="text" placeholder="Unit" value="'+e(it.unit||'')+'" oninput="sqFormItems['+i+'].unit=this.value" style="font-size:12px">'
+      +'<input type="number" placeholder="Unit Price" value="'+(it.unitPrice||'')+'" oninput="sqFormItems['+i+'].unitPrice=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+      +'<input type="number" placeholder="Total" value="'+(it.totalPrice||'')+'" oninput="sqFormItems['+i+'].totalPrice=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+      +'<button class="icon-btn del" onclick="sqRemoveLineItem('+i+')" style="padding:2px 4px">'+IC_TRASH+'</button>'
+    +'</div>';
+  }).join('');
+
+  return '<div class="sq-form">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--amber);font-family:monospace;margin-bottom:10px">'+(isNew?'New Quote':'Edit Quote')+'</div>'
+    +'<div class="form-grid">'
+      +'<div class="field full"><label>Document Title *</label><input id="sq-doc-title" value="'+e(f['DocumentTitle']||'')+'" placeholder="e.g. Technical/Commercial Proposal v1.0"></div>'
+      +'<div class="field full"><label>Document URL</label><input id="sq-doc-url" type="url" value="'+e(f['DocumentUrl']||'')+'" placeholder="https://… (SharePoint, Drive, etc.)"></div>'
+      +'<div class="field"><label>Proposal Date</label><input id="sq-date" type="date" value="'+(f['ProposalDate']||'')+'"></div>'
+      +'<div class="field"><label>Valid Until</label><input id="sq-valid" type="date" value="'+(f['ValidUntil']||'')+'"></div>'
+      +'<div class="field"><label>Currency</label><select id="sq-currency">'+curOpts+'</select></div>'
+      +'<div class="field"><label>Opportunity</label><input id="sq-opp-name" value="'+e(f['OpportunityName']||'')+'" placeholder="e.g. TAQA Distribution SR-17151"></div>'
+      +'<div class="field full"><label>Notes</label><input id="sq-notes" value="'+e(f['Notes']||'')+'" placeholder="Any additional context…"></div>'
+    +'</div>'
+    +'<div style="margin-top:14px">'
+      +'<div style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);font-family:monospace;font-weight:600;margin-bottom:8px">Line Items</div>'
+      +'<div class="sq-line-row sq-item-row-hdr" style="display:grid;grid-template-columns:1fr 60px 60px 90px 90px 28px;gap:6px;margin-bottom:4px">'
+        +'<span>Description</span><span>Qty</span><span>Unit</span><span>Unit Price</span><span>Total</span><span></span>'
+      +'</div>'
+      +'<div id="sq-lines-wrap">'+itemsHtml+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">'
+        +'<button class="btn-ghost" onclick="sqAddLineItem()" style="font-size:12px;padding:4px 10px">+ Add Line</button>'
+        +'<div style="font-size:13px;font-family:monospace;color:var(--txt)">Total: <strong id="sq-form-total">—</strong></div>'
+      +'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">'
+      +'<button class="btn-cancel" onclick="hideSqForm()">Cancel</button>'
+      +'<button class="btn-pri" id="sq-save-btn" onclick="saveSq()">Save Quote</button>'
+    +'</div>'
+  +'</div>';
+}
+
+function showSqForm(quoteId) {
+  sqEditId = quoteId || 'new';
+  if(quoteId) {
+    var q = supQuotes.find(function(r){ return r.id === quoteId; });
+    if(q && q._loadedItems) {
+      sqFormItems = (q._loadedItems||[]).map(function(it){
+        return {id:it.id, desc:it.fields['Description']||'', qty:it.fields['Quantity']||'', unit:it.fields['Unit']||'', unitPrice:it.fields['UnitPrice']||'', totalPrice:it.fields['TotalPrice']||''};
+      });
+    } else {
+      sqFormItems = [{}];
+      loadSqItemsForForm(quoteId);
+    }
+  } else {
+    sqFormItems = [{}];
+  }
+  renderSupDetailQuotes();
+}
+
+function hideSqForm() {
+  sqEditId = null;
+  renderSupDetailQuotes();
+}
+
+function sqAddLineItem() {
+  sqFormItems.push({});
+  var wrap = document.getElementById('sq-lines-wrap');
+  if(!wrap) return;
+  var i = sqFormItems.length - 1;
+  var row = document.createElement('div');
+  row.className = 'sq-line-row';
+  row.id = 'sq-line-'+i;
+  row.innerHTML = '<input type="text" placeholder="Description *" oninput="sqFormItems['+i+'].desc=this.value" style="font-size:12px">'
+    +'<input type="number" placeholder="Qty" oninput="sqFormItems['+i+'].qty=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+    +'<input type="text" placeholder="Unit" oninput="sqFormItems['+i+'].unit=this.value" style="font-size:12px">'
+    +'<input type="number" placeholder="Unit Price" oninput="sqFormItems['+i+'].unitPrice=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+    +'<input type="number" placeholder="Total" oninput="sqFormItems['+i+'].totalPrice=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+    +'<button class="icon-btn del" onclick="sqRemoveLineItem('+i+')" style="padding:2px 4px">'+IC_TRASH+'</button>';
+  wrap.appendChild(row);
+  row.querySelector('input').focus();
+}
+
+function sqRemoveLineItem(idx) {
+  sqFormItems.splice(idx, 1);
+  var wrap = document.getElementById('sq-lines-wrap');
+  if(wrap) {
+    wrap.innerHTML = sqFormItems.map(function(it, i){
+      return '<div class="sq-line-row" id="sq-line-'+i+'">'
+        +'<input type="text" placeholder="Description *" value="'+e(it.desc||'')+'" oninput="sqFormItems['+i+'].desc=this.value" style="font-size:12px">'
+        +'<input type="number" placeholder="Qty" value="'+(it.qty||'')+'" oninput="sqFormItems['+i+'].qty=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+        +'<input type="text" placeholder="Unit" value="'+e(it.unit||'')+'" oninput="sqFormItems['+i+'].unit=this.value" style="font-size:12px">'
+        +'<input type="number" placeholder="Unit Price" value="'+(it.unitPrice||'')+'" oninput="sqFormItems['+i+'].unitPrice=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+        +'<input type="number" placeholder="Total" value="'+(it.totalPrice||'')+'" oninput="sqFormItems['+i+'].totalPrice=parseFloat(this.value)||0;sqCalcFormTotal()" style="font-size:12px">'
+        +'<button class="icon-btn del" onclick="sqRemoveLineItem('+i+')" style="padding:2px 4px">'+IC_TRASH+'</button>'
+      +'</div>';
+    }).join('');
+  }
+  sqCalcFormTotal();
+}
+
+function sqCalcFormTotal() {
+  var total = 0;
+  sqFormItems.forEach(function(it){
+    var line = parseFloat(it.totalPrice)||0;
+    if(!line) {
+      var qty = parseFloat(it.qty)||1;
+      line = qty * (parseFloat(it.unitPrice)||0);
+    }
+    total += line;
+  });
+  var el = document.getElementById('sq-form-total');
+  if(el) el.textContent = total ? (document.getElementById('sq-currency')||{value:'AED'}).value+' '+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+}
+
+async function saveSq() {
+  var title = (document.getElementById('sq-doc-title')||{value:''}).value.trim();
+  if(!title){ toast('Document title is required','err'); return; }
+  var validItems = sqFormItems.filter(function(it){ return (it.desc||'').trim(); });
+  var btn = document.getElementById('sq-save-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  try {
+    var fields = {
+      SupplierId:      drawerSupplierId,
+      SupplierName:    drawerSupplierName,
+      DocumentTitle:   title,
+      DocumentUrl:     (document.getElementById('sq-doc-url')||{value:''}).value.trim()||null,
+      ProposalDate:    (document.getElementById('sq-date')||{value:''}).value||null,
+      ValidUntil:      (document.getElementById('sq-valid')||{value:''}).value||null,
+      Currency:        (document.getElementById('sq-currency')||{value:'AED'}).value||'AED',
+      OpportunityName: (document.getElementById('sq-opp-name')||{value:''}).value.trim()||null,
+      Notes:           (document.getElementById('sq-notes')||{value:''}).value.trim()||null,
+    };
+    var isEdit = sqEditId && sqEditId !== 'new';
+    var method = isEdit ? 'PATCH' : 'POST';
+    var url    = isEdit ? WORKER_URL+'/supplier-quotes/'+sqEditId : WORKER_URL+'/supplier-quotes';
+    var res    = await fetch(url,{method:method,headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var saved = await res.json();
+    var quoteId = saved.id || sqEditId;
+
+    // Save line items: delete existing (if edit), then insert all
+    if(isEdit) {
+      var existRes = await fetch(WORKER_URL+'/supplier-quote-items?quote_id='+quoteId,{headers:getHeaders()});
+      if(existRes.ok){
+        var existData = await existRes.json();
+        await Promise.all((existData.records||[]).map(function(r){
+          return fetch(WORKER_URL+'/supplier-quote-items/'+r.id,{method:'DELETE',headers:getHeaders()});
+        }));
+      }
+    }
+    for(var i=0;i<validItems.length;i++){
+      var it = validItems[i];
+      var qty = parseFloat(it.qty)||0;
+      var unitP = parseFloat(it.unitPrice)||0;
+      var totP = parseFloat(it.totalPrice)||(qty&&unitP?qty*unitP:0);
+      await fetch(WORKER_URL+'/supplier-quote-items',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:{
+        QuoteId:     quoteId,
+        Description: it.desc.trim(),
+        Quantity:    qty||null,
+        Unit:        (it.unit||'').trim()||null,
+        UnitPrice:   unitP||null,
+        TotalPrice:  totP||null,
+        SortOrder:   i,
+      }})});
+    }
+
+    // Reload quotes list
+    var wasEdit = isEdit;
+    supQuotesLoaded = false;
+    sqEditId = null;
+    sqExpandedId = quoteId;
+    await loadSupplierQuotes(drawerSupplierId);
+    toast(wasEdit?'Quote updated':'Quote saved','ok');
+  } catch(err) {
+    toast('Save failed: '+err.message,'err');
+    if(btn){ btn.disabled=false; btn.textContent='Save Quote'; }
+  }
+}
+
+async function deleteSq(quoteId) {
+  if(!confirm('Delete this quote and all its line items? This cannot be undone.')) return;
+  try {
+    var res = await fetch(WORKER_URL+'/supplier-quotes/'+quoteId,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    supQuotes = supQuotes.filter(function(q){ return q.id !== quoteId; });
+    if(sqExpandedId === quoteId) sqExpandedId = null;
+    renderSupDetailQuotes();
+    toast('Quote deleted','ok');
+  } catch(err) { toast('Delete failed: '+err.message,'err'); }
+}
+
+function sqToggleExpand(quoteId) {
+  sqExpandedId = sqExpandedId === quoteId ? null : quoteId;
+  renderSupDetailQuotes();
+}
+
+async function loadSqItems(quoteId) {
+  var bodyEl = document.getElementById('sq-items-body-'+quoteId);
+  if(!bodyEl) return;
+  try {
+    var res = await fetch(WORKER_URL+'/supplier-quote-items?quote_id='+quoteId,{headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    var items = data.records||[];
+    // Cache on the quote object
+    var q = supQuotes.find(function(r){ return r.id === quoteId; });
+    if(q) q._loadedItems = items;
+    if(!items.length){
+      bodyEl.innerHTML = '<div style="padding:8px 0;font-size:12px;color:var(--txt3)">No line items.</div>';
+      return;
+    }
+    var total = 0;
+    var currency = (q&&q.fields['Currency'])||'AED';
+    var rowsHtml = items.map(function(it){
+      var f = it.fields;
+      var tot = parseFloat(f['TotalPrice'])||0;
+      if(!tot && f['Quantity'] && f['UnitPrice']) tot = (parseFloat(f['Quantity'])||0)*(parseFloat(f['UnitPrice'])||0);
+      total += tot;
+      var fmtN = function(n){ return n ? n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—'; };
+      return '<div class="sq-item-row">'
+        +'<span style="color:var(--txt)">'+e(f['Description']||'—')+'</span>'
+        +'<span style="text-align:right;color:var(--txt2)">'+e(String(f['Quantity']||'—'))+'</span>'
+        +'<span style="color:var(--txt3)">'+e(f['Unit']||'—')+'</span>'
+        +'<span style="text-align:right;font-family:monospace;color:var(--txt2)">'+fmtN(f['UnitPrice'])+'</span>'
+        +'<span style="text-align:right;font-family:monospace;font-weight:600;color:var(--green)">'+fmtN(tot)+'</span>'
+        +'</div>';
+    }).join('');
+    bodyEl.innerHTML = rowsHtml
+      +'<div class="sq-item-row" style="border-top:2px solid var(--bdr);margin-top:4px;padding-top:6px">'
+        +'<span style="font-weight:700;color:var(--txt)">Total</span><span></span><span></span><span></span>'
+        +'<span style="text-align:right;font-family:monospace;font-weight:700;color:var(--green)">'+currency+' '+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</span>'
+      +'</div>';
+  } catch(err) {
+    if(bodyEl) bodyEl.innerHTML = '<div style="padding:8px 0;font-size:12px;color:var(--red)">Failed to load items: '+e(err.message)+'</div>';
+  }
+}
+
+async function loadSqItemsForForm(quoteId) {
+  try {
+    var res = await fetch(WORKER_URL+'/supplier-quote-items?quote_id='+quoteId,{headers:getHeaders()});
+    if(!res.ok) return;
+    var data = await res.json();
+    sqFormItems = (data.records||[]).map(function(it){
+      return {id:it.id, desc:it.fields['Description']||'', qty:it.fields['Quantity']||'', unit:it.fields['Unit']||'', unitPrice:it.fields['UnitPrice']||'', totalPrice:it.fields['TotalPrice']||''};
+    });
+    if(!sqFormItems.length) sqFormItems = [{}];
+    renderSupDetailQuotes();
+  } catch(e) {}
+}
+
 function openVendorModalFromDrawer(recordId) {
-  // Load vendor records if not yet loaded, then open modal
+  var origClose = closeVendorModal;
+  closeVendorModal = function() {
+    origClose();
+    closeVendorModal = origClose;
+    if(drawerSupplierId) setTimeout(function(){ renderSupDetailEquipment(); }, 300);
+  };
   if(vndRecords.length === 0) {
     loadVendors().then(function(){ openVendorModal(recordId); });
   } else {
     openVendorModal(recordId);
-    // After save, re-render the drawer
-    var origClose = closeVendorModal;
-    closeVendorModal = function() {
-      origClose();
-      closeVendorModal = origClose;
-      if(drawerSupplierId) setTimeout(function(){ renderPricingDrawer(drawerSupplierId); }, 300);
-    };
   }
 }
 
 function openDrawerAddModal(supplierId, supplierName) {
-  // Load vendors if needed, then open new item modal with supplier pre-selected
   vndJumpFilter = null;
   if(vndRecords.length === 0) {
     loadVendors().then(function(){
       showVendorModal();
-      setTimeout(function(){
-        populateSupplierDropdown(supplierId);
-      }, 50);
+      setTimeout(function(){ populateSupplierDropdown(supplierId); }, 50);
     });
   } else {
     showVendorModal();
-    setTimeout(function(){
-      populateSupplierDropdown(supplierId);
-    }, 50);
+    setTimeout(function(){ populateSupplierDropdown(supplierId); }, 50);
   }
 }
 
 // Close drawer on Escape
 document.addEventListener('keydown', function(ev) {
   if(ev.key === 'Escape') {
-    if(document.getElementById('pricing-drawer').classList.contains('open')){ closePricingDrawer(); return; }
+    var _sdv=document.getElementById('sup-detail-view'); if(_sdv&&_sdv.style.display!=='none'){ closePricingDrawer(); return; }
     if(document.getElementById('vendor-modal').style.display==='flex')      { closeVendorModal(); return; }
     if(document.getElementById('contractor-modal').style.display==='flex')  { closeContractorModal(); return; }
     if(document.getElementById('supplier-modal').style.display==='flex')    { closeSupplierModal(); return; }
