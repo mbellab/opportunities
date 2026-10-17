@@ -397,6 +397,46 @@ const SCALAR = {
     'created_at':  'created_at',
     'company':     'company',
   },
+  supplier_evaluations: {
+    'supplier_id':                  'supplier_id',
+    'address':                      'address',
+    'contact_position':             'contact_position',
+    'year_established':             'year_established',
+    'num_employees':                'num_employees',
+    'company_reg_number':           'company_reg_number',
+    'tax_reg_number':               'tax_reg_number',
+    'company_category':             'company_category',
+    'major_customers':              'major_customers',
+    'products_services':            'products_services',
+    'certifications':               'certifications',
+    'what_makes_different':         'what_makes_different',
+    'docs_attached':                'docs_attached',
+    'doc_company_reg_verified':     'doc_company_reg_verified',
+    'doc_company_reg_remarks':      'doc_company_reg_remarks',
+    'doc_tax_reg_verified':         'doc_tax_reg_verified',
+    'doc_tax_reg_remarks':          'doc_tax_reg_remarks',
+    'doc_other_name':               'doc_other_name',
+    'doc_other_verified':           'doc_other_verified',
+    'doc_other_remarks':            'doc_other_remarks',
+    'reference_check_details':      'reference_check_details',
+    'site_visit_details':           'site_visit_details',
+    'sample_approval_details':      'sample_approval_details',
+    'score_quality':                'score_quality',
+    'score_past_experience':        'score_past_experience',
+    'score_technical_expertise':    'score_technical_expertise',
+    'score_locational_suitability': 'score_locational_suitability',
+    'score_reference_check':        'score_reference_check',
+    'score_delivery_time':          'score_delivery_time',
+    'score_pricing':                'score_pricing',
+    'evaluation_summary':           'evaluation_summary',
+    'recommendation':               'recommendation',
+    'evaluation_done_by':           'evaluation_done_by',
+    'evaluation_date':              'evaluation_date',
+    'approval_date':                'approval_date',
+    'supplier_code':                'supplier_code',
+    'approved_by':                  'approved_by',
+    'approval_remarks':             'approval_remarks',
+  },
   payment_vouchers: {
     'Date':           'voucher_date',
     'Voucher No':     'voucher_no',
@@ -540,6 +580,10 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
         const quoteId = searchParams.get('quote_id');
         if (quoteId) filter = `quote_id=eq.${quoteId}&order=sort_order.asc`;
       }
+      if (sbTable === 'supplier_evaluations') {
+        const supplierId = searchParams.get('supplier_id');
+        if (supplierId) filter = `supplier_id=eq.${supplierId}`;
+      }
       const rows = await sbQuery(sbTable, recordId ? `id=eq.${recordId}` : filter);
       return json({ records: rows.map(r => rowToRecord(sbTable, r)) });
     }
@@ -619,8 +663,9 @@ const ROUTES = [
   { prefix: '/payment-vouchers',    sbTable: 'payment_vouchers'         },
   { prefix: '/knowledge',            sbTable: 'knowledge_articles'       },
   { prefix: '/noon-orders',          sbTable: 'noon_orders'              },
-  { prefix: '/supplier-quotes',      sbTable: 'supplier_quotes'          },
-  { prefix: '/supplier-quote-items', sbTable: 'supplier_quote_items'     },
+  { prefix: '/supplier-quotes',       sbTable: 'supplier_quotes'          },
+  { prefix: '/supplier-quote-items',  sbTable: 'supplier_quote_items'     },
+  { prefix: '/supplier-evaluations',  sbTable: 'supplier_evaluations'     },
 ];
 
 // ── Daily operations report ───────────────────────────────────────

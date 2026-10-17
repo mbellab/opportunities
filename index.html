@@ -2502,6 +2502,7 @@
       <button class="sup-dtab active" data-sdt="info" onclick="switchSupDetailTab('info')">Info</button>
       <button class="sup-dtab" data-sdt="equipment" onclick="switchSupDetailTab('equipment')">Equipment</button>
       <button class="sup-dtab" data-sdt="quotes" onclick="switchSupDetailTab('quotes')">Quotes</button>
+      <button class="sup-dtab" data-sdt="evaluation" onclick="switchSupDetailTab('evaluation')">Evaluation</button>
     </div>
     <div id="drawer-body" style="flex:1;overflow-y:auto;padding:24px"></div>
   </div>
@@ -11169,7 +11170,7 @@ function elWorkingDays(startStr, endStr) {
   var end = new Date(endStr);   end.setHours(0,0,0,0);
   while(cur <= end) {
     var dow = cur.getDay();
-    var ds  = cur.toISOString().slice(0,10);
+    var ds  = cur.getFullYear()+'-'+String(cur.getMonth()+1).padStart(2,'0')+'-'+String(cur.getDate()).padStart(2,'0');
     if(dow !== 0 && dow !== 6 && !holidays[ds]) dates.push(ds);
     cur.setDate(cur.getDate()+1);
   }
@@ -12080,11 +12081,11 @@ document.addEventListener("DOMContentLoaded",function(){
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Date Out *</label>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">First Day of Leave *</label>
           <input id="lr-form-date-out" type="date" class="form-input" style="width:100%" onchange="lrUpdateDays()">
         </div>
         <div>
-          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Date In *</label>
+          <label style="font-size:12px;font-weight:600;color:var(--txt3);display:block;margin-bottom:4px">Last Day of Leave *</label>
           <input id="lr-form-date-in" type="date" class="form-input" style="width:100%" onchange="lrUpdateDays()">
         </div>
       </div>
