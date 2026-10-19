@@ -9780,7 +9780,18 @@ async function loadLeaveRequests() {
 
 function updateLRBadge() {
   var badge = document.getElementById('lr-pending-badge');
-  var n = leaveRequests.filter(function(r){ return (r.fields['Status']||'Pending')==='Pending'; }).length;
+  var isAdmin = userRole === 'admin';
+  var myEmpId = null;
+  if(!isAdmin) {
+    var meRec = empRecords.find(function(e2){
+      return (e2.fields['Username']||'').toLowerCase() === (currentUser.username||'').toLowerCase();
+    });
+    myEmpId = meRec ? meRec.id : null;
+  }
+  var n = leaveRequests.filter(function(r){
+    if(!isAdmin && elEmpId(r.fields['Employee']) !== myEmpId) return false;
+    return (r.fields['Status']||'Pending')==='Pending';
+  }).length;
   if(badge){ badge.textContent=n; badge.style.display=n>0?'':'none'; }
 }
 
@@ -9802,7 +9813,18 @@ function getEmpNameById(id) {
 function renderLeaveRequests() {
   var body = document.getElementById('lr-body');
   if(!body) return;
+  var isAdmin = userRole === 'admin';
+  var myEmpId = null;
+  if(!isAdmin) {
+    var meRec = empRecords.find(function(e2){
+      return (e2.fields['Username']||'').toLowerCase() === (currentUser.username||'').toLowerCase();
+    });
+    myEmpId = meRec ? meRec.id : null;
+  }
   var filtered = leaveRequests.filter(function(r){
+    if(!isAdmin) {
+      if(elEmpId(r.fields['Employee']) !== myEmpId) return false;
+    }
     if(lrFilter==='all') return true;
     return (r.fields['Status']||'Pending').toLowerCase()===lrFilter;
   });
