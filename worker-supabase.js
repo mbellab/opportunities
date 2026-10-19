@@ -953,11 +953,7 @@ export default {
     if (path === '/diag-usage' && method === 'GET') {
       const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_db_stats`, {
         method: 'POST',
-        headers: {
-          apikey: SUPABASE_KEY,
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers: SB_HEADERS,
         body: '{}',
       });
       if (!r.ok) return json({ error: 'Failed to fetch DB stats' }, 500);
