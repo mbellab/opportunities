@@ -4096,7 +4096,7 @@ function renderBiddersList(opportunityId) {
       '<div style="'+TH+'">Contractor</div>'+
       '<div style="'+TH+'">Status</div>'+
       '<div style="'+TH+'">BOQ Received</div>'+
-      '<div style="'+TH+'">Offer Sent</div>'+
+      '<div style="'+TH+'">Our Offer Sent</div>'+
       '<div style="'+TH+'">Comments</div>'+
       '<div></div>'+
     '</div>'+
