@@ -4060,7 +4060,9 @@ function statusBadgeStyle(status) {
     'Lost':        'background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)',
     'Withdrawn':   'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
     'Asked':       'background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)',
+    'Bid Sent':    'background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd',
     'Not Bidding': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
+    'No Response': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
   };
   return map[status] || map['Bidding'];
 }
@@ -4469,9 +4471,9 @@ function buildReportHtml(opportunityId, nextSteps) {
   function th(content) { return '<th style="padding:6px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#6b7280;font-weight:600;border-bottom:2px solid #e5e7eb">'+content+'</th>'; }
   function secHead(title, count) { return '<h3 style="margin:28px 0 10px;font-size:12px;font-family:monospace;text-transform:uppercase;letter-spacing:.8px;color:#6b7280;border-bottom:1px solid #e5e7eb;padding-bottom:6px">'+title+(count!==undefined?' ('+count+')':'')+'</h3>'; }
 
-  var confirmedB = bidders.filter(function(r){ return (r.fields['Status']||'Bidding')==='Bidding'; }).length;
+  var confirmedB = bidders.filter(function(r){ var st=r.fields['Status']||'Bidding'; return st==='Bidding'||st==='Bid Sent'; }).length;
   var askedB     = bidders.filter(function(r){ return (r.fields['Status']||'')==='Asked'; }).length;
-  var declinedB  = bidders.filter(function(r){ var st=r.fields['Status']||''; return st==='Not Bidding'||st==='Withdrawn'; }).length;
+  var declinedB  = bidders.filter(function(r){ var st=r.fields['Status']||''; return st==='Not Bidding'||st==='Withdrawn'||st==='No Response'; }).length;
   var oemResp    = oems.filter(function(r){ return !!r.fields['Date Received']; }).length;
   var daysLeft   = null;
   if(item.deadline){ var _dl=new Date(item.deadline+'T00:00:00'); var _dn=new Date(); _dn.setHours(0,0,0,0); daysLeft=Math.round((_dl-_dn)/86400000); }
@@ -4513,8 +4515,8 @@ function buildReportHtml(opportunityId, nextSteps) {
     var st    = bf['Status']||'Bidding';
     var boq   = bf['BOQ Received'] ? fmtDate(bf['BOQ Received']) : '—';
     var offer = bf['Offer Sent']   ? fmtDate(bf['Offer Sent'])   : '—';
-    var stColors = {'Bidding':'#1d4ed8','Won':'#15803d','Lost':'#b91c1c','Withdrawn':'#6b7280','Asked':'#b45309','Not Bidding':'#6b7280'};
-    var stBg     = {'Bidding':'#eff6ff','Won':'#f0fdf4','Lost':'#fef2f2','Withdrawn':'#f9fafb','Asked':'#fffbeb','Not Bidding':'#f9fafb'};
+    var stColors = {'Bidding':'#1d4ed8','Won':'#15803d','Lost':'#b91c1c','Withdrawn':'#6b7280','Asked':'#b45309','Bid Sent':'#0369a1','Not Bidding':'#6b7280','No Response':'#6b7280'};
+    var stBg     = {'Bidding':'#eff6ff','Won':'#f0fdf4','Lost':'#fef2f2','Withdrawn':'#f9fafb','Asked':'#fffbeb','Bid Sent':'#f0f9ff','Not Bidding':'#f9fafb','No Response':'#f9fafb'};
     return '<tr>'+td('<b>'+e(cName)+'</b>')+td('<span style="font-size:11px;font-family:monospace;padding:2px 8px;border-radius:20px;background:'+(stBg[st]||'#f9fafb')+';color:'+(stColors[st]||'#6b7280')+';font-weight:600">'+e(st)+'</span>')+td(e(boq),'font-family:monospace;color:#6b7280')+td(e(offer),'font-family:monospace;color:#6b7280')+'</tr>';
   }).join('');
 
@@ -4582,9 +4584,9 @@ function renderReport(opportunityId) {
   var html = '';
 
   // ── Header ──────────────────────────────────────────────────────
-  var _confirmedB = bidders.filter(function(r){ return (r.fields['Status']||'Bidding')==='Bidding'; }).length;
+  var _confirmedB = bidders.filter(function(r){ var st=r.fields['Status']||'Bidding'; return st==='Bidding'||st==='Bid Sent'; }).length;
   var _askedB     = bidders.filter(function(r){ return (r.fields['Status']||'')==='Asked'; }).length;
-  var _declinedB  = bidders.filter(function(r){ var st=r.fields['Status']||''; return st==='Not Bidding'||st==='Withdrawn'; }).length;
+  var _declinedB  = bidders.filter(function(r){ var st=r.fields['Status']||''; return st==='Not Bidding'||st==='Withdrawn'||st==='No Response'; }).length;
   var _oemResp    = oems.filter(function(r){ return !!r.fields['Date Received']; }).length;
   var _daysLeft   = null;
   if(item.deadline){ var _dl2=new Date(item.deadline+'T00:00:00'); var _dn2=new Date(); _dn2.setHours(0,0,0,0); _daysLeft=Math.round((_dl2-_dn2)/86400000); }
