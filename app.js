@@ -4060,7 +4060,7 @@ function statusBadgeStyle(status) {
     'Lost':        'background:var(--red-bg);color:var(--red);border:1px solid var(--red-bdr)',
     'Withdrawn':   'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
     'Asked':       'background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bdr)',
-    'Bid Sent':    'background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd',
+    'Bid Sent':    'background:var(--green-bg);color:var(--green);border:1px solid var(--green-bdr)',
     'Not Bidding': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
     'No Response': 'background:var(--grey-bg);color:var(--txt2);border:1px solid var(--grey-bdr)',
   };
@@ -4515,8 +4515,8 @@ function buildReportHtml(opportunityId, nextSteps) {
     var st    = bf['Status']||'Bidding';
     var boq   = bf['BOQ Received'] ? fmtDate(bf['BOQ Received']) : '—';
     var offer = bf['Offer Sent']   ? fmtDate(bf['Offer Sent'])   : '—';
-    var stColors = {'Bidding':'#1d4ed8','Won':'#15803d','Lost':'#b91c1c','Withdrawn':'#6b7280','Asked':'#b45309','Bid Sent':'#0369a1','Not Bidding':'#6b7280','No Response':'#6b7280'};
-    var stBg     = {'Bidding':'#eff6ff','Won':'#f0fdf4','Lost':'#fef2f2','Withdrawn':'#f9fafb','Asked':'#fffbeb','Bid Sent':'#f0f9ff','Not Bidding':'#f9fafb','No Response':'#f9fafb'};
+    var stColors = {'Bidding':'#1d4ed8','Won':'#15803d','Lost':'#b91c1c','Withdrawn':'#6b7280','Asked':'#b45309','Bid Sent':'#15803d','Not Bidding':'#6b7280','No Response':'#6b7280'};
+    var stBg     = {'Bidding':'#eff6ff','Won':'#f0fdf4','Lost':'#fef2f2','Withdrawn':'#f9fafb','Asked':'#fffbeb','Bid Sent':'#f0fdf4','Not Bidding':'#f9fafb','No Response':'#f9fafb'};
     return '<tr>'+td('<b>'+e(cName)+'</b>')+td('<span style="font-size:11px;font-family:monospace;padding:2px 8px;border-radius:20px;background:'+(stBg[st]||'#f9fafb')+';color:'+(stColors[st]||'#6b7280')+';font-weight:600">'+e(st)+'</span>')+td(e(boq),'font-family:monospace;color:#6b7280')+td(e(offer),'font-family:monospace;color:#6b7280')+'</tr>';
   }).join('');
 
