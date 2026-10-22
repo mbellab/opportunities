@@ -6753,6 +6753,13 @@ function empToggleDetails(btn) {
 }
 
 async function setEmployeeActive(id, isActive) {
+  if(!isActive) {
+    var empRec = empRecords.find(function(r){ return r.id===id; });
+    var empName = (empRec && empRec.fields['Employee Name']) || 'this employee';
+    var ok = await showDepartureChecklist(empName);
+    if(!ok) return;
+    sendDepartureEmail(empName);
+  }
   try {
     var res = await fetch(WORKER_URL+'/employees/'+id, {
       method:'PATCH', headers:getHeaders(),
@@ -6875,12 +6882,65 @@ function closeEmployeeModal() {
   empEditId=null;
 }
 
+function showDepartureChecklist(empName) {
+  return new Promise(function(resolve) {
+    var el = document.getElementById('_app-modal');
+    if(!el){ el=document.createElement('div'); el.id='_app-modal'; el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(el); }
+    el.innerHTML =
+      '<div style="background:var(--bg);border:1px solid var(--bdr2);border-radius:10px;padding:28px 28px 22px;max-width:460px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.18)">'+
+        '<div style="font-size:28px;margin-bottom:12px">&#128683;</div>'+
+        '<div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:6px">Departure Off-boarding</div>'+
+        '<div style="font-size:13px;color:var(--txt2);margin-bottom:18px"><b>'+e(empName)+'</b> is being marked as departed. Please make sure these steps are actioned:</div>'+
+        '<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">'+
+          '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--txt);cursor:pointer"><input type="checkbox" style="margin-top:2px;flex-shrink:0"><span><b>Notify insurance company</b><br><span style="color:var(--txt2);font-size:12px">Email them to cancel coverage and request a credit note</span></span></label>'+
+          '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--txt);cursor:pointer"><input type="checkbox" style="margin-top:2px;flex-shrink:0"><span><b>Cancel visa</b><br><span style="color:var(--txt2);font-size:12px">Initiate visa cancellation with PRO</span></span></label>'+
+          '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--txt);cursor:pointer"><input type="checkbox" style="margin-top:2px;flex-shrink:0"><span><b>Remove portal access</b><br><span style="color:var(--txt2);font-size:12px">Deactivate the employee\'s portal account if they have one</span></span></label>'+
+          '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--txt);cursor:pointer"><input type="checkbox" style="margin-top:2px;flex-shrink:0"><span><b>Collect company property</b><br><span style="color:var(--txt2);font-size:12px">Laptop, access cards, keys, etc.</span></span></label>'+
+        '</div>'+
+        '<div style="font-size:11px;color:var(--txt3);margin-bottom:18px">A reminder email will be sent to the admin.</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+          '<button id="_dep-cancel" class="btn-cancel" style="padding:8px 16px">Cancel</button>'+
+          '<button id="_dep-confirm" style="padding:8px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:\'IBM Plex Sans\',sans-serif;background:var(--red);color:#fff;border:none">Mark as Departed</button>'+
+        '</div>'+
+      '</div>';
+    el.style.display='flex';
+    function close(val){ el.style.display='none'; el.innerHTML=''; resolve(val); }
+    document.getElementById('_dep-cancel').onclick=function(){ close(false); };
+    document.getElementById('_dep-confirm').onclick=function(){ close(true); };
+    el.onclick=function(ev){ if(ev.target===el) close(false); };
+  });
+}
+
+async function sendDepartureEmail(empName) {
+  var html = '<div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#333">'+
+    '<h2 style="color:#b91c1c;margin-bottom:4px">Employee Departure — Action Required</h2>'+
+    '<p style="margin-top:0"><b>'+e(empName)+'</b> has been marked as departed in the portal.</p>'+
+    '<p>Please ensure the following off-boarding steps are completed:</p>'+
+    '<table style="width:100%;border-collapse:collapse;margin-top:8px">'+
+      '<tr style="background:#fef2f2"><td style="padding:10px 14px;border:1px solid #fca5a5;font-weight:700;color:#b91c1c;width:200px">&#9888; Notify insurance</td>'+
+        '<td style="padding:10px 14px;border:1px solid #fca5a5">Email the insurance company to cancel coverage and request a credit note for the remaining period.</td></tr>'+
+      '<tr><td style="padding:10px 14px;border:1px solid #e5e7eb;font-weight:600">Cancel visa</td>'+
+        '<td style="padding:10px 14px;border:1px solid #e5e7eb">Initiate visa cancellation with PRO.</td></tr>'+
+      '<tr style="background:#f9fafb"><td style="padding:10px 14px;border:1px solid #e5e7eb;font-weight:600">Remove portal access</td>'+
+        '<td style="padding:10px 14px;border:1px solid #e5e7eb">Deactivate the employee\'s portal account if they have one.</td></tr>'+
+      '<tr><td style="padding:10px 14px;border:1px solid #e5e7eb;font-weight:600">Collect company property</td>'+
+        '<td style="padding:10px 14px;border:1px solid #e5e7eb">Laptop, access cards, keys, etc.</td></tr>'+
+    '</table>'+
+    '<p style="margin-top:20px"><a href="https://mbellab.github.io" style="color:#2980b9">Open Portal &#8594;</a></p>'+
+  '</div>';
+  try {
+    await fetch(WORKER_URL+'/send-report', {method:'POST', headers:getHeaders(), body:JSON.stringify({
+      subject: 'Departure Off-boarding: '+empName,
+      html: html,
+    })});
+  } catch(err){ console.warn('Departure email failed:', err); }
+}
+
 async function saveEmployee() {
   var name = document.getElementById('empf-name').value.trim();
   if(!name){ document.getElementById('empf-name').focus(); return; }
   var startDate = document.getElementById('empf-start').value||null;
   var savedId = empEditId;
-  closeEmployeeModal();
   var fmap = {
     'empf-name':'Employee Name','empf-dob':'Date of Birth',
     'empf-pp-num':'Passport Number','empf-pp-exp':'Passport Expiry','empf-pp-link':'Link to Passport',
@@ -6903,6 +6963,18 @@ async function saveEmployee() {
   });
   var activeEl = document.getElementById('empf-active');
   if(activeEl) fields['Active'] = activeEl.checked;
+
+  // Departure checklist — fires when an existing active employee is being deactivated
+  if(savedId && activeEl && !activeEl.checked) {
+    var prevRec = empRecords.find(function(r){ return r.id===savedId; });
+    if(prevRec && prevRec.fields['Active'] !== false) {
+      var ok = await showDepartureChecklist(name);
+      if(!ok) return;
+      sendDepartureEmail(name);
+    }
+  }
+
+  closeEmployeeModal();
   var cleanFields = fields;
   try {
     var url    = savedId ? WORKER_URL+'/employees/'+savedId : WORKER_URL+'/employees';
