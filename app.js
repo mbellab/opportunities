@@ -470,7 +470,7 @@ function applyRoleRestrictions() {
       if(row) row.style.gridTemplateColumns = count === 1 ? '220px' : 'repeat('+count+',minmax(120px,1fr))';
     }
   });
-  if(!canAccess('employees') && !canAccess('employee-leave')) {
+  if(!canAccess('employees') && !canAccess('employee-leave') && userRole !== 'finance') {
     rules.push('#upcoming-group{display:none!important}');
     rules.push('#passport-alert-group{display:none!important}');
     rules.push('#hs-quality-people{display:none!important}');
@@ -1282,7 +1282,7 @@ function showHome() {
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
-  if(userRole === 'admin') loadUpcomingEvents();
+  if(userRole === 'admin' || userRole === 'finance') loadUpcomingEvents();
   updateRowCount();
 }
 function showOpportunities() {
