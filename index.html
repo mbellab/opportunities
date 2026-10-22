@@ -1562,6 +1562,7 @@
     </div>
     <div class="modal-actions">
       <button id="emp-view-leave-btn" class="btn-ghost" onclick="empViewLeave()" style="margin-right:auto;display:none">&#128197; View Leave</button>
+      <button id="emp-delete-btn" class="btn-sm" onclick="deleteEmployeeFromModal()" style="color:var(--red);border-color:var(--red);display:none">&#128465; Delete</button>
       <button class="btn-cancel" onclick="closeEmployeeModal()">Cancel</button>
       <button class="btn-pri" onclick="saveEmployee()">Save</button>
     </div>
@@ -1823,6 +1824,7 @@
       <div class="field"><label>Email</label><input id="empf-ec-home-email" type="email" placeholder="email@example.com"></div>
     </div>
     <div class="modal-actions">
+      <button id="emp-delete-btn" class="btn-sm" onclick="deleteEmployeeFromModal()" style="color:var(--red);border-color:var(--red);display:none">&#128465; Delete</button>
       <button class="btn-cancel" onclick="closeEmployeeModal()">Cancel</button>
       <button class="btn-pri" onclick="saveEmployee()">Save</button>
     </div>

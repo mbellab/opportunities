@@ -811,7 +811,6 @@ function confirmDelete(){
   if(pendingSupDeleteId)      { confirmDeleteSupplier(); return; }
   if(pendingCdocDeleteId)     { confirmDeleteCompanyDoc(); return; }
   if(pendingRenDeleteId)      { confirmDeleteRenewal(); return; }
-  if(pendingEmpDeleteId)      { confirmDeleteEmployee(); return; }
   if(pendingQODeleteId)       { confirmDeleteQO(); return; }
   if(pendingInvoiceDeleteId)  { confirmDeleteInvoice(); return; }
   if(pendingPORDeleteId)      { confirmDeletePOR(); return; }
@@ -6661,9 +6660,9 @@ function empCardHtml(r, isInactive) {
       '<button class="btn-sm" data-emp-edit="'+r.id+'">&#9998; Edit</button>'+
       (isInactive
         ? '<button class="btn-sm" style="color:var(--green);border-color:var(--green)" onclick="setEmployeeActive(\''+r.id+'\',true)">&#10003; Reactivate</button>'
-        : '<button class="btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="empViewLeaveFromCard(\''+r.id+'\')" >&#128197; Leave</button>'
+        : '<button class="btn-sm" style="color:var(--amber);border-color:var(--amber)" onclick="empViewLeaveFromCard(\''+r.id+'\')" >&#128197; Leave</button>'+
+          '<button class="btn-sm" style="color:var(--red);border-color:var(--red)" onclick="setEmployeeActive(\''+r.id+'\',false)">&#128683; Mark Inactive</button>'
       )+
-      '<button class="btn-sm" style="color:var(--red);border-color:var(--red)" data-emp-del="'+r.id+'" data-emp-name="'+e(name)+'">&#128465; Delete</button>'+
     '</div>'+
   '</div>';
 }
@@ -6677,9 +6676,7 @@ function renderFilteredEmployees(records) {
   }
   grid.onclick = function(ev){
     var eb=ev.target.closest('[data-emp-edit]');
-    var db=ev.target.closest('[data-emp-del]');
     if(eb){ showEmployeeModal(eb.dataset.empEdit); return; }
-    if(db){ deleteEmployee(db.dataset.empDel, db.dataset.empName); return; }
   };
   var active   = records.filter(function(r){ return r.fields['Active'] !== false; });
   var inactive = records.filter(function(r){ return r.fields['Active'] === false; });
@@ -6873,6 +6870,8 @@ async function showEmployeeModal(recordId) {
   }
   var lvBtn=document.getElementById('emp-view-leave-btn');
   if(lvBtn) lvBtn.style.display = recordId ? '' : 'none';
+  var delBtn=document.getElementById('emp-delete-btn');
+  if(delBtn) delBtn.style.display = recordId ? '' : 'none';
   document.getElementById('emp-modal').style.display='flex';
   setTimeout(function(){ document.getElementById('empf-name').focus(); },50);
 }
@@ -6882,7 +6881,11 @@ function closeEmployeeModal() {
   empEditId=null;
 }
 
-function showDepartureChecklist(empName) {
+// opts.showNa = true adds an "N/A — Skip checks" button (used for delete path)
+// With showNa: resolves 'confirmed', 'na', or null. Without: resolves true or false.
+function showDepartureChecklist(empName, opts) {
+  var showNa = opts && opts.showNa;
+  var confirmLabel = showNa ? 'Confirm &amp; Delete' : 'Mark as Departed';
   return new Promise(function(resolve) {
     var el = document.getElementById('_app-modal');
     if(!el){ el=document.createElement('div'); el.id='_app-modal'; el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(el); }
@@ -6900,14 +6903,16 @@ function showDepartureChecklist(empName) {
         '<div style="font-size:11px;color:var(--txt3);margin-bottom:18px">A reminder email will be sent to the admin.</div>'+
         '<div style="display:flex;justify-content:flex-end;gap:8px">'+
           '<button id="_dep-cancel" class="btn-cancel" style="padding:8px 16px">Cancel</button>'+
-          '<button id="_dep-confirm" style="padding:8px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:\'IBM Plex Sans\',sans-serif;background:var(--red);color:#fff;border:none">Mark as Departed</button>'+
+          (showNa ? '<button id="_dep-na" class="btn-cancel" style="padding:8px 16px">N/A — Skip checks</button>' : '')+
+          '<button id="_dep-confirm" style="padding:8px 18px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:\'IBM Plex Sans\',sans-serif;background:var(--red);color:#fff;border:none">'+confirmLabel+'</button>'+
         '</div>'+
       '</div>';
     el.style.display='flex';
     function close(val){ el.style.display='none'; el.innerHTML=''; resolve(val); }
-    document.getElementById('_dep-cancel').onclick=function(){ close(false); };
-    document.getElementById('_dep-confirm').onclick=function(){ close(true); };
-    el.onclick=function(ev){ if(ev.target===el) close(false); };
+    document.getElementById('_dep-cancel').onclick=function(){ close(showNa ? null : false); };
+    document.getElementById('_dep-confirm').onclick=function(){ close(showNa ? 'confirmed' : true); };
+    if(showNa) document.getElementById('_dep-na').onclick=function(){ close('na'); };
+    el.onclick=function(ev){ if(ev.target===el) close(showNa ? null : false); };
   });
 }
 
@@ -7010,26 +7015,40 @@ function empViewLeaveFromCard(empId) {
 
 
 
-var pendingEmpDeleteId=null;
-
-function deleteEmployee(recordId, name) {
-  pendingEmpDeleteId=recordId;
-  document.getElementById('confirm-title').textContent='Delete employee?';
-  document.getElementById('confirm-body').innerHTML='This will permanently delete <b>'+e(name)+'</b>.<br><br>This cannot be undone.';
-  document.getElementById('confirm-modal').style.display='flex';
-}
-
-async function confirmDeleteEmployee() {
-  if(!pendingEmpDeleteId) return;
-  var id=pendingEmpDeleteId; pendingEmpDeleteId=null;
-  closeConfirm();
+async function deleteEmployee(recordId, name) {
+  var rec = empRecords.find(function(r){ return r.id===recordId; });
+  var isActive = !rec || rec.fields['Active'] !== false;
+  var result;
+  if(isActive) {
+    result = await showDepartureChecklist(name, {showNa: true});
+  } else {
+    var ok = await appConfirm({
+      icon: '&#128683;',
+      title: 'Delete employee?',
+      body: 'This will permanently delete <b>'+e(name)+'</b>.<br><br>This cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmStyle: 'background:var(--red);color:#fff;border:none',
+    });
+    result = ok ? 'confirmed' : null;
+  }
+  if(result === null) return;
+  if(result === 'confirmed') sendDepartureEmail(name);
   try {
-    var res=await fetch(WORKER_URL+'/employees/'+id,{method:'DELETE',headers:getHeaders()});
+    var res=await fetch(WORKER_URL+'/employees/'+recordId,{method:'DELETE',headers:getHeaders()});
     if(!res.ok) throw new Error('HTTP '+res.status);
-    empRecords=empRecords.filter(function(r){return r.id!==id;});
+    empRecords=empRecords.filter(function(r){return r.id!==recordId;});
     renderEmployees();
     toast('Employee deleted','ok');
   } catch(err){ toast('Failed: '+err.message,'err'); }
+}
+
+function deleteEmployeeFromModal() {
+  var id = empEditId;
+  var rec = empRecords.find(function(r){ return r.id===id; });
+  if(!rec) return;
+  var name = rec.fields['Employee Name'] || 'this employee';
+  closeEmployeeModal();
+  deleteEmployee(id, name);
 }
 
 // ================================================================
