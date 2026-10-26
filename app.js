@@ -49,7 +49,7 @@ window.APP_LOADED=1;
 // ================================================================
 // CONFIG
 // ================================================================
-var APP_VERSION = 'v1.7.0  ·  2026-06-14';
+var APP_VERSION = 'v1.8.0  ·  2026-10-26';
 var WORKER_URL = 'https://mbb-enquiry-proxy-v2.paul-winick.workers.dev';
 var F = {
   SR_NO:        'SR. No.',
@@ -420,6 +420,7 @@ function applyRoleRestrictions() {
     'showLeaveRequests':'leave-requests','showDiagnostics':'diagnostics','showAdmin':'admin',
     'showKnowledge':'knowledge',
     'showExpenseClaims':'expense-claims',
+    'showExperiences':'experiences',
   };
   document.querySelectorAll('.nav-drop-item, .nav-admin-only').forEach(function(el){
     var oc = el.getAttribute('onclick')||'';
@@ -1277,7 +1278,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -1288,7 +1289,7 @@ function showOpportunities() {
   if(!canAccess('opportunities')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','opportunities');
   setActivePage('opportunities');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('loading').style.display = 'flex';
@@ -1300,7 +1301,7 @@ function showPriceBook() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('price-book-screen').style.display='flex';
@@ -1310,7 +1311,7 @@ function showVendors() {
   if(!canAccess('vendors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','vendors');
   setActivePage('vendors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('vendor-screen').style.display='flex';
@@ -1669,7 +1670,7 @@ function showDashboard() {
   if(!canAccess('dashboard')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','dashboard');
   setActivePage('dashboard');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   if(items.length === 0) {
@@ -1948,7 +1949,7 @@ function showContractors() {
   if(!canAccess('contractors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','contractors');
   setActivePage('contractors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('contractors-screen').style.display='flex';
@@ -2265,7 +2266,7 @@ function showSuppliers() {
   if(!canAccess('suppliers')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','suppliers');
   setActivePage('suppliers');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('suppliers-screen').style.display='flex';
@@ -5185,7 +5186,7 @@ function signOut() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
@@ -6161,7 +6162,7 @@ var qoEditId   = null;
 function showQualityObjectives() {
   if(!canAccess('quality')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','quality');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('quality-screen').style.display='flex';
@@ -6588,7 +6589,7 @@ var empEditId   = null;
 function showEmployees() {
   if(!canAccess('employees')) { toast('Employees is restricted to your role','err'); return; }
   sessionStorage.setItem('mbb_screen','employees');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('employees-screen').style.display='flex';
@@ -7063,7 +7064,7 @@ function showRenewals() {
   if(!canAccess('renewals')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','renewals');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('renewals-screen').style.display='flex';
@@ -7711,7 +7712,7 @@ function showCompanyDocs() {
   if(!canAccess('company-docs')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','company-docs');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('company-docs-screen').style.display='flex';
@@ -8287,7 +8288,7 @@ function showDiagnostics() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('diag-screen').style.display='flex';
@@ -8795,7 +8796,7 @@ function showPettyCash() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','passwords-screen',
-   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('petty-cash-screen').style.display='flex';
@@ -9680,7 +9681,7 @@ function showPasswords(){
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('passwords-screen').style.display='flex';
@@ -9820,7 +9821,7 @@ function showEmployeeLeave() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen','experiences-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('employees-leave-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','employee-leave');
@@ -9834,7 +9835,7 @@ function showLeaveRequests() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen','experiences-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('leave-requests-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','leave-requests');
@@ -11285,7 +11286,7 @@ function showAdmin() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
    'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
    'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'employees-leave-screen','home-screen','admin-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+   'employees-leave-screen','home-screen','admin-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('admin-screen').style.display='flex';
@@ -11862,6 +11863,7 @@ document.addEventListener("DOMContentLoaded",async function(){
     else if(lastScreen === 'leave-requests') showLeaveRequests();
     else if(lastScreen === 'admin')          showAdmin();
     else if(lastScreen === 'knowledge')      showKnowledge();
+    else if(lastScreen === 'experiences')    showExperiences();
     else showHome();
   } else {
     sessionStorage.removeItem('mbb_pwd');
@@ -11883,7 +11885,7 @@ function showKnowledge() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('knowledge-screen').style.display='flex';
@@ -12106,7 +12108,7 @@ function showExpenseClaims() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','experiences-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('expense-claims-screen').style.display='flex';
@@ -12913,4 +12915,303 @@ function ecExportPrint() {
   var printWin=window.open('','_blank','width=1100,height=750');
   printWin.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expense Claim — '+e(emp)+'</title><style>'+css+'</style></head><body>'+html+'</body></html>');
   printWin.document.close();
+}
+
+// ══ PROJECT EXPERIENCES ═══════════════════════════════════════════════════════
+
+var experienceRecords = [];
+var expLoaded         = false;
+var expSelected       = {};
+
+var EXP_CATEGORIES = [
+  'System Integrators (RTU/SCMS/FMS)',
+  'SCADA/SMCS Consultancy',
+  'Telecommunication Systems',
+  'Water Network Automation',
+];
+
+function showExperiences() {
+  sessionStorage.setItem('mbb_screen','experiences');
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('experiences-screen').style.display='flex';
+  if(!expLoaded) loadExperiences(); else renderExperiences();
+}
+
+async function loadExperiences() {
+  var wrap=document.getElementById('exp-table-wrap');
+  if(wrap) wrap.innerHTML='<div style="padding:60px;text-align:center;color:var(--txt3)">Loading…</div>';
+  try {
+    var res=await fetch(WORKER_URL+'/experiences?pageSize=200',{headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    experienceRecords=(data.records||[]).sort(function(a,b){ return (a.fields['sort_order']||0)-(b.fields['sort_order']||0); });
+    expLoaded=true;
+    renderExperiences();
+  } catch(err) {
+    var wrap=document.getElementById('exp-table-wrap');
+    if(wrap) wrap.innerHTML='<div style="padding:20px;color:var(--red)">Failed to load: '+err.message+'</div>';
+  }
+}
+
+function renderExperiences() {
+  var wrap=document.getElementById('exp-table-wrap');
+  if(!wrap) return;
+  var catFilter=((document.getElementById('exp-filter-cat')||{}).value)||'';
+  var clientFilter=((document.getElementById('exp-filter-client')||{}).value)||'';
+  var searchQ=((document.getElementById('exp-search')||{}).value||'').toLowerCase().trim();
+
+  var recs=experienceRecords.filter(function(r){
+    var f=r.fields;
+    if(catFilter && f['category']!==catFilter) return false;
+    if(clientFilter && f['client']!==clientFilter) return false;
+    if(searchQ){
+      var hay=[(f['project_name']||''),(f['description']||''),(f['client']||'')].join(' ').toLowerCase();
+      if(hay.indexOf(searchQ)===-1) return false;
+    }
+    return true;
+  });
+
+  var cntEl=document.getElementById('exp-count');
+  if(cntEl) cntEl.textContent=recs.length+' project'+(recs.length===1?'':'s');
+
+  var clients=[...new Set(experienceRecords.map(function(r){ return r.fields['client']||''; }).filter(Boolean))].sort();
+  var clientSel=document.getElementById('exp-filter-client');
+  if(clientSel){
+    var curClient=clientSel.value;
+    clientSel.innerHTML='<option value="">All Clients</option>'+clients.map(function(c){ return '<option value="'+e(c)+'"'+(c===curClient?' selected':'')+'>'+e(c)+'</option>'; }).join('');
+  }
+
+  var selCount=Object.keys(expSelected).length;
+  var expBtn=document.getElementById('exp-export-btn');
+  if(expBtn){
+    expBtn.style.display=selCount>0?'':'none';
+    expBtn.textContent='Export Selected ('+selCount+')';
+  }
+
+  if(!recs.length){
+    wrap.innerHTML='<div style="padding:60px;text-align:center;color:var(--txt3)">No experiences found</div>';
+    return;
+  }
+
+  var byCategory={};
+  recs.forEach(function(r){
+    var cat=r.fields['category']||'Other';
+    if(!byCategory[cat]) byCategory[cat]=[];
+    byCategory[cat].push(r);
+  });
+  var cats=EXP_CATEGORIES.filter(function(c){ return byCategory[c]; });
+  Object.keys(byCategory).forEach(function(c){ if(EXP_CATEGORIES.indexOf(c)===-1) cats.push(c); });
+
+  var isAdmin=(userRole==='admin'||userRole==='engineer');
+  var cols=isAdmin?8:7;
+  var html='<table class="exp-table"><thead><tr>'
+    +'<th style="width:32px"><input type="checkbox" id="exp-chk-all" onchange="toggleAllExp(this.checked)" title="Select all visible"></th>'
+    +'<th style="width:36px">#</th>'
+    +'<th class="col-scope">Project / Scope</th>'
+    +'<th style="width:130px">Client</th>'
+    +'<th style="width:65px">Country</th>'
+    +'<th style="width:110px">Period</th>'
+    +'<th style="width:36px;text-align:center" title="Associated Documents">Docs</th>'
+    +(isAdmin?'<th style="width:56px"></th>':'')
+    +'</tr></thead><tbody>';
+
+  cats.forEach(function(cat){
+    var catRecs=byCategory[cat];
+    html+='<tr class="exp-cat-hdr"><td colspan="'+cols+'" class="exp-cat-cell">'+e(cat)+'</td></tr>';
+    catRecs.forEach(function(r){
+      var f=r.fields;
+      var sel=!!expSelected[r.id];
+      var ey=f['end_year']||'';
+      var yrs=(f['start_year']||'—')+(ey&&ey!==f['start_year']?' – '+ey:'');
+      var docsUrl=f['documents_url']||'';
+      html+='<tr class="exp-row'+(sel?' exp-row-sel':'')+'">'
+        +'<td style="text-align:center"><input type="checkbox" class="exp-chk"'+(sel?' checked':'')+' onchange="toggleExpSel(this)" data-id="'+r.id+'"></td>'
+        +'<td class="exp-sn">'+(f['sort_order']||'')+'</td>'
+        +'<td class="col-scope"><div class="exp-name">'+e(f['project_name']||'')+'</div>'
+          +(f['description']?'<div class="exp-desc">'+e(f['description']).replace(/\.\s+/g,'.<br>')+'</div>':'')
+        +'</td>'
+        +'<td class="exp-meta">'+e(f['client']||'')+'</td>'
+        +'<td class="exp-meta">'+e(f['country']||'')+'</td>'
+        +'<td class="exp-meta" style="white-space:nowrap">'+e(yrs)+'</td>'
+        +'<td style="text-align:center">'
+          +(docsUrl
+            ? '<a href="'+e(docsUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Open documents" style="color:var(--blue);font-size:17px;text-decoration:none">&#128279;</a>'
+            : '<span style="opacity:.15;font-size:17px">&#128279;</span>')
+        +'</td>'
+        +(isAdmin?'<td style="text-align:center;white-space:nowrap">'
+          +'<button class="icon-btn" onclick="openExpModal(\''+r.id+'\')" title="Edit">'+IC_PENCIL+'</button>'
+          +'<button class="icon-btn" onclick="deleteExp(\''+r.id+'\')" title="Delete">'+IC_TRASH+'</button>'
+          +'</td>':'')
+        +'</tr>';
+    });
+  });
+
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+
+  var chkAll=document.getElementById('exp-chk-all');
+  if(chkAll) chkAll.checked=selCount>0&&recs.every(function(r){ return expSelected[r.id]; });
+}
+
+function toggleExpSel(chk) {
+  var id=chk.dataset.id;
+  if(chk.checked) expSelected[id]=true; else delete expSelected[id];
+  var selCount=Object.keys(expSelected).length;
+  var expBtn=document.getElementById('exp-export-btn');
+  if(expBtn){ expBtn.style.display=selCount>0?'':'none'; expBtn.textContent='Export Selected ('+selCount+')'; }
+}
+
+function toggleAllExp(checked) {
+  experienceRecords.forEach(function(r){ if(checked) expSelected[r.id]=true; else delete expSelected[r.id]; });
+  renderExperiences();
+}
+
+function openExpModal(id) {
+  var r=id?experienceRecords.find(function(x){ return x.id==id; }):null;
+  var f=r?r.fields:{};
+  document.getElementById('expf-id').value=id||'';
+  document.getElementById('expf-category').value=f['category']||EXP_CATEGORIES[0];
+  document.getElementById('expf-project-name').value=f['project_name']||'';
+  document.getElementById('expf-description').value=f['description']||'';
+  document.getElementById('expf-client').value=f['client']||'';
+  document.getElementById('expf-start-year').value=f['start_year']||'';
+  document.getElementById('expf-end-year').value=f['end_year']||'';
+  document.getElementById('expf-country').value=f['country']||'UAE';
+  document.getElementById('expf-sort-order').value=f['sort_order']||'';
+  document.getElementById('expf-documents-url').value=f['documents_url']||'';
+  document.getElementById('exp-modal-title').textContent=id?'Edit Experience':'Add Experience';
+  document.getElementById('exp-modal').style.display='flex';
+}
+
+function closeExpModal() {
+  document.getElementById('exp-modal').style.display='none';
+}
+
+async function saveExperience() {
+  var id=document.getElementById('expf-id').value;
+  var fields={
+    'category':     document.getElementById('expf-category').value,
+    'project_name': document.getElementById('expf-project-name').value.trim(),
+    'description':  document.getElementById('expf-description').value.trim(),
+    'client':       document.getElementById('expf-client').value.trim(),
+    'start_year':   document.getElementById('expf-start-year').value.trim(),
+    'end_year':     document.getElementById('expf-end-year').value.trim(),
+    'country':      document.getElementById('expf-country').value.trim()||'UAE',
+    'sort_order':    parseInt(document.getElementById('expf-sort-order').value)||0,
+    'documents_url': document.getElementById('expf-documents-url').value.trim()||null,
+  };
+  if(!fields['project_name']){ toast('Project name is required','err'); return; }
+  setSave('saving');
+  try {
+    var res;
+    if(id){
+      res=await fetch(WORKER_URL+'/experiences/'+id,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    } else {
+      res=await fetch(WORKER_URL+'/experiences',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    }
+    if(!res.ok) throw new Error(await res.text());
+    setSave('saved');
+    closeExpModal();
+    expLoaded=false;
+    await loadExperiences();
+    toast(id?'Updated':'Added','ok');
+  } catch(err){ setSave('err'); toast('Save failed: '+err.message,'err'); }
+}
+
+async function deleteExp(id) {
+  var r=experienceRecords.find(function(x){ return x.id==id; });
+  var name=r?(r.fields['project_name']||'this record'):'this record';
+  if(!confirm('Delete "'+name+'"?')) return;
+  setSave('saving');
+  try {
+    var res=await fetch(WORKER_URL+'/experiences/'+id,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    delete expSelected[id];
+    setSave('saved');
+    expLoaded=false;
+    await loadExperiences();
+    toast('Deleted','ok');
+  } catch(err){ setSave('err'); toast('Delete failed: '+err.message,'err'); }
+}
+
+function exportExperiencesDoc() {
+  var selIds=Object.keys(expSelected);
+  if(!selIds.length){ toast('Select at least one experience first','err'); return; }
+
+  var selected=experienceRecords.filter(function(r){ return expSelected[r.id]; });
+
+  var byCategory={};
+  selected.forEach(function(r){
+    var cat=r.fields['category']||'Other';
+    if(!byCategory[cat]) byCategory[cat]=[];
+    byCategory[cat].push(r);
+  });
+  var cats=EXP_CATEGORIES.filter(function(c){ return byCategory[c]; });
+  Object.keys(byCategory).forEach(function(c){ if(EXP_CATEGORIES.indexOf(c)===-1) cats.push(c); });
+
+  var TS='font-family:Calibri,Arial,sans-serif;font-size:9.5pt;';
+  var logoSrc='data:image/jpeg;base64,'+EVAL_LOGO_B64;
+  var today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+  var html='<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8">'
+    +'<xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml>'
+    +'<style>'
+    +'@page Section1{size:841.95pt 595.35pt;mso-page-orientation:landscape;margin:1.3cm 1.5cm 1.3cm 1.5cm;mso-header-margin:.35cm;mso-footer-margin:.35cm;}'
+    +'div.Section1{page:Section1;}'
+    +'body{font-family:Calibri,Arial,sans-serif;font-size:9.5pt;margin:0}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'p{margin:0;padding:2px 0}'
+    +'</style></head><body><div class="Section1">'
+    +'<table style="border:none;margin-bottom:10px"><tr>'
+    +'<td style="border:none;width:100px;vertical-align:middle"><img src="'+logoSrc+'" style="width:85px"></td>'
+    +'<td style="border:none;text-align:center;vertical-align:middle"><div style="font-family:Calibri,Arial,sans-serif;font-size:15pt;font-weight:bold">mBELLAb Power Solutions — Project Experience</div></td>'
+    +'<td style="border:none;width:120px;text-align:right;vertical-align:top;font-size:8pt;color:#444;font-family:Calibri,Arial,sans-serif"><div>Date: '+today+'</div></td>'
+    +'</tr></table>';
+
+  cats.forEach(function(cat){
+    var recs=byCategory[cat];
+    html+='<p style="'+TS+'font-weight:bold;font-size:10.5pt;background:#2e5266;color:#fff;padding:5px 8px;margin-bottom:0">'+e(cat)+'</p>'
+      +'<table style="margin-bottom:12px"><thead>'
+      +'<tr style="background:#d9d9d9">'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:center;width:24px">S/N</th>'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:left;width:180px">Project Name</th>'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:left">Scope of Work</th>'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:left;width:80px">Client</th>'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:center;width:48px">Start</th>'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:center;width:56px">End</th>'
+      +'<th style="'+TS+'border:1px solid #aaa;padding:4px 7px;text-align:center;width:52px">Country</th>'
+      +'</tr></thead><tbody>';
+    recs.forEach(function(r,i){
+      var f=r.fields;
+      var bg=i%2===1?'background:#f9f9f9;':'';
+      html+='<tr>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px;text-align:center">'+(i+1)+'</td>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px;font-weight:600">'+e(f['project_name']||'')+'</td>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px">'+e(f['description']||'')+'</td>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px">'+e(f['client']||'')+'</td>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px;text-align:center">'+e(f['start_year']||'')+'</td>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px;text-align:center">'+e(f['end_year']||'')+'</td>'
+        +'<td style="'+TS+bg+'border:1px solid #aaa;padding:4px 7px;text-align:center">'+e(f['country']||'')+'</td>'
+        +'</tr>';
+    });
+    html+='</tbody></table>';
+  });
+
+  html+='</div></body></html>';
+
+  var blob=new Blob(['﻿'+html],{type:'application/msword'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='mBELLAb_Project_Experience_'+(new Date().toISOString().slice(0,10))+'.doc';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+  toast('Exported '+selected.length+' experience'+(selected.length===1?'':'s'),'ok');
 }

@@ -397,6 +397,18 @@ const SCALAR = {
     'created_at':  'created_at',
     'company':     'company',
   },
+  project_experiences: {
+    'category':     'category',
+    'project_name': 'project_name',
+    'description':  'description',
+    'client':       'client',
+    'start_year':   'start_year',
+    'end_year':     'end_year',
+    'country':      'country',
+    'sort_order':    'sort_order',
+    'documents_url': 'documents_url',
+    'created_at':    'created_at',
+  },
   supplier_evaluations: {
     'supplier_id':                  'supplier_id',
     'address':                      'address',
@@ -666,6 +678,7 @@ const ROUTES = [
   { prefix: '/supplier-quotes',       sbTable: 'supplier_quotes'          },
   { prefix: '/supplier-quote-items',  sbTable: 'supplier_quote_items'     },
   { prefix: '/supplier-evaluations',  sbTable: 'supplier_evaluations'     },
+  { prefix: '/experiences',           sbTable: 'project_experiences'      },
 ];
 
 // ── Daily operations report ───────────────────────────────────────

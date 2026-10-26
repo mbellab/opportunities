@@ -673,3 +673,19 @@ table.vnd-table td{padding:5px 10px}
 .kn-md-body blockquote{border-left:3px solid var(--amber);margin:0 0 .8em;padding:4px 12px;color:var(--txt2)}
 .kn-md-body hr{border:none;border-top:1px solid var(--bdr);margin:.8em 0}
 .kn-md-body a{color:var(--blue);text-decoration:underline}
+
+/* ── Project Experiences ──────────────────────────────────────────── */
+.exp-table{width:auto;border-collapse:collapse;font-size:13px}
+.exp-table .col-scope{max-width:520px;min-width:280px}
+.exp-name,.exp-desc{word-break:break-word;overflow-wrap:break-word}
+.exp-table thead tr{background:var(--bg2);border-bottom:2px solid var(--bdr2)}
+.exp-table thead th{padding:9px 12px;text-align:left;font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid var(--bdr2)}
+.exp-cat-hdr .exp-cat-cell{padding:7px 12px;background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);font-family:monospace;border-top:2px solid var(--bdr);border-bottom:1px solid var(--bdr)}
+.exp-row{border-bottom:1px solid var(--bdr);transition:background .1s}
+.exp-row:hover{background:var(--bg2)}
+.exp-row-sel{background:var(--blue-bg)!important}
+.exp-row td{padding:8px 12px;vertical-align:top;white-space:normal}
+.exp-name{font-weight:600;color:var(--txt);line-height:1.35}
+.exp-desc{font-size:11.5px;color:var(--txt2);margin-top:3px;line-height:1.4}
+.exp-sn{font-size:11px;color:var(--txt3);font-family:monospace;text-align:center}
+.exp-meta{font-size:12px;color:var(--txt2)}
