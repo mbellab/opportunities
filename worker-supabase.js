@@ -409,6 +409,30 @@ const SCALAR = {
     'documents_url': 'documents_url',
     'created_at':    'created_at',
   },
+  project_tracker_templates: {
+    'name':       'name',
+    'task_type':  'task_type',
+    'sort_order': 'sort_order',
+    'created_at': 'created_at',
+  },
+  project_tracker: {
+    'opportunity_id': 'opportunity_id',
+    'name':           'name',
+    'contractor':     'contractor',
+    'awarded_date':   'awarded_date',
+    'status':         'status',
+    'created_at':     'created_at',
+  },
+  project_tracker_tasks: {
+    'project_id':       'project_id',
+    'template_task_id': 'template_task_id',
+    'name':             'name',
+    'task_type':        'task_type',
+    'sort_order':       'sort_order',
+    'status':           'status',
+    'notes':            'notes',
+    'created_at':       'created_at',
+  },
   supplier_evaluations: {
     'supplier_id':                  'supplier_id',
     'address':                      'address',
@@ -596,6 +620,18 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
         const supplierId = searchParams.get('supplier_id');
         if (supplierId) filter = `supplier_id=eq.${supplierId}`;
       }
+      if (sbTable === 'project_tracker_tasks') {
+        const projectId = searchParams.get('project_id');
+        const order     = searchParams.get('order') || 'sort_order.asc,created_at.asc';
+        if (projectId) filter = `project_id=${projectId}&order=${order}`;
+      }
+      if (sbTable === 'project_tracker') {
+        const order = searchParams.get('order') || 'created_at.desc';
+        filter = `order=${order}`;
+      }
+      if (sbTable === 'project_tracker_templates') {
+        filter = 'order=sort_order.asc';
+      }
       const rows = await sbQuery(sbTable, recordId ? `id=eq.${recordId}` : filter);
       return json({ records: rows.map(r => rowToRecord(sbTable, r)) });
     }
@@ -678,7 +714,10 @@ const ROUTES = [
   { prefix: '/supplier-quotes',       sbTable: 'supplier_quotes'          },
   { prefix: '/supplier-quote-items',  sbTable: 'supplier_quote_items'     },
   { prefix: '/supplier-evaluations',  sbTable: 'supplier_evaluations'     },
-  { prefix: '/experiences',           sbTable: 'project_experiences'      },
+  { prefix: '/experiences',            sbTable: 'project_experiences'       },
+  { prefix: '/project-templates',     sbTable: 'project_tracker_templates' },
+  { prefix: '/project-tracker',       sbTable: 'project_tracker'           },
+  { prefix: '/project-tasks',         sbTable: 'project_tracker_tasks'     },
 ];
 
 // ── Daily operations report ───────────────────────────────────────

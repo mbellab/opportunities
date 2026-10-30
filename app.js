@@ -421,6 +421,7 @@ function applyRoleRestrictions() {
     'showKnowledge':'knowledge',
     'showExpenseClaims':'expense-claims',
     'showExperiences':'experiences',
+    'showProjects':'projects',
   };
   document.querySelectorAll('.nav-drop-item, .nav-admin-only').forEach(function(el){
     var oc = el.getAttribute('onclick')||'';
@@ -782,6 +783,12 @@ async function saveEditRow(){
   fields[F.MAIN_CONT]=gi('ei-mc');
   fields[F.RTU]=gi('ei-rtu')||'--'; fields[F.STATUS]=gi('ei-status');
   fields[F.DEADLINE]=gi('ei-deadline')||null; // Last Update is driven by Activity tab only
+  // Block de-WONing if a project exists for this opportunity
+  var currentRow = items.find(function(i){ return i._id===editingId; });
+  if(currentRow && currentRow.status==='WON' && fields[F.STATUS]!=='WON') {
+    var hasProj = ptProjects.some(function(p){ return String(p.opportunity_id)===String(editingId); });
+    if(hasProj){ toast('Status locked — a project exists for this opportunity. Delete the project first.','err'); return; }
+  }
   var item=items.find(function(i){return i._id===editingId;});
   if(item){
     item.date=fields[F.DATE]; item.project=fields[F.PROJECT]; item.main_cont=fields[F.MAIN_CONT];
@@ -798,6 +805,11 @@ async function saveEditRow(){
     toast('Marked as LOST — open the modal to record who won and at what price','');
   } else {
     toast('Changes saved','ok');
+  }
+  if(fields[F.STATUS]==='WON') {
+    var awardedItem = items.find(function(i){ return i._id===savedId; });
+    var alreadyLinked = ptProjects.some(function(p){ return String(p.opportunity_id)===String(savedId); });
+    if(!alreadyLinked) promptCreateProject(savedId, awardedItem?awardedItem.project:'Awarded Project');
   }
 }
 
@@ -1175,6 +1187,13 @@ async function saveEditModal() {
   var proj = g('ef-proj');
   if(!proj){ document.getElementById('ef-proj').focus(); return; }
   var saveBtn = document.getElementById('ef-save-btn');
+  // Block de-WONing if a project exists for this opportunity
+  var modalItem = items.find(function(i){ return i._id===id; });
+  var newStatus = g('ef-status');
+  if(modalItem && modalItem.status==='WON' && newStatus!=='WON') {
+    var hasProj2 = ptProjects.some(function(p){ return String(p.opportunity_id)===String(id); });
+    if(hasProj2){ toast('Status locked — a project exists for this opportunity. Delete the project first.','err'); return; }
+  }
   if(saveBtn){ saveBtn.disabled = true; saveBtn.style.opacity = '0.5'; saveBtn.textContent = 'Saving…'; }
   var fields = {};
   fields[F.DATE]        = g('ef-date');
@@ -1235,6 +1254,11 @@ async function saveEditModal() {
   await patchRecord(id, fields);
   if(saveBtn){ saveBtn.disabled = false; saveBtn.style.opacity = ''; saveBtn.textContent = 'Save Changes'; }
   toast('Changes saved','ok');
+  if(fields[F.STATUS]==='WON') {
+    var alreadyLinked2 = ptProjects.some(function(p){ return String(p.opportunity_id)===String(id); });
+    var wonItem = items.find(function(i){ return i._id===id; });
+    if(!alreadyLinked2) promptCreateProject(id, wonItem?wonItem.project:'Awarded Project');
+  }
 }
 // edit-modal click-outside disabled
 
@@ -1278,7 +1302,7 @@ var vndJumpFilter = null;
 
 function showHome() {
   sessionStorage.setItem('mbb_screen','home');
-  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('home-screen').style.display='flex';
@@ -1289,7 +1313,7 @@ function showOpportunities() {
   if(!canAccess('opportunities')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','opportunities');
   setActivePage('opportunities');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('loading').style.display = 'flex';
@@ -1301,7 +1325,7 @@ function showPriceBook() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('price-book-screen').style.display='flex';
@@ -1311,7 +1335,7 @@ function showVendors() {
   if(!canAccess('vendors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','vendors');
   setActivePage('vendors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('vendor-screen').style.display='flex';
@@ -1670,7 +1694,7 @@ function showDashboard() {
   if(!canAccess('dashboard')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','dashboard');
   setActivePage('dashboard');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   if(items.length === 0) {
@@ -1949,7 +1973,7 @@ function showContractors() {
   if(!canAccess('contractors')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','contractors');
   setActivePage('contractors');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('contractors-screen').style.display='flex';
@@ -2266,7 +2290,7 @@ function showSuppliers() {
   if(!canAccess('suppliers')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','suppliers');
   setActivePage('suppliers');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     document.getElementById(id).style.display='none';
   });
   document.getElementById('suppliers-screen').style.display='flex';
@@ -5186,7 +5210,7 @@ function signOut() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('login-screen').style.display='flex';
@@ -6162,7 +6186,7 @@ var qoEditId   = null;
 function showQualityObjectives() {
   if(!canAccess('quality')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','quality');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('quality-screen').style.display='flex';
@@ -6589,7 +6613,7 @@ var empEditId   = null;
 function showEmployees() {
   if(!canAccess('employees')) { toast('Employees is restricted to your role','err'); return; }
   sessionStorage.setItem('mbb_screen','employees');
-  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('employees-screen').style.display='flex';
@@ -7064,7 +7088,7 @@ function showRenewals() {
   if(!canAccess('renewals')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','renewals');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('renewals-screen').style.display='flex';
@@ -7712,7 +7736,7 @@ function showCompanyDocs() {
   if(!canAccess('company-docs')){ toast('Access restricted','err'); return; }
   sessionStorage.setItem('mbb_screen','company-docs');
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
-   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen','loading','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('company-docs-screen').style.display='flex';
@@ -8288,7 +8312,7 @@ function showDiagnostics() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'passwords-screen','leave-requests-screen','admin-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('diag-screen').style.display='flex';
@@ -8796,7 +8820,7 @@ function showPettyCash() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','passwords-screen',
-   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'leave-requests-screen','admin-screen','diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('petty-cash-screen').style.display='flex';
@@ -9681,7 +9705,7 @@ function showPasswords(){
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','passwords-screen','leave-requests-screen','admin-screen',
-   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'diag-screen','employees-leave-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.style.display='none';
   });
   document.getElementById('passwords-screen').style.display='flex';
@@ -9821,7 +9845,7 @@ function showEmployeeLeave() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen','experiences-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen','experiences-screen','projects-screen','proj-detail-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('employees-leave-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','employee-leave');
@@ -9835,7 +9859,7 @@ function showLeaveRequests() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen',
    'company-docs-screen','home-screen','petty-cash-screen','diag-screen',
-   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen','experiences-screen'
+   'passwords-screen','employees-leave-screen','leave-requests-screen','admin-screen','knowledge-screen','experiences-screen','projects-screen','proj-detail-screen'
   ].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('leave-requests-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','leave-requests');
@@ -11277,6 +11301,372 @@ async function saveChangePwd() {
 }
 
 // ================================================================
+// PROJECT TRACKER
+// ================================================================
+var ptProjects     = [];
+var ptLoaded       = false;
+var ptCurrentId    = null;
+var ptTasks        = [];
+var ptTemplates    = [];
+var ptPendingOppId = null;
+var ptPendingName  = null;
+
+var PT_STATUS_CYCLE = ['active','at_risk','blocked','completed'];
+var PT_STATUS_LABEL = { active:'Active', at_risk:'At Risk', blocked:'Blocked', completed:'Completed' };
+var PT_STATUS_COLOR = { active:'var(--green)', at_risk:'var(--amber)', blocked:'#e05252', completed:'var(--txt3)' };
+var TASK_STATUS_CYCLE = ['not_started','in_progress','completed','blocked'];
+var TASK_STATUS_LABEL = { not_started:'Not Started', in_progress:'In Progress', completed:'Completed', blocked:'Blocked' };
+var TASK_STATUS_COLOR = { not_started:'var(--txt3)', in_progress:'var(--blue)', completed:'var(--green)', blocked:'#e05252' };
+
+function showProjects() {
+  if(!canAccess('projects')){ toast('Access restricted','err'); return; }
+  sessionStorage.setItem('mbb_screen','projects');
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen',
+   'experiences-screen','proj-detail-screen'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  document.getElementById('projects-screen').style.display='flex';
+  var vi=document.getElementById('proj-version'); if(vi) vi.textContent=APP_VERSION;
+  if(!ptLoaded) loadTrackedProjects(); else renderProjectList();
+}
+
+async function loadTrackedProjects() {
+  try {
+    var res = await fetch(WORKER_URL+'/project-tracker?pageSize=200&order=created_at.desc', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    ptProjects = (data.records||[]).map(function(r){
+      var f = r.fields ? Object.assign({}, r.fields) : Object.assign({}, r);
+      if(r.id !== undefined) f.id = r.id;
+      return f;
+    });
+    ptLoaded = true;
+    renderProjectList();
+  } catch(e){ toast('Failed to load projects: '+e.message,'err'); }
+}
+
+function renderProjectList() {
+  var wrap = document.getElementById('proj-list-wrap');
+  var search = (document.getElementById('proj-search')||{value:''}).value.toLowerCase();
+  var filterStatus = (document.getElementById('proj-filter-status')||{value:''}).value;
+
+  var list = ptProjects.filter(function(p){
+    if(filterStatus && p.status !== filterStatus) return false;
+    if(search && (p.name||'').toLowerCase().indexOf(search)<0 && (p.contractor||'').toLowerCase().indexOf(search)<0) return false;
+    return true;
+  });
+
+  document.getElementById('proj-count').textContent = list.length + ' project' + (list.length===1?'':'s');
+
+  if(!list.length){
+    wrap.innerHTML='<div style="padding:48px;text-align:center;color:var(--txt3);font-size:14px">'+(ptProjects.length?'No projects match your filter.':'No projects yet. Award an opportunity to create one.')+'</div>';
+    return;
+  }
+
+  // Group by status
+  var groups = { active:[], at_risk:[], blocked:[], completed:[] };
+  list.forEach(function(p){ (groups[p.status]||groups.active).push(p); });
+  var order = ['active','at_risk','blocked','completed'];
+
+  var html = '';
+  order.forEach(function(st){
+    if(!groups[st].length) return;
+    html += '<div style="padding:12px 16px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace">'+PT_STATUS_LABEL[st]+'</div>';
+    html += '<table class="pt-list-table"><thead><tr><th>Project</th><th>Contractor</th><th>Awarded</th><th>Current Step</th><th>Next Step</th><th style="width:90px">Status</th></tr></thead><tbody>';
+    groups[st].forEach(function(p){
+      var steps = ptCurrentNextStep(p._tasks||[]);
+      html += '<tr class="pt-list-row" onclick="openProjectDetail('+p.id+')" data-id="'+p.id+'">';
+      html += '<td><div class="pt-proj-name">'+e(p.name||'—')+'</div>'+(p.opportunity_name?'<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+e(p.opportunity_name)+'</div>':'')+'</td>';
+      html += '<td>'+e(p.contractor||'—')+'</td>';
+      html += '<td>'+fmtDateDMY(p.awarded_date)+'</td>';
+      html += '<td><span class="pt-step-badge current">'+e(steps.current)+'</span></td>';
+      html += '<td><span class="pt-step-badge next">'+e(steps.next)+'</span></td>';
+      html += '<td><span class="pt-status-badge" style="background:'+PT_STATUS_COLOR[p.status||'active']+'22;color:'+PT_STATUS_COLOR[p.status||'active']+';border-color:'+PT_STATUS_COLOR[p.status||'active']+'44">'+PT_STATUS_LABEL[p.status||'active']+'</span></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  });
+  wrap.innerHTML = html;
+}
+
+function fmtDateDMY(iso) {
+  if(!iso) return '—';
+  var p = iso.split('-'); if(p.length<3) return iso;
+  return p[2]+'.'+p[1]+'.'+p[0];
+}
+
+function ptCurrentNextStep(tasks) {
+  var milestones = tasks.filter(function(t){ return t.task_type==='milestone'; })
+    .sort(function(a,b){ return (a.sort_order||99)-(b.sort_order||99); });
+  if(!milestones.length) return { current:'—', next:'—' };
+  var inProg = milestones.find(function(t){ return t.status==='in_progress'; });
+  if(inProg) {
+    var idx = milestones.indexOf(inProg);
+    var nxt = milestones.slice(idx+1).find(function(t){ return t.status!=='completed'; });
+    return { current: inProg.name, next: nxt?nxt.name:'—' };
+  }
+  var firstNS = milestones.find(function(t){ return t.status==='not_started'; });
+  if(firstNS) {
+    var idx2 = milestones.indexOf(firstNS);
+    var prev = milestones.slice(0,idx2).reverse().find(function(t){ return t.status==='completed'; });
+    return { current: prev?prev.name:'—', next: firstNS.name };
+  }
+  return { current: milestones[milestones.length-1].name, next:'—' };
+}
+
+async function openProjectDetail(id) {
+  ptCurrentId = id;
+  var proj = ptProjects.find(function(p){ return p.id===id; });
+  if(!proj) return;
+
+  var col = PT_STATUS_COLOR[proj.status||'active'];
+  document.getElementById('pds-name').textContent = proj.name||'Project';
+  document.getElementById('pds-meta').textContent =
+    (proj.contractor?'Contractor: '+proj.contractor:'') +
+    (proj.awarded_date?' · Awarded: '+fmtDateDMY(proj.awarded_date):'');
+  document.getElementById('pds-status-wrap').innerHTML =
+    '<span class="pt-status-badge" style="background:'+col+'22;color:'+col+';border-color:'+col+'44;cursor:pointer" onclick="cycleProjStatus('+id+')">'+PT_STATUS_LABEL[proj.status||'active']+'</span>';
+
+  var delBtn = document.getElementById('pds-delete-btn');
+  if(delBtn) delBtn.style.display = userRole==='admin' ? '' : 'none';
+
+  ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
+   'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
+   'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','expense-claims-screen',
+   'experiences-screen','projects-screen'].forEach(function(s){ var el=document.getElementById(s); if(el) el.style.display='none'; });
+  document.getElementById('proj-detail-screen').style.display='flex';
+  sessionStorage.setItem('mbb_screen','projects');
+
+  document.getElementById('pds-body').innerHTML =
+    '<div style="color:var(--txt3);font-size:13px;padding:20px 0">Loading tasks…</div>';
+
+  try {
+    var res = await fetch(WORKER_URL+'/project-tasks?project_id=eq.'+id+'&order=sort_order.asc,created_at.asc', {headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    ptTasks = (data.records||[]).map(function(r){
+      var f = r.fields ? Object.assign({}, r.fields) : Object.assign({}, r);
+      if(r.id !== undefined) f.id = r.id;
+      return f;
+    });
+    proj._tasks = ptTasks;
+    renderProjectTasks(proj);
+  } catch(err2){
+    document.getElementById('pds-body').innerHTML =
+      '<div style="color:#e05252;font-size:13px">Failed to load tasks: '+err2.message+'</div>';
+  }
+}
+
+function renderProjectTasks(proj) {
+  var milestones = ptTasks.filter(function(t){ return t.task_type==='milestone'; })
+    .sort(function(a,b){ return (a.sort_order||99)-(b.sort_order||99); });
+  var ongoing = ptTasks.filter(function(t){ return t.task_type!=='milestone'; })
+    .sort(function(a,b){ return (a.sort_order||99)-(b.sort_order||99); });
+  var isAdmin = userRole==='admin';
+
+  var html = '';
+  html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;margin-bottom:8px">Milestones</div>';
+  html += '<table class="pt-task-table"><tbody>';
+  milestones.forEach(function(t){
+    var col = TASK_STATUS_COLOR[t.status]||'var(--txt3)';
+    html += '<tr class="pt-task-row" data-tid="'+t.id+'">';
+    html += '<td style="width:26px;text-align:center"><span class="pt-task-num" style="color:'+col+'">'+(milestones.indexOf(t)+1)+'</span></td>';
+    html += '<td><div style="font-size:13px;color:var(--txt)">'+e(t.name||'')+'</div>'+(t.notes?'<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+e(t.notes)+'</div>':'')+'</td>';
+    html += '<td style="width:120px"><span class="pt-task-status" style="background:'+col+'22;color:'+col+';border-color:'+col+'44;cursor:'+(isAdmin?'pointer':'default')+'" '+(isAdmin?'onclick="cycleTaskStatus('+t.id+')"':'')+'">'+TASK_STATUS_LABEL[t.status||'not_started']+'</span></td>';
+    if(isAdmin) html += '<td style="width:32px"><button class="pt-task-edit-btn" onclick="openTaskNotes('+t.id+')" title="Notes">&#9998;</button></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  if(ongoing.length){
+    html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--txt3);font-family:monospace;margin:24px 0 8px">Ongoing Tasks</div>';
+    html += '<table class="pt-task-table"><tbody>';
+    ongoing.forEach(function(t){
+      var col = TASK_STATUS_COLOR[t.status]||'var(--txt3)';
+      html += '<tr class="pt-task-row" data-tid="'+t.id+'">';
+      html += '<td style="width:26px;text-align:center;font-size:15px">&#8635;</td>';
+      html += '<td><div style="font-size:13px;color:var(--txt)">'+e(t.name||'')+'</div>'+(t.notes?'<div style="font-size:11px;color:var(--txt3);margin-top:2px">'+e(t.notes)+'</div>':'')+'</td>';
+      html += '<td style="width:120px"><span class="pt-task-status" style="background:'+col+'22;color:'+col+';border-color:'+col+'44;cursor:'+(isAdmin?'pointer':'default')+'" '+(isAdmin?'onclick="cycleTaskStatus('+t.id+')"':'')+'">'+TASK_STATUS_LABEL[t.status||'not_started']+'</span></td>';
+      if(isAdmin) html += '<td style="width:32px"><button class="pt-task-edit-btn" onclick="openTaskNotes('+t.id+')" title="Notes">&#9998;</button></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  html += '<div id="pt-notes-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1200;align-items:center;justify-content:center"><div style="background:var(--bg);border-radius:10px;padding:24px;width:420px;max-width:95vw"><div style="font-size:14px;font-weight:600;margin-bottom:12px" id="pt-notes-title">Task Notes</div><textarea id="pt-notes-ta" rows="5" style="width:100%;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:8px;font-size:13px;color:var(--txt);resize:vertical;box-sizing:border-box"></textarea><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button onclick="closePtNotesModal()" style="background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:7px 16px;font-size:13px;cursor:pointer;color:var(--txt)">Cancel</button><button onclick="savePtNotes()" class="btn-pri">Save</button></div></div></div>';
+
+  document.getElementById('pds-body').innerHTML = html;
+}
+
+function closeProjectDetail() { showProjects(); }
+
+async function deleteProject() {
+  var proj = ptProjects.find(function(p){ return p.id===ptCurrentId; });
+  if(!proj) return;
+  if(!confirm('Delete project "'+proj.name+'"? This will also remove all its tasks. This cannot be undone.')) return;
+  try {
+    // Delete tasks first
+    var tRes = await fetch(WORKER_URL+'/project-tasks?project_id=eq.'+ptCurrentId, {headers:getHeaders()});
+    if(tRes.ok){
+      var tData = await tRes.json();
+      var taskRecs = (tData.records||[]);
+      for(var i=0;i<taskRecs.length;i++){
+        var tid = taskRecs[i].id || (taskRecs[i].fields&&taskRecs[i].fields.id);
+        if(tid) await fetch(WORKER_URL+'/project-tasks/'+tid, {method:'DELETE', headers:getHeaders()});
+      }
+    }
+    await fetch(WORKER_URL+'/project-tracker/'+ptCurrentId, {method:'DELETE', headers:getHeaders()});
+    ptProjects = ptProjects.filter(function(p){ return p.id!==ptCurrentId; });
+    ptCurrentId = null;
+    toast('Project deleted','ok');
+    showProjects();
+  } catch(err){ toast('Delete failed: '+err.message,'err'); }
+}
+
+async function cycleTaskStatus(taskId) {
+  var task = ptTasks.find(function(t){ return t.id===taskId; });
+  if(!task) return;
+  var idx = TASK_STATUS_CYCLE.indexOf(task.status||'not_started');
+  var next = TASK_STATUS_CYCLE[(idx+1)%TASK_STATUS_CYCLE.length];
+  task.status = next;
+  var proj = ptProjects.find(function(p){ return p.id===ptCurrentId; });
+  if(proj) renderProjectTasks(proj);
+  try {
+    await fetch(WORKER_URL+'/project-tasks/'+taskId, {
+      method:'PATCH', headers:getHeaders(),
+      body:JSON.stringify({fields:{status:next}})
+    });
+    var listRow = document.querySelector('.pt-list-row[data-id="'+ptCurrentId+'"]');
+    if(listRow && proj) {
+      proj._tasks = ptTasks;
+      var steps = ptCurrentNextStep(ptTasks);
+      var curEl = listRow.querySelectorAll('.pt-step-badge');
+      if(curEl[0]) curEl[0].textContent = steps.current;
+      if(curEl[1]) curEl[1].textContent = steps.next;
+    }
+  } catch(e){ toast('Save failed','err'); }
+}
+
+async function cycleProjStatus(projId) {
+  var proj = ptProjects.find(function(p){ return p.id===projId; });
+  if(!proj) return;
+  var idx = PT_STATUS_CYCLE.indexOf(proj.status||'active');
+  var next = PT_STATUS_CYCLE[(idx+1)%PT_STATUS_CYCLE.length];
+  proj.status = next;
+  var col = PT_STATUS_COLOR[next];
+  document.getElementById('pds-status-wrap').innerHTML =
+    '<span class="pt-status-badge" style="background:'+col+'22;color:'+col+';border-color:'+col+'44;cursor:pointer" onclick="cycleProjStatus('+projId+')">'+PT_STATUS_LABEL[next]+'</span>';
+  renderProjectList();
+  try {
+    await fetch(WORKER_URL+'/project-tracker/'+projId, {
+      method:'PATCH', headers:getHeaders(),
+      body:JSON.stringify({fields:{status:next}})
+    });
+  } catch(e){ toast('Status save failed','err'); }
+}
+
+var ptNotesTaskId = null;
+function openTaskNotes(taskId) {
+  ptNotesTaskId = taskId;
+  var task = ptTasks.find(function(t){ return t.id===taskId; });
+  if(!task) return;
+  document.getElementById('pt-notes-title').textContent = task.name||'Task Notes';
+  document.getElementById('pt-notes-ta').value = task.notes||'';
+  document.getElementById('pt-notes-modal').style.display = 'flex';
+}
+function closePtNotesModal() {
+  document.getElementById('pt-notes-modal').style.display = 'none';
+}
+async function savePtNotes() {
+  var notes = document.getElementById('pt-notes-ta').value.trim();
+  var task = ptTasks.find(function(t){ return t.id===ptNotesTaskId; });
+  if(!task) return;
+  task.notes = notes;
+  closePtNotesModal();
+  var proj = ptProjects.find(function(p){ return p.id===ptCurrentId; });
+  if(proj) renderProjectTasks(proj);
+  try {
+    await fetch(WORKER_URL+'/project-tasks/'+ptNotesTaskId, {
+      method:'PATCH', headers:getHeaders(),
+      body:JSON.stringify({fields:{notes:notes||null}})
+    });
+  } catch(e){ toast('Notes save failed','err'); }
+}
+
+// Auto-prompt when an opportunity is marked Awarded
+function promptCreateProject(oppId, oppName) {
+  ptPendingOppId = oppId;
+  ptPendingName  = oppName;
+  var msg = 'Opportunity "'+oppName+'" has been marked as Awarded. Would you like to create a project to track it?';
+  document.getElementById('proj-create-msg').textContent = msg;
+  document.getElementById('proj-create-modal').style.display = 'flex';
+}
+function closeProjCreateModal() {
+  document.getElementById('proj-create-modal').style.display = 'none';
+  ptPendingOppId = null;
+  ptPendingName  = null;
+}
+async function confirmCreateProject() {
+  if(!ptPendingOppId || !ptPendingName) return;
+  var oppId = ptPendingOppId;
+  var name  = ptPendingName;
+  closeProjCreateModal();
+  try {
+    // Create project record
+    var res = await fetch(WORKER_URL+'/project-tracker', {
+      method:'POST', headers:getHeaders(),
+      body:JSON.stringify({fields:{
+        opportunity_id: oppId,
+        name: name,
+        status: 'active',
+      }})
+    });
+    if(!res.ok) {
+      var errBody = await res.json().catch(function(){ return {}; });
+      throw new Error('HTTP '+res.status+': '+(errBody.error||'unknown'));
+    }
+    var data = await res.json();
+    var projId = (data.fields||data).id || (data.records&&data.records[0]&&data.records[0].id);
+
+    // Fetch templates and seed tasks
+    var tRes = await fetch(WORKER_URL+'/project-templates?order=sort_order.asc', {headers:getHeaders()});
+    if(tRes.ok){
+      var tData = await tRes.json();
+      var templates = (tData.records||[]).map(function(r){
+        var f = r.fields ? Object.assign({}, r.fields) : Object.assign({}, r);
+        if(r.id !== undefined) f.id = r.id;
+        return f;
+      });
+      for(var i=0;i<templates.length;i++){
+        var t=templates[i];
+        var tr = await fetch(WORKER_URL+'/project-tasks', {
+          method:'POST', headers:getHeaders(),
+          body:JSON.stringify({fields:{
+            project_id: projId,
+            template_task_id: t.id||null,
+            name: t.name,
+            task_type: t.task_type||'milestone',
+            sort_order: t.sort_order||((i+1)*10),
+            status: 'not_started',
+          }})
+        });
+        if(!tr.ok) console.warn('Task insert failed:', t.name, await tr.text());
+      }
+    } else {
+      console.warn('Templates fetch failed:', tRes.status);
+    }
+
+    ptLoaded = false;
+    toast('Project created','ok');
+    showProjects();
+  } catch(e){ toast('Failed to create project: '+e.message,'err'); }
+}
+
+// ================================================================
 // ADMIN
 // ================================================================
 var adminUsers = [], adminEditId = null;
@@ -11286,7 +11676,7 @@ function showAdmin() {
   ['login-screen','app','vendor-screen','dashboard-screen','contractors-screen','suppliers-screen',
    'quality-screen','employees-screen','renewals-screen','company-docs-screen','loading',
    'petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'employees-leave-screen','home-screen','admin-screen','knowledge-screen','expense-claims-screen','experiences-screen'].forEach(function(id){
+   'employees-leave-screen','home-screen','admin-screen','knowledge-screen','expense-claims-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('admin-screen').style.display='flex';
@@ -11864,6 +12254,7 @@ document.addEventListener("DOMContentLoaded",async function(){
     else if(lastScreen === 'admin')          showAdmin();
     else if(lastScreen === 'knowledge')      showKnowledge();
     else if(lastScreen === 'experiences')    showExperiences();
+    else if(lastScreen === 'projects')       showProjects();
     else showHome();
   } else {
     sessionStorage.removeItem('mbb_pwd');
@@ -11885,7 +12276,7 @@ function showKnowledge() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen','experiences-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('knowledge-screen').style.display='flex';
@@ -12108,7 +12499,7 @@ function showExpenseClaims() {
   ['login-screen','home-screen','app','vendor-screen','dashboard-screen','contractors-screen',
    'suppliers-screen','quality-screen','employees-screen','renewals-screen','company-docs-screen',
    'loading','petty-cash-screen','diag-screen','passwords-screen','leave-requests-screen',
-   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','experiences-screen'].forEach(function(id){
+   'admin-screen','employees-leave-screen','price-book-screen','knowledge-screen','experiences-screen','projects-screen','proj-detail-screen'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('expense-claims-screen').style.display='flex';
@@ -12472,6 +12863,8 @@ function ecReadHeader() {
 // ── Save / Submit / Verify / Approve ─────────────────────────────────────
 
 async function saveClaimDraft() {
+  var entityVal=document.getElementById('ecf-entity').value;
+  if(!entityVal){ toast('Please select an Entity','err'); document.getElementById('ecf-entity').focus(); return null; }
   setSave('saving');
   try {
     var hdr=ecReadHeader();
