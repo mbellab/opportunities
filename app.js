@@ -6876,6 +6876,8 @@ async function showEmployeeModal(recordId) {
   });
   var activeEl = document.getElementById('empf-active');
   if(activeEl) activeEl.checked = (f['Active'] !== false);
+  var trackLeaveEl = document.getElementById('empf-track-leave');
+  if(trackLeaveEl) trackLeaveEl.checked = (f['Track_Leave'] !== false);
   // Populate username dropdown
   var unameEl = document.getElementById('empf-username');
   if(unameEl) {
@@ -6993,6 +6995,8 @@ async function saveEmployee() {
   });
   var activeEl = document.getElementById('empf-active');
   if(activeEl) fields['Active'] = activeEl.checked;
+  var trackLeaveEl = document.getElementById('empf-track-leave');
+  if(trackLeaveEl) fields['Track_Leave'] = trackLeaveEl.checked;
 
   // Departure checklist — fires when an existing active employee is being deactivated
   if(savedId && activeEl && !activeEl.checked) {
@@ -10062,7 +10066,7 @@ async function openLeaveRequestForm(empId) {
 
   if(empSel){
     if(isAdmin){
-      var active=empRecords.filter(function(e2){ return e2.fields['Status']!=='Inactive'; });
+      var active=empRecords.filter(function(e2){ return e2.fields['Active']!==false && e2.fields['Track_Leave']!==false; });
       empSel.innerHTML='<option value="">— Select Employee —</option>'+
         active.map(function(e2){
           var n=e2.fields['Employee Name']||e2.fields['Name']||'Unknown';
@@ -10570,7 +10574,9 @@ function renderHolidaysBar() {
 function renderLeaveTable() {
   var tbody = document.getElementById('el-tbody');
   var yrNow = new Date().getFullYear();
-  var active = empRecords.filter(function(emp){ return emp.fields['Status'] !== 'Inactive'; });
+  var active = empRecords.filter(function(emp){
+    return emp.fields['Active'] !== false && emp.fields['Track_Leave'] !== false;
+  });
   if(!active.length) { tbody.innerHTML='<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--txt3)">No employees found</td></tr>'; return; }
 
   tbody.innerHTML = active.map(function(emp, i){
