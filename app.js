@@ -9110,12 +9110,15 @@ function deletePCTransaction(id) {
   var rec = pcRecords.find(function(r){ return r.id===id; });
   if(rec && rec.fields['Source_Claim_Id']) {
     var claimId = rec.fields['Source_Claim_Id'];
-    appConfirm({icon:'⚠️',title:'Cannot delete this entry',
-      body:'This transaction was auto-created from an Expense Claim. To remove it, <b>delete the Expense Claim</b> instead.',
-      confirmLabel:'Go to Expense Claim',confirmStyle:'background:var(--accent);color:#fff;border:none',
-      cancelLabel:'Close'
-    }).then(function(go){ if(go){ closePCModal(); goToExpenseClaim(claimId); } });
-    return;
+    var claimGone = ecLoaded && !ecRecords.find(function(r){ return r.id===claimId; });
+    if(!claimGone) {
+      appConfirm({icon:'⚠️',title:'Cannot delete this entry',
+        body:'This transaction was auto-created from an Expense Claim. To remove it, <b>delete the Expense Claim</b> instead.',
+        confirmLabel:'Go to Expense Claim',confirmStyle:'background:var(--accent);color:#fff;border:none',
+        cancelLabel:'Close'
+      }).then(function(go){ if(go){ closePCModal(); goToExpenseClaim(claimId); } });
+      return;
+    }
   }
   pendingPCDeleteId = id;
   var desc = rec ? (rec.fields['Description']||'this transaction') : 'this transaction';
@@ -13178,6 +13181,12 @@ async function deleteClaim(id) {
     var dRes=await fetch(WORKER_URL+'/expense-claims/'+id,{method:'DELETE',headers:getHeaders()});
     if(!dRes.ok) throw new Error('Delete failed: HTTP '+dRes.status);
     ecRecords=ecRecords.filter(function(r){return r.id!==id;});
+    // Clear Source_Claim_Id on any linked petty cash entry
+    var linkedPC=pcRecords.find(function(r){return r.fields['Source_Claim_Id']===id;});
+    if(linkedPC){
+      linkedPC.fields['Source_Claim_Id']=null;
+      fetch(WORKER_URL+'/petty-cash/'+linkedPC.id,{method:'PATCH',headers:getHeaders(),body:JSON.stringify({fields:{'Source_Claim_Id':null}})});
+    }
     setSave('saved');
     toast('Claim deleted','ok');
     closeClaimForm();
