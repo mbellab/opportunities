@@ -8266,6 +8266,7 @@ function exportOpportunitiesExcel() {
 // PETTY CASH
 // ================================================================
 var pcRecords   = [];
+var pcLoaded    = false;
 var pcYear      = new Date().getFullYear();
 var pcMonth     = new Date().getMonth(); // 0-indexed
 var pcEditId    = null;
@@ -8830,7 +8831,7 @@ function showPettyCash() {
   });
   document.getElementById('petty-cash-screen').style.display='flex';
   sessionStorage.setItem('mbb_screen','petty-cash');
-  if(pcRecords.length===0) {
+  if(!pcLoaded) {
     loadPettyCash();
   } else {
     renderPettyCash();
@@ -8850,10 +8851,11 @@ async function loadPettyCash() {
       pcRecords = pcRecords.concat((d2 && d2.records) ? d2.records : []);
       offset = d2 ? d2.offset : null;
     }
+    pcLoaded = true;
     renderPettyCash();
   } catch(err) {
     var tbody=document.getElementById('pc-tbody');
-    if(tbody) tbody.innerHTML='<div style="padding:20px;text-align:center;color:var(--red);font-size:13px">&#9888; Failed to load petty cash: '+err.message+' &nbsp;<button class="btn-ghost" style="font-size:12px" onclick="pcRecords=[];loadPettyCash()">Retry</button></div>';
+    if(tbody) tbody.innerHTML='<div style="padding:20px;text-align:center;color:var(--red);font-size:13px">&#9888; Failed to load petty cash: '+err.message+' &nbsp;<button class="btn-ghost" style="font-size:12px" onclick="pcLoaded=false;pcRecords=[];loadPettyCash()">Retry</button></div>';
   }
 }
 
@@ -13026,7 +13028,8 @@ async function ecApprove(id) {
       var firstName=(af['Employee Name']||'').split(' ')[0]||'Unknown';
       var pcFields={'Type':'Cash Out','Date':now.split('T')[0],'Amount':parseFloat(af['Total Amount'])||0,'Description':firstName+' - Expenses','Source_Claim_Id':id};
       var pcRes=await fetch(WORKER_URL+'/petty-cash',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:pcFields})});
-      if(!pcRes.ok){ toast('Approved, but petty cash entry failed (HTTP '+pcRes.status+')','err'); }
+      if(pcRes.ok){ var pcData=await pcRes.json(); if(pcData&&pcData.id) pcRecords.push(pcData); }
+      else { toast('Approved, but petty cash entry failed (HTTP '+pcRes.status+')','err'); }
     } catch(pcErr){ toast('Approved, but petty cash entry failed: '+pcErr.message,'err'); }
   } catch(err){ toast('Failed: '+err.message,'err'); }
 }
