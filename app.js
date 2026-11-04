@@ -8269,6 +8269,7 @@ var pcRecords   = [];
 var pcYear      = new Date().getFullYear();
 var pcMonth     = new Date().getMonth(); // 0-indexed
 var pcEditId    = null;
+var pcCurrentClaimId = null;
 
 var PC_MONTHS = ['January','February','March','April','May','June',
                  'July','August','September','October','November','December'];
@@ -8931,7 +8932,7 @@ function renderPettyCash() {
     vu:   'flex:0 0 55px;padding:6px 8px;font-size:12px;color:var(--txt3);font-family:monospace',
     desc: 'flex:1 1 0;min-width:0;padding:6px 8px',
     amt:  'flex:0 0 130px;padding:6px 8px;text-align:right;font-family:monospace;font-weight:600',
-    act:  'flex:0 0 110px;padding:4px 6px;display:flex;gap:2px;justify-content:flex-end;align-items:center',
+    act:  'flex:0 0 170px;padding:4px 6px;display:flex;gap:2px;justify-content:flex-end;align-items:center',
     lbl:  'font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);font-family:monospace;padding:6px 8px'
   };
 
@@ -8942,7 +8943,7 @@ function renderPettyCash() {
     '<div style="flex:0 0 55px;'+S.lbl+'">VU No</div>'+
     '<div style="flex:1 1 0;'+S.lbl+'">Description / Notes</div>'+
     '<div style="flex:0 0 130px;'+S.lbl+';text-align:right">Amount (AED)</div>'+
-    '<div style="flex:0 0 110px"></div>'+
+    '<div style="flex:0 0 170px"></div>'+
     '</div>';
   // B/F row
   html+='<div style="'+S.row+';background:var(--bg2);font-style:italic">'+
@@ -8973,6 +8974,7 @@ function renderPettyCash() {
       '</div>'+
       '<div style="'+S.amt+';color:'+amtColor+'">'+amtDisplay+'</div>'+
       '<div style="'+S.act+'">'+
+        (f['Source_Claim_Id']?'<button onclick="goToExpenseClaim(\''+e(f['Source_Claim_Id'])+'\')" style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--txt3)" title="Open linked Expense Claim">&#128203; Claim</button>':'<span style="display:inline-block;width:52px"></span>')+
         (f['Document']?'<a href="'+e(f['Document'])+'" target="_blank" rel="noopener" title="View receipt" class="icon-btn" style="opacity:1;color:var(--txt3);text-decoration:none">'+IC_DOCS+'</a>':'<span class="icon-btn" style="visibility:hidden">'+IC_DOCS+'</span>')+
         '<button style="background:none;border:1px solid var(--bdr2);border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px" data-pc-edit="'+r.id+'">&#9998; Edit</button>'+
         '<button style="background:none;border:1px solid #f8514933;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--red)" data-pc-del="'+r.id+'">&#128465;</button>'+
@@ -8998,6 +9000,8 @@ function renderPettyCash() {
 
 function openPCModal() {
   pcEditId = null;
+  pcCurrentClaimId = null;
+  var banner=document.getElementById('pc-claim-banner'); if(banner) banner.style.display='none';
   document.getElementById('pc-modal-title').textContent = 'Add Transaction';
   document.getElementById('pc-type').value   = 'Out';
   document.getElementById('pc-date').value   = new Date().toISOString().substring(0,10);
@@ -9016,6 +9020,9 @@ function openPCEdit(id) {
   if(!rec) return;
   pcEditId = id;
   var f = rec.fields;
+  pcCurrentClaimId = f['Source_Claim_Id']||null;
+  var banner = document.getElementById('pc-claim-banner');
+  if(banner) banner.style.display = pcCurrentClaimId ? '' : 'none';
   document.getElementById('pc-modal-title').textContent = 'Edit Transaction';
   document.getElementById('pc-type').value   = f['Type']||'Out';
   document.getElementById('pc-date').value   = f['Date']||'';
@@ -9055,6 +9062,20 @@ async function savePCTransaction() {
   if(!amount || amount <= 0) { toast('Please enter a valid amount','err'); return; }
   if(!desc)     { toast('Please enter a description','err'); return; }
 
+  if(pcEditId) {
+    var _origRec = pcRecords.find(function(r){ return r.id===pcEditId; });
+    if(_origRec && _origRec.fields['Source_Claim_Id']) {
+      var _origAmt = parseFloat(_origRec.fields['Amount'])||0;
+      var _origDate = _origRec.fields['Date']||'';
+      if(amount !== _origAmt || date !== _origDate) {
+        var _warn = await appConfirm({icon:'⚠️',title:'Editing an Expense Claim entry',
+          body:'This transaction was auto-created from an Expense Claim. Changing the <b>amount</b> or <b>date</b> here will not update the original claim — it may create a discrepancy.<br><br>Are you sure you want to save these changes?',
+          confirmLabel:'Save anyway',confirmStyle:'background:var(--amber);color:#fff;border:none'});
+        if(!_warn) return;
+      }
+    }
+  }
+
   var fields = {
     'Type':        type,
     'Date':        date,
@@ -9086,8 +9107,17 @@ async function savePCTransaction() {
 var pendingPCDeleteId = null;
 
 function deletePCTransaction(id) {
-  pendingPCDeleteId = id;
   var rec = pcRecords.find(function(r){ return r.id===id; });
+  if(rec && rec.fields['Source_Claim_Id']) {
+    var claimId = rec.fields['Source_Claim_Id'];
+    appConfirm({icon:'⚠️',title:'Cannot delete this entry',
+      body:'This transaction was auto-created from an Expense Claim. To remove it, <b>delete the Expense Claim</b> instead.',
+      confirmLabel:'Go to Expense Claim',confirmStyle:'background:var(--accent);color:#fff;border:none',
+      cancelLabel:'Close'
+    }).then(function(go){ if(go){ closePCModal(); goToExpenseClaim(claimId); } });
+    return;
+  }
+  pendingPCDeleteId = id;
   var desc = rec ? (rec.fields['Description']||'this transaction') : 'this transaction';
   document.getElementById('confirm-title').textContent = 'Delete transaction?';
   document.getElementById('confirm-body').innerHTML = 'This will permanently delete <b>'+e(desc)+'</b>. This cannot be undone.';
@@ -12494,6 +12524,13 @@ async function deleteKnArticle(id) {
 var ecRecords = [];
 var ecLoaded  = false;
 var ecFormId  = null;
+var ecPendingOpenId = null;
+
+function goToExpenseClaim(id) {
+  if(!id) return;
+  ecPendingOpenId = id;
+  showExpenseClaims();
+}
 
 var EC_TYPES = ['FE','EB','GRN'];
 var EC_STATUS_LABEL = {draft:'Draft',submitted:'Submitted',verified:'Verified',approved:'Approved'};
@@ -12509,7 +12546,7 @@ function showExpenseClaims() {
     var el=document.getElementById(id); if(el) el.style.display='none';
   });
   document.getElementById('expense-claims-screen').style.display='flex';
-  if(!ecLoaded) loadExpenseClaims(); else renderExpenseClaims();
+  if(!ecLoaded) loadExpenseClaims(); else { renderExpenseClaims(); if(ecPendingOpenId){ var _pid=ecPendingOpenId; ecPendingOpenId=null; openClaimForm(_pid); } }
 }
 
 async function loadExpenseClaims() {
@@ -12522,6 +12559,7 @@ async function loadExpenseClaims() {
     ecRecords=data.records||[];
     ecLoaded=true;
     renderExpenseClaims();
+    if(ecPendingOpenId){ var _pid=ecPendingOpenId; ecPendingOpenId=null; openClaimForm(_pid); }
   } catch(err){
     if(tbody) tbody.innerHTML='<tr><td colspan="7" style="padding:20px;color:var(--red)">Failed: '+err.message+'</td></tr>';
   }
@@ -12983,7 +13021,7 @@ async function ecApprove(id) {
     // Auto-create petty cash Cash Out entry
     try {
       var firstName=(af['Employee Name']||'').split(' ')[0]||'Unknown';
-      var pcFields={'Type':'Cash Out','Date':now.split('T')[0],'Amount':parseFloat(af['Total Amount'])||0,'Description':firstName+' - Expenses'};
+      var pcFields={'Type':'Cash Out','Date':now.split('T')[0],'Amount':parseFloat(af['Total Amount'])||0,'Description':firstName+' - Expenses','Source_Claim_Id':id};
       var pcRes=await fetch(WORKER_URL+'/petty-cash',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:pcFields})});
       if(pcRes.ok){ var pcData=await pcRes.json(); if(pcData&&pcData.id) pcRecords.push(pcData); }
       else { toast('Approved, but petty cash entry failed (HTTP '+pcRes.status+')','err'); }

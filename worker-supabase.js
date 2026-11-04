@@ -294,9 +294,10 @@ const SCALAR = {
     'Type':        'type',
     'Amount':      'amount',
     'Description': 'description',
-    'VU No':       'vu_no',
-    'Notes':       'notes',
-    'Document':    'document',
+    'VU No':          'vu_no',
+    'Notes':          'notes',
+    'Document':       'document',
+    'Source_Claim_Id':'source_claim_id',
   },
   passwords: {
     'Name':     'name',

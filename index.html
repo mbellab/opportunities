@@ -344,6 +344,10 @@
 <div class="modal-bg" id="pc-modal" style="display:none;z-index:100">
   <div class="modal" style="max-width:460px">
     <div class="modal-title" id="pc-modal-title">Add Transaction</div>
+    <div id="pc-claim-banner" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;font-size:13px;color:var(--amber)">
+      &#9888; This entry was auto-created from an Expense Claim. Changes here will not update the original claim.
+      <button onclick="closePCModal();goToExpenseClaim(pcCurrentClaimId)" style="margin-left:10px;background:none;border:1px solid var(--amber-bdr);border-radius:4px;padding:2px 10px;cursor:pointer;font-size:12px;color:var(--amber)">View Claim &#8594;</button>
+    </div>
     <div class="form-grid">
       <div class="field">
         <label>Type *</label>
