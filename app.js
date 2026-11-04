@@ -12980,6 +12980,14 @@ async function ecApprove(id) {
     if(idx!==-1) Object.assign(ecRecords[idx].fields,sf);
     toast('Approved','ok'); renderExpenseClaims();
     if(ecFormId===id){ var f2=ecRecords[idx].fields; ecUpdateSigs(f2); ecShowBtns(f2); }
+    // Auto-create petty cash Cash Out entry
+    try {
+      var firstName=(af['Employee Name']||'').split(' ')[0]||'Unknown';
+      var pcFields={'Type':'Cash Out','Date':now.split('T')[0],'Amount':parseFloat(af['Total Amount'])||0,'Description':firstName+' - Expenses'};
+      var pcRes=await fetch(WORKER_URL+'/petty-cash',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:pcFields})});
+      if(pcRes.ok){ var pcData=await pcRes.json(); if(pcData&&pcData.id) pcRecords.push(pcData); }
+      else { toast('Approved, but petty cash entry failed (HTTP '+pcRes.status+')','err'); }
+    } catch(pcErr){ toast('Approved, but petty cash entry failed: '+pcErr.message,'err'); }
   } catch(err){ toast('Failed: '+err.message,'err'); }
 }
 
