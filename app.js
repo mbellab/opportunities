@@ -9368,7 +9368,7 @@ async function saveVoucher(){
         var pcDesc=(purpose||'Voucher')+' - '+pvMonthAbbr;
         var pcFields={'Type':'Out','Date':date,'Amount':amount,'Description':pcDesc};
         var pcRes=await fetch(WORKER_URL+'/petty-cash',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:pcFields})});
-        if(pcRes.ok){ var pcData=await pcRes.json(); if(pcData&&pcData.id) pcRecords.push(pcData); }
+        if(pcRes.ok){ var pcData=await pcRes.json(); if(pcData&&pcData.id){ pcRecords.push(pcData); renderPettyCash(); } }
         else { toast('Voucher saved, but petty cash entry failed (HTTP '+pcRes.status+')','err'); }
       } catch(pcErr){ toast('Voucher saved, but petty cash entry failed: '+pcErr.message,'err'); }
     }
