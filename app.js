@@ -9347,6 +9347,7 @@ async function saveVoucher(){
     'Signature':sigData,'Signed At':sigData?new Date().toISOString():null,
     'Created By':userName||'',
   };
+  var isNewVoucher=!pvFormId;
   setSave('saving');
   try {
     var url=pvFormId?WORKER_URL+'/payment-vouchers/'+pvFormId:WORKER_URL+'/payment-vouchers';
@@ -9360,6 +9361,17 @@ async function saveVoucher(){
       pvFormId=data.id; pvRecords.push(data);
     }
     setSave('saved'); toast('Voucher saved','ok');
+    // Auto-create Petty Cash entry for new vouchers
+    if(isNewVoucher) {
+      try {
+        var pvMonthAbbr=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][new Date(date).getMonth()];
+        var pcDesc=(purpose||'Voucher')+' - '+pvMonthAbbr;
+        var pcFields={'Type':'Out','Date':date,'Amount':amount,'Description':pcDesc};
+        var pcRes=await fetch(WORKER_URL+'/petty-cash',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:pcFields})});
+        if(pcRes.ok){ var pcData=await pcRes.json(); if(pcData&&pcData.id) pcRecords.push(pcData); }
+        else { toast('Voucher saved, but petty cash entry failed (HTTP '+pcRes.status+')','err'); }
+      } catch(pcErr){ toast('Voucher saved, but petty cash entry failed: '+pcErr.message,'err'); }
+    }
     renderPaymentVouchers();
     var pb=document.getElementById('pv-btn-print'); if(pb) pb.style.display=sigData?'':'none';
   } catch(err){setSave('err');toast('Save failed: '+err.message,'err');}
