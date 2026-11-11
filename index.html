@@ -1691,81 +1691,111 @@
 <div class="modal-bg" id="emp-modal" style="display:none">
   <div class="modal" style="max-width:680px">
     <div class="modal-title" id="emp-modal-title">Add Employee</div>
-    <div class="form-grid">
-      <div class="field full"><label>Employee Name *</label><input id="empf-name" placeholder="Full name"></div>
-      <div class="field"><label>Date of Birth</label><input id="empf-dob" type="date"></div>
-      <div class="field"><label>Date of Joining *</label><input id="empf-start" type="date"></div>
+    <!-- Tab bar -->
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr);margin-bottom:16px">
+      <button class="sup-dtab active" id="emp-tab-details" onclick="switchEmpTab('details')">Details</button>
+      <button class="sup-dtab" id="emp-tab-documents" onclick="switchEmpTab('documents')">Documents</button>
+      <button class="sup-dtab" id="emp-tab-certs" onclick="switchEmpTab('certs')">Certificates</button>
+      <button class="sup-dtab" id="emp-tab-emergency" onclick="switchEmpTab('emergency')">Emergency</button>
     </div>
-    <div style="margin:4px 0 6px;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:6px 12px">
-      &#9432; <strong>Date of Joining</strong> is used to calculate annual leave periods. Fill this in for all employees.
-    </div>
-    <div style="margin:8px 0 6px;display:flex;align-items:center;gap:8px">
-      <input id="empf-active" type="checkbox" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" checked>
-      <label for="empf-active" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Active employee</label>
-      <span style="font-size:11px;color:var(--txt3)">(uncheck to mark as former employee)</span>
-    </div>
-    <div style="margin:4px 0 6px;display:flex;align-items:center;gap:8px">
-      <input id="empf-track-leave" type="checkbox" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" checked>
-      <label for="empf-track-leave" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Track Leave</label>
-      <span style="font-size:11px;color:var(--txt3)">(uncheck to hide from Employee Leave screen)</span>
-    </div>
-    <!-- Portal Account -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Portal Account</div>
-    <div class="form-grid">
-      <div class="field full">
-        <label>Linked User Account</label>
-        <select id="empf-username" style="width:100%"><option value="">— No portal account —</option></select>
+    <!-- DETAILS TAB -->
+    <div id="emp-tab-content-details">
+      <div class="form-grid">
+        <div class="field full"><label>Employee Name *</label><input id="empf-name" placeholder="Full name"></div>
+        <div class="field"><label>Date of Birth</label><input id="empf-dob" type="date"></div>
+        <div class="field"><label>Date of Joining *</label><input id="empf-start" type="date"></div>
+      </div>
+      <div style="margin:4px 0 6px;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:6px 12px">
+        &#9432; <strong>Date of Joining</strong> is used to calculate annual leave periods. Fill this in for all employees.
+      </div>
+      <div style="margin:8px 0 6px;display:flex;align-items:center;gap:8px">
+        <input id="empf-active" type="checkbox" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" checked>
+        <label for="empf-active" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Active employee</label>
+        <span style="font-size:11px;color:var(--txt3)">(uncheck to mark as former employee)</span>
+      </div>
+      <div style="margin:4px 0 6px;display:flex;align-items:center;gap:8px">
+        <input id="empf-track-leave" type="checkbox" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" checked>
+        <label for="empf-track-leave" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Track Leave</label>
+        <span style="font-size:11px;color:var(--txt3)">(uncheck to hide from Employee Leave screen)</span>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Portal Account</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Linked User Account</label>
+          <select id="empf-username" style="width:100%"><option value="">— No portal account —</option></select>
+        </div>
       </div>
     </div>
-    <!-- Passport -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Passport</div>
-    <div class="form-grid">
-      <div class="field"><label>Passport Number</label><input id="empf-pp-num" placeholder="e.g. A12345678"></div>
-      <div class="field"><label>Passport Expiry</label><input id="empf-pp-exp" type="date"></div>
-      <div class="field full"><label>Link to Passport</label><input id="empf-pp-link" type="url" placeholder="https://..."></div>
+    <!-- DOCUMENTS TAB -->
+    <div id="emp-tab-content-documents" style="display:none">
+      <div style="margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700">Passport</div>
+      <div class="form-grid">
+        <div class="field"><label>Passport Number</label><input id="empf-pp-num" placeholder="e.g. A12345678"></div>
+        <div class="field"><label>Passport Expiry</label><input id="empf-pp-exp" type="date"></div>
+        <div class="field full"><label>Link to Passport</label><input id="empf-pp-link" type="url" placeholder="https://..."></div>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Emirates ID</div>
+      <div class="form-grid">
+        <div class="field"><label>Emirates ID Number</label><input id="empf-eid-num" placeholder="784-XXXX-XXXXXXX-X"></div>
+        <div class="field"><label>Emirates ID Expiry</label><input id="empf-eid-exp" type="date"></div>
+        <div class="field full"><label>Link to Emirates ID</label><input id="empf-eid-link" type="url" placeholder="https://..."></div>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Visa</div>
+      <div class="form-grid">
+        <div class="field"><label>Visa File Number</label><input id="empf-visa-num" placeholder="e.g. 202/2024/XXXXXXX"></div>
+        <div class="field"><label>Visa Expiry</label><input id="empf-visa-exp" type="date"></div>
+        <div class="field full"><label>Link to Visa</label><input id="empf-visa-link" type="url" placeholder="https://..."></div>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Health Insurance</div>
+      <div class="form-grid">
+        <div class="field"><label>Policy Number</label><input id="empf-hi-policy" placeholder="Policy number"></div>
+        <div class="field"><label>Membership Number</label><input id="empf-hi-member" placeholder="Membership number"></div>
+        <div class="field full"><label>Link to Insurance Card</label><input id="empf-hi-link" type="url" placeholder="https://..."></div>
+      </div>
     </div>
-    <!-- Emirates ID -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Emirates ID</div>
-    <div class="form-grid">
-      <div class="field"><label>Emirates ID Number</label><input id="empf-eid-num" placeholder="784-XXXX-XXXXXXX-X"></div>
-      <div class="field"><label>Emirates ID Expiry</label><input id="empf-eid-exp" type="date"></div>
-      <div class="field full"><label>Link to Emirates ID</label><input id="empf-eid-link" type="url" placeholder="https://..."></div>
+    <!-- CERTIFICATES TAB -->
+    <div id="emp-tab-content-certs" style="display:none;min-height:200px">
+      <div id="emp-certs-status" style="font-size:12px;color:var(--txt3);padding:8px 0 12px;display:none">Loading…</div>
+      <div id="emp-certs-list"></div>
+      <div id="emp-cert-add-form" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);margin-bottom:10px">Add Certificate</div>
+        <div class="form-grid">
+          <div class="field full"><label>Certificate Name *</label><input id="empf-cert-name" placeholder="e.g. PMP, ISO 9001 Lead Auditor"></div>
+          <div class="field"><label>Issuing Body</label><input id="empf-cert-issuer" placeholder="e.g. PMI, Bureau Veritas"></div>
+          <div class="field"><label>Issue Date</label><input id="empf-cert-issue" type="date"></div>
+          <div class="field"><label>Expiry Date</label><input id="empf-cert-expiry" type="date"></div>
+          <div class="field full"><label>Document Link</label><input id="empf-cert-url" type="url" placeholder="https://…"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button class="btn-cancel" onclick="cancelEmpCert()">Cancel</button>
+          <button class="btn-pri" onclick="saveEmpCert()">Save Certificate</button>
+        </div>
+      </div>
+      <button id="emp-cert-add-btn" class="btn-ghost" onclick="showEmpCertForm()" style="margin-top:12px;font-size:12px">+ Add Certificate</button>
     </div>
-    <!-- Visa -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Visa</div>
-    <div class="form-grid">
-      <div class="field"><label>Visa File Number</label><input id="empf-visa-num" placeholder="e.g. 202/2024/XXXXXXX"></div>
-      <div class="field"><label>Visa Expiry</label><input id="empf-visa-exp" type="date"></div>
-      <div class="field full"><label>Link to Visa</label><input id="empf-visa-link" type="url" placeholder="https://..."></div>
-    </div>
-    <!-- Health Insurance -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Health Insurance</div>
-    <div class="form-grid">
-      <div class="field"><label>Policy Number</label><input id="empf-hi-policy" placeholder="Policy number"></div>
-      <div class="field"><label>Membership Number</label><input id="empf-hi-member" placeholder="Membership number"></div>
-      <div class="field full"><label>Link to Insurance Card</label><input id="empf-hi-link" type="url" placeholder="https://..."></div>
-    </div>
-    <!-- Emergency Contacts -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">&#128680; Emergency Contacts</div>
-    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin-bottom:6px">Local (UAE)</div>
-    <div class="form-grid">
-      <div class="field"><label>Name</label><input id="empf-ec-local-name" placeholder="Full name"></div>
-      <div class="field"><label>Relationship</label><input id="empf-ec-local-rel" placeholder="e.g. Colleague, Spouse"></div>
-      <div class="field"><label>Phone</label><input id="empf-ec-local-phone" placeholder="+971 XX XXX XXXX"></div>
-      <div class="field"><label>Email</label><input id="empf-ec-local-email" type="email" placeholder="email@example.com"></div>
-    </div>
-    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin:8px 0 6px">Home Country</div>
-    <div class="form-grid">
-      <div class="field"><label>Name</label><input id="empf-ec-home-name" placeholder="Full name"></div>
-      <div class="field"><label>Relationship</label><input id="empf-ec-home-rel" placeholder="e.g. Parent, Spouse"></div>
-      <div class="field"><label>Phone</label><input id="empf-ec-home-phone" placeholder="+XX XXXX XXXXXX"></div>
-      <div class="field"><label>Email</label><input id="empf-ec-home-email" type="email" placeholder="email@example.com"></div>
+    <!-- EMERGENCY TAB -->
+    <div id="emp-tab-content-emergency" style="display:none">
+      <div style="margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700">&#128680; Emergency Contacts</div>
+      <div style="font-size:11px;color:var(--txt2);font-weight:600;margin-bottom:6px">Local (UAE)</div>
+      <div class="form-grid">
+        <div class="field"><label>Name</label><input id="empf-ec-local-name" placeholder="Full name"></div>
+        <div class="field"><label>Relationship</label><input id="empf-ec-local-rel" placeholder="e.g. Colleague, Spouse"></div>
+        <div class="field"><label>Phone</label><input id="empf-ec-local-phone" placeholder="+971 XX XXX XXXX"></div>
+        <div class="field"><label>Email</label><input id="empf-ec-local-email" type="email" placeholder="email@example.com"></div>
+      </div>
+      <div style="font-size:11px;color:var(--txt2);font-weight:600;margin:12px 0 6px">Home Country</div>
+      <div class="form-grid">
+        <div class="field"><label>Name</label><input id="empf-ec-home-name" placeholder="Full name"></div>
+        <div class="field"><label>Relationship</label><input id="empf-ec-home-rel" placeholder="e.g. Parent, Spouse"></div>
+        <div class="field"><label>Phone</label><input id="empf-ec-home-phone" placeholder="+XX XXXX XXXXXX"></div>
+        <div class="field"><label>Email</label><input id="empf-ec-home-email" type="email" placeholder="email@example.com"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <button id="emp-view-leave-btn" class="btn-ghost" onclick="empViewLeave()" style="margin-right:auto;display:none">&#128197; View Leave</button>
       <button id="emp-delete-btn" class="btn-sm" onclick="deleteEmployeeFromModal()" style="color:var(--red);border-color:var(--red);display:none">&#128465; Delete</button>
       <button class="btn-cancel" onclick="closeEmployeeModal()">Cancel</button>
-      <button class="btn-pri" onclick="saveEmployee()">Save</button>
+      <button id="emp-modal-save-btn" class="btn-pri" onclick="saveEmployee()">Save</button>
     </div>
   </div>
 </div>
@@ -1955,82 +1985,107 @@
   </div>
 </div>
 
-<!-- EMPLOYEE MODAL -->
-<div class="modal-bg" id="emp-modal" style="display:none">
+<!-- EMPLOYEE MODAL (2) -->
+<div class="modal-bg" id="emp-modal-2" style="display:none">
   <div class="modal" style="max-width:680px">
-    <div class="modal-title" id="emp-modal-title">Add Employee</div>
-    <div class="form-grid">
-      <div class="field full"><label>Employee Name *</label><input id="empf-name" placeholder="Full name"></div>
-      <div class="field"><label>Date of Birth</label><input id="empf-dob" type="date"></div>
-      <div class="field"><label>Date of Joining *</label><input id="empf-start" type="date"></div>
+    <div class="modal-title" id="emp-modal-title-2">Add Employee</div>
+    <div style="display:flex;gap:0;border-bottom:1px solid var(--bdr);margin-bottom:16px">
+      <button class="sup-dtab active" id="emp-tab-details-2" onclick="switchEmpTab('details')">Details</button>
+      <button class="sup-dtab" id="emp-tab-documents-2" onclick="switchEmpTab('documents')">Documents</button>
+      <button class="sup-dtab" id="emp-tab-certs-2" onclick="switchEmpTab('certs')">Certificates</button>
+      <button class="sup-dtab" id="emp-tab-emergency-2" onclick="switchEmpTab('emergency')">Emergency</button>
     </div>
-    <div style="margin:4px 0 6px;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:6px 12px">
-      &#9432; <strong>Date of Joining</strong> is used to calculate annual leave periods. Fill this in for all employees.
-    </div>
-    <div style="margin:8px 0 6px;display:flex;align-items:center;gap:8px">
-      <input id="empf-active" type="checkbox" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" checked>
-      <label for="empf-active" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Active employee</label>
-      <span style="font-size:11px;color:var(--txt3)">(uncheck to mark as former employee)</span>
-    </div>
-    <div style="margin:4px 0 6px;display:flex;align-items:center;gap:8px">
-      <input id="empf-track-leave" type="checkbox" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" checked>
-      <label for="empf-track-leave" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Track Leave</label>
-      <span style="font-size:11px;color:var(--txt3)">(uncheck to hide from Employee Leave screen)</span>
-    </div>
-    <!-- Portal Account -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Portal Account</div>
-    <div class="form-grid">
-      <div class="field full">
-        <label>Linked User Account</label>
-        <select id="empf-username" style="width:100%"><option value="">— No portal account —</option></select>
+    <div id="emp-tab-content-details-2">
+      <div class="form-grid">
+        <div class="field full"><label>Employee Name *</label><input id="empf-name-2" placeholder="Full name"></div>
+        <div class="field"><label>Date of Birth</label><input id="empf-dob-2" type="date"></div>
+        <div class="field"><label>Date of Joining *</label><input id="empf-start-2" type="date"></div>
+      </div>
+      <div style="margin:4px 0 6px;font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-bdr);border-radius:6px;padding:6px 12px">
+        &#9432; <strong>Date of Joining</strong> is used to calculate annual leave periods. Fill this in for all employees.
+      </div>
+      <div style="margin:8px 0 6px;display:flex;align-items:center;gap:8px">
+        <input id="empf-active-2" type="checkbox" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer" checked>
+        <label for="empf-active-2" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Active employee</label>
+        <span style="font-size:11px;color:var(--txt3)">(uncheck to mark as former employee)</span>
+      </div>
+      <div style="margin:4px 0 6px;display:flex;align-items:center;gap:8px">
+        <input id="empf-track-leave-2" type="checkbox" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer" checked>
+        <label for="empf-track-leave-2" style="margin:0;font-size:13px;cursor:pointer;font-weight:500">Track Leave</label>
+        <span style="font-size:11px;color:var(--txt3)">(uncheck to hide from Employee Leave screen)</span>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Portal Account</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label>Linked User Account</label>
+          <select id="empf-username-2" style="width:100%"><option value="">— No portal account —</option></select>
+        </div>
       </div>
     </div>
-    <!-- Passport -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Passport</div>
-    <div class="form-grid">
-      <div class="field"><label>Passport Number</label><input id="empf-pp-num" placeholder="e.g. A12345678"></div>
-      <div class="field"><label>Passport Expiry</label><input id="empf-pp-exp" type="date"></div>
-      <div class="field full"><label>Link to Passport</label><input id="empf-pp-link" type="url" placeholder="https://..."></div>
+    <div id="emp-tab-content-documents-2" style="display:none">
+      <div style="margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700">Passport</div>
+      <div class="form-grid">
+        <div class="field"><label>Passport Number</label><input id="empf-pp-num-2" placeholder="e.g. A12345678"></div>
+        <div class="field"><label>Passport Expiry</label><input id="empf-pp-exp-2" type="date"></div>
+        <div class="field full"><label>Link to Passport</label><input id="empf-pp-link-2" type="url" placeholder="https://..."></div>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Emirates ID</div>
+      <div class="form-grid">
+        <div class="field"><label>Emirates ID Number</label><input id="empf-eid-num-2" placeholder="784-XXXX-XXXXXXX-X"></div>
+        <div class="field"><label>Emirates ID Expiry</label><input id="empf-eid-exp-2" type="date"></div>
+        <div class="field full"><label>Link to Emirates ID</label><input id="empf-eid-link-2" type="url" placeholder="https://..."></div>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Visa</div>
+      <div class="form-grid">
+        <div class="field"><label>Visa File Number</label><input id="empf-visa-num-2" placeholder="e.g. 202/2024/XXXXXXX"></div>
+        <div class="field"><label>Visa Expiry</label><input id="empf-visa-exp-2" type="date"></div>
+        <div class="field full"><label>Link to Visa</label><input id="empf-visa-link-2" type="url" placeholder="https://..."></div>
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Health Insurance</div>
+      <div class="form-grid">
+        <div class="field"><label>Policy Number</label><input id="empf-hi-policy-2" placeholder="Policy number"></div>
+        <div class="field"><label>Membership Number</label><input id="empf-hi-member-2" placeholder="Membership number"></div>
+        <div class="field full"><label>Link to Insurance Card</label><input id="empf-hi-link-2" type="url" placeholder="https://..."></div>
+      </div>
     </div>
-    <!-- Emirates ID -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Emirates ID</div>
-    <div class="form-grid">
-      <div class="field"><label>Emirates ID Number</label><input id="empf-eid-num" placeholder="784-XXXX-XXXXXXX-X"></div>
-      <div class="field"><label>Emirates ID Expiry</label><input id="empf-eid-exp" type="date"></div>
-      <div class="field full"><label>Link to Emirates ID</label><input id="empf-eid-link" type="url" placeholder="https://..."></div>
+    <div id="emp-tab-content-certs-2" style="display:none;min-height:200px">
+      <div id="emp-certs-status-2" style="font-size:12px;color:var(--txt3);padding:8px 0 12px;display:none">Loading…</div>
+      <div id="emp-certs-list-2"></div>
+      <div id="emp-cert-add-form-2" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid var(--bdr2);border-radius:var(--r);padding:14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--txt3);margin-bottom:10px">Add Certificate</div>
+        <div class="form-grid">
+          <div class="field full"><label>Certificate Name *</label><input id="empf-cert-name-2" placeholder="e.g. PMP, ISO 9001 Lead Auditor"></div>
+          <div class="field"><label>Issuing Body</label><input id="empf-cert-issuer-2" placeholder="e.g. PMI, Bureau Veritas"></div>
+          <div class="field"><label>Issue Date</label><input id="empf-cert-issue-2" type="date"></div>
+          <div class="field"><label>Expiry Date</label><input id="empf-cert-expiry-2" type="date"></div>
+          <div class="field full"><label>Document Link</label><input id="empf-cert-url-2" type="url" placeholder="https://…"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
+          <button class="btn-cancel" onclick="cancelEmpCert()">Cancel</button>
+          <button class="btn-pri" onclick="saveEmpCert()">Save Certificate</button>
+        </div>
+      </div>
+      <button id="emp-cert-add-btn-2" class="btn-ghost" onclick="showEmpCertForm()" style="margin-top:12px;font-size:12px">+ Add Certificate</button>
     </div>
-    <!-- Visa -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Visa</div>
-    <div class="form-grid">
-      <div class="field"><label>Visa File Number</label><input id="empf-visa-num" placeholder="e.g. 202/2024/XXXXXXX"></div>
-      <div class="field"><label>Visa Expiry</label><input id="empf-visa-exp" type="date"></div>
-      <div class="field full"><label>Link to Visa</label><input id="empf-visa-link" type="url" placeholder="https://..."></div>
-    </div>
-    <!-- Health Insurance -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">Health Insurance</div>
-    <div class="form-grid">
-      <div class="field"><label>Policy Number</label><input id="empf-hi-policy" placeholder="Policy number"></div>
-      <div class="field"><label>Membership Number</label><input id="empf-hi-member" placeholder="Membership number"></div>
-      <div class="field full"><label>Link to Insurance Card</label><input id="empf-hi-link" type="url" placeholder="https://..."></div>
-    </div>
-    <!-- Emergency Contacts -->
-    <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700;border-top:1px solid var(--bdr);padding-top:14px">&#128680; Emergency Contacts</div>
-    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin-bottom:6px">Local (UAE)</div>
-    <div class="form-grid">
-      <div class="field"><label>Name</label><input id="empf-ec-local-name" placeholder="Full name"></div>
-      <div class="field"><label>Relationship</label><input id="empf-ec-local-rel" placeholder="e.g. Colleague, Spouse"></div>
-      <div class="field"><label>Phone</label><input id="empf-ec-local-phone" placeholder="+971 XX XXX XXXX"></div>
-      <div class="field"><label>Email</label><input id="empf-ec-local-email" type="email" placeholder="email@example.com"></div>
-    </div>
-    <div style="font-size:11px;color:var(--txt2);font-weight:600;margin:8px 0 6px">Home Country</div>
-    <div class="form-grid">
-      <div class="field"><label>Name</label><input id="empf-ec-home-name" placeholder="Full name"></div>
-      <div class="field"><label>Relationship</label><input id="empf-ec-home-rel" placeholder="e.g. Parent, Spouse"></div>
-      <div class="field"><label>Phone</label><input id="empf-ec-home-phone" placeholder="+XX XXXX XXXXXX"></div>
-      <div class="field"><label>Email</label><input id="empf-ec-home-email" type="email" placeholder="email@example.com"></div>
+    <div id="emp-tab-content-emergency-2" style="display:none">
+      <div style="margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--txt3);font-family:monospace;font-weight:700">&#128680; Emergency Contacts</div>
+      <div style="font-size:11px;color:var(--txt2);font-weight:600;margin-bottom:6px">Local (UAE)</div>
+      <div class="form-grid">
+        <div class="field"><label>Name</label><input id="empf-ec-local-name-2" placeholder="Full name"></div>
+        <div class="field"><label>Relationship</label><input id="empf-ec-local-rel-2" placeholder="e.g. Colleague, Spouse"></div>
+        <div class="field"><label>Phone</label><input id="empf-ec-local-phone-2" placeholder="+971 XX XXX XXXX"></div>
+        <div class="field"><label>Email</label><input id="empf-ec-local-email-2" type="email" placeholder="email@example.com"></div>
+      </div>
+      <div style="font-size:11px;color:var(--txt2);font-weight:600;margin:12px 0 6px">Home Country</div>
+      <div class="form-grid">
+        <div class="field"><label>Name</label><input id="empf-ec-home-name-2" placeholder="Full name"></div>
+        <div class="field"><label>Relationship</label><input id="empf-ec-home-rel-2" placeholder="e.g. Parent, Spouse"></div>
+        <div class="field"><label>Phone</label><input id="empf-ec-home-phone-2" placeholder="+XX XXXX XXXXXX"></div>
+        <div class="field"><label>Email</label><input id="empf-ec-home-email-2" type="email" placeholder="email@example.com"></div>
+      </div>
     </div>
     <div class="modal-actions">
-      <button id="emp-delete-btn" class="btn-sm" onclick="deleteEmployeeFromModal()" style="color:var(--red);border-color:var(--red);display:none">&#128465; Delete</button>
+      <button id="emp-delete-btn-2" class="btn-sm" onclick="deleteEmployeeFromModal()" style="color:var(--red);border-color:var(--red);display:none">&#128465; Delete</button>
       <button class="btn-cancel" onclick="closeEmployeeModal()">Cancel</button>
       <button class="btn-pri" onclick="saveEmployee()">Save</button>
     </div>

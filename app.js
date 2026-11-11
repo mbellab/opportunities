@@ -6609,6 +6609,8 @@ async function exportQOtoExcel() {
 var empRecords  = [];
 var empLoaded   = false;
 var empEditId   = null;
+var empCerts    = [];
+var empCertsLoaded = false;
 
 function showEmployees() {
   if(!canAccess('employees')) { toast('Employees is restricted to your role','err'); return; }
@@ -6899,6 +6901,12 @@ async function showEmployeeModal(recordId) {
   if(lvBtn) lvBtn.style.display = recordId ? '' : 'none';
   var delBtn=document.getElementById('emp-delete-btn');
   if(delBtn) delBtn.style.display = recordId ? '' : 'none';
+  empCerts=[]; empCertsLoaded=false;
+  switchEmpTab('details');
+  var addForm=document.getElementById('emp-cert-add-form');
+  if(addForm) addForm.style.display='none';
+  var addBtn=document.getElementById('emp-cert-add-btn');
+  if(addBtn) addBtn.style.display='';
   document.getElementById('emp-modal').style.display='flex';
   setTimeout(function(){ document.getElementById('empf-name').focus(); },50);
 }
@@ -6906,6 +6914,129 @@ async function showEmployeeModal(recordId) {
 function closeEmployeeModal() {
   document.getElementById('emp-modal').style.display='none';
   empEditId=null;
+  empCerts=[];
+  empCertsLoaded=false;
+  switchEmpTab('details');
+  var addForm=document.getElementById('emp-cert-add-form');
+  if(addForm) addForm.style.display='none';
+  var addBtn=document.getElementById('emp-cert-add-btn');
+  if(addBtn) addBtn.style.display='';
+}
+
+function switchEmpTab(tab) {
+  ['details','documents','certs','emergency'].forEach(function(t){
+    var btn=document.getElementById('emp-tab-'+t);
+    var content=document.getElementById('emp-tab-content-'+t);
+    if(btn) btn.classList.toggle('active', t===tab);
+    if(content) content.style.display = t===tab ? '' : 'none';
+  });
+  var saveBtn=document.getElementById('emp-modal-save-btn');
+  if(saveBtn) saveBtn.style.display = tab==='certs' ? 'none' : '';
+  if(tab==='certs' && empEditId && !empCertsLoaded) loadEmpCerts(empEditId);
+  if(tab==='certs' && !empEditId) {
+    var list=document.getElementById('emp-certs-list');
+    if(list) list.innerHTML='<div style="font-size:12px;color:var(--txt3);padding:24px 0;text-align:center">Save the employee first to add certificates.</div>';
+  }
+}
+
+async function loadEmpCerts(empId) {
+  var status=document.getElementById('emp-certs-status');
+  if(status){ status.style.display=''; status.textContent='Loading…'; }
+  try {
+    var res=await fetch(WORKER_URL+'/employee-certificates?employee_id='+encodeURIComponent(empId),{headers:getHeaders()});
+    var data=await res.json();
+    empCerts=(data.records||[]).map(function(r){ return Object.assign({id:r.id},r.fields||r); });
+    empCertsLoaded=true;
+    renderEmpCerts();
+  } catch(err){ if(status) status.textContent='Failed to load certificates'; }
+  if(status) status.style.display='none';
+}
+
+function renderEmpCerts() {
+  var list=document.getElementById('emp-certs-list');
+  if(!list) return;
+  if(!empCerts.length){
+    list.innerHTML='<div style="font-size:12px;color:var(--txt3);padding:16px 0;text-align:center">No certificates added yet.</div>';
+    return;
+  }
+  var today=new Date(); today.setHours(0,0,0,0);
+  var soon=new Date(today); soon.setDate(soon.getDate()+90);
+  list.innerHTML=empCerts.map(function(c){
+    var expDate = c.expiry_date ? new Date(c.expiry_date) : null;
+    var expColor='var(--txt2)';
+    var expLabel='';
+    if(expDate){
+      expDate.setHours(0,0,0,0);
+      if(expDate<today){ expColor='var(--red)'; expLabel=' · EXPIRED'; }
+      else if(expDate<=soon){ expColor='var(--amber)'; expLabel=' · expiring soon'; }
+    }
+    var expTxt = c.expiry_date ? ('<span style="color:'+expColor+'">Expires: '+fmtDate(c.expiry_date)+expLabel+'</span>') : '';
+    var issueTxt = c.issue_date ? 'Issued: '+fmtDate(c.issue_date) : '';
+    var link = c.document_url ? '<a href="'+e(c.document_url)+'" target="_blank" style="font-size:11px;color:var(--accent)">View Document ↗</a>' : '';
+    return '<div style="border:1px solid var(--bdr);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:600;color:var(--txt);margin-bottom:3px">'+e(c.name)+'</div>'+
+        (c.issuing_body?'<div style="font-size:12px;color:var(--txt2);margin-bottom:3px">'+e(c.issuing_body)+'</div>':'')+
+        '<div style="font-size:11px;color:var(--txt3);display:flex;gap:12px;flex-wrap:wrap">'+
+          (issueTxt?'<span>'+issueTxt+'</span>':'')+
+          (expTxt?expTxt:'')+
+        '</div>'+
+        (link?'<div style="margin-top:5px">'+link+'</div>':'')+
+      '</div>'+
+      '<button onclick="deleteEmpCert(\''+c.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--txt3);font-size:14px;flex-shrink:0;padding:2px 4px" title="Delete">&#10005;</button>'+
+    '</div>';
+  }).join('');
+}
+
+function showEmpCertForm() {
+  var form=document.getElementById('emp-cert-add-form');
+  var btn=document.getElementById('emp-cert-add-btn');
+  if(form){ ['empf-cert-name','empf-cert-issuer','empf-cert-url'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; }); ['empf-cert-issue','empf-cert-expiry'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; }); form.style.display=''; }
+  if(btn) btn.style.display='none';
+  setTimeout(function(){ var n=document.getElementById('empf-cert-name'); if(n) n.focus(); },50);
+}
+
+function cancelEmpCert() {
+  var form=document.getElementById('emp-cert-add-form');
+  var btn=document.getElementById('emp-cert-add-btn');
+  if(form) form.style.display='none';
+  if(btn) btn.style.display='';
+}
+
+async function saveEmpCert() {
+  var name=(document.getElementById('empf-cert-name')||{}).value||'';
+  name=name.trim();
+  if(!name){ document.getElementById('empf-cert-name').focus(); return; }
+  if(!empEditId){ toast('Save employee first','err'); return; }
+  var fields={
+    'employee_id': empEditId,
+    'name': name,
+    'issuing_body': ((document.getElementById('empf-cert-issuer')||{}).value||'').trim()||null,
+    'issue_date': (document.getElementById('empf-cert-issue')||{}).value||null,
+    'expiry_date': (document.getElementById('empf-cert-expiry')||{}).value||null,
+    'document_url': ((document.getElementById('empf-cert-url')||{}).value||'').trim()||null,
+  };
+  Object.keys(fields).forEach(function(k){ if(fields[k]==='') fields[k]=null; });
+  try {
+    var res=await fetch(WORKER_URL+'/employee-certificates',{method:'POST',headers:getHeaders(),body:JSON.stringify({fields:fields})});
+    var data=await res.json();
+    if(!res.ok) throw new Error((data.error&&data.error.message)||'HTTP '+res.status);
+    empCerts.push(Object.assign({id:data.id},data.fields||data));
+    renderEmpCerts();
+    cancelEmpCert();
+    toast('Certificate added','ok');
+  } catch(err){ toast('Failed: '+err.message,'err'); }
+}
+
+async function deleteEmpCert(certId) {
+  if(!confirm('Delete this certificate?')) return;
+  try {
+    var res=await fetch(WORKER_URL+'/employee-certificates/'+certId,{method:'DELETE',headers:getHeaders()});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    empCerts=empCerts.filter(function(c){ return c.id!==certId; });
+    renderEmpCerts();
+    toast('Certificate deleted','ok');
+  } catch(err){ toast('Failed: '+err.message,'err'); }
 }
 
 // opts.showNa = true adds an "N/A — Skip checks" button (used for delete path)
@@ -7021,8 +7152,8 @@ async function saveEmployee() {
       if(rec) rec.fields=Object.assign(rec.fields,cleanFields);
     } else {
       empRecords.push(data);
-      empRecords.sort(function(a,b){return (a.fields['Employee Name']||'').localeCompare(b.fields['Employee Name']||'');});
     }
+    empRecords.sort(function(a,b){return (a.fields['Employee Name']||'').localeCompare(b.fields['Employee Name']||'');});
     renderEmployees();
     toast((savedId?'Employee updated':'Employee added'),'ok');
   } catch(err){ toast('Failed: '+err.message,'err'); }

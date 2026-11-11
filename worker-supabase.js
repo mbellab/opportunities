@@ -435,6 +435,15 @@ const SCALAR = {
     'notes':            'notes',
     'created_at':       'created_at',
   },
+  employee_certificates: {
+    'employee_id':  'employee_id',
+    'name':         'name',
+    'issuing_body': 'issuing_body',
+    'issue_date':   'issue_date',
+    'expiry_date':  'expiry_date',
+    'document_url': 'document_url',
+    'created_at':   'created_at',
+  },
   supplier_evaluations: {
     'supplier_id':                  'supplier_id',
     'address':                      'address',
@@ -634,6 +643,10 @@ async function handleTable(method, sbTable, recordId, body, searchParams) {
       if (sbTable === 'project_tracker_templates') {
         filter = 'order=sort_order.asc';
       }
+      if (sbTable === 'employee_certificates') {
+        const empId = searchParams.get('employee_id');
+        if (empId) filter = `employee_id=eq.${empId}&order=created_at.asc`;
+      }
       const rows = await sbQuery(sbTable, recordId ? `id=eq.${recordId}` : filter);
       return json({ records: rows.map(r => rowToRecord(sbTable, r)) });
     }
@@ -717,6 +730,7 @@ const ROUTES = [
   { prefix: '/supplier-quote-items',  sbTable: 'supplier_quote_items'     },
   { prefix: '/supplier-evaluations',  sbTable: 'supplier_evaluations'     },
   { prefix: '/experiences',            sbTable: 'project_experiences'       },
+  { prefix: '/employee-certificates', sbTable: 'employee_certificates'     },
   { prefix: '/project-templates',     sbTable: 'project_tracker_templates' },
   { prefix: '/project-tracker',       sbTable: 'project_tracker'           },
   { prefix: '/project-tasks',         sbTable: 'project_tracker_tasks'     },
