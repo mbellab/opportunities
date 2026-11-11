@@ -751,7 +751,7 @@ async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
     fetch(`${SUPABASE_URL}/rest/v1/renewals?expiry_date=gte.${fmt(today)}&expiry_date=lte.${fmt(in30)}&order=expiry_date.asc`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/employees?select=id,employee_name,date_of_birth,active`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/leave_requests?status=eq.Pending&order=date_out.asc`, { headers: sbHdr }),
-    fetch(`${SUPABASE_URL}/rest/v1/expense_claims?status=eq.verified&order=submitted_at.desc`, { headers: sbHdr }),
+    fetch(`${SUPABASE_URL}/rest/v1/expense_claims?status=in.(submitted,verified)&order=submitted_at.desc`, { headers: sbHdr }),
     fetch(`${SUPABASE_URL}/rest/v1/petty_cash?select=type,amount`, { headers: sbHdr }),
   ]);
 
@@ -759,7 +759,7 @@ async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
   const upcomingAll      = upcomingRes.ok       ? await upcomingRes.json()      : [];
   const allEmployees     = employeesRes.ok      ? await employeesRes.json()     : [];
   const pendingLeave     = leaveRes.ok          ? await leaveRes.json()         : [];
-  const verifiedExpenses = expenseRes.ok        ? await expenseRes.json()       : [];
+  const pendingExpenses  = expenseRes.ok        ? await expenseRes.json()       : [];
   const pcTxns           = pcRes.ok             ? await pcRes.json()            : [];
 
   const pcBalance = pcTxns.reduce((sum, r) => {
@@ -845,16 +845,21 @@ async function sendRenewalsReport(RESEND_API_KEY, SUPABASE_KEY) {
       </tr>`).join(''));
   }
 
-  // ── Verified Expense Claims ───────────────────────────────────────
-  if (verifiedExpenses.length) {
-    summaryParts.push(`${verifiedExpenses.length} verified expense claim${verifiedExpenses.length > 1 ? 's' : ''}`);
-    html += sHead('💰', `Verified Expense Claims Awaiting Approval (${verifiedExpenses.length})`, '#27ae60');
-    html += tbl(tHead('Employee','Entity','Period','Total'),
-      verifiedExpenses.map(ex => `<tr>
+  // ── Pending Expense Claims ────────────────────────────────────────
+  if (pendingExpenses.length) {
+    summaryParts.push(`${pendingExpenses.length} expense claim${pendingExpenses.length > 1 ? 's' : ''} pending`);
+    const statusBadge = s => {
+      if (s === 'verified')  return `<span style="font-size:11px;font-weight:600;color:#27ae60;background:#eafaf1;padding:2px 8px;border-radius:20px;border:1px solid #a9dfbf">Verified</span>`;
+      return `<span style="font-size:11px;font-weight:600;color:#2980b9;background:#eaf4fb;padding:2px 8px;border-radius:20px;border:1px solid #aed6f1">Submitted</span>`;
+    };
+    html += sHead('💰', `Expense Claims Pending Approval (${pendingExpenses.length})`, '#27ae60');
+    html += tbl(tHead('Employee','Entity','Period','Total','Status'),
+      pendingExpenses.map(ex => `<tr>
         ${td(`<strong>${ex.employee_name || '—'}</strong>`)}
         ${td(ex.entity || '—')}
         ${td(ex.period_from ? fmtDate(ex.period_from) + (ex.period_to && ex.period_to !== ex.period_from ? ' → ' + fmtDate(ex.period_to) : '') : '—')}
         ${td(ex.total_amount ? 'AED ' + parseFloat(ex.total_amount).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—', 'font-weight:700;color:#27ae60')}
+        ${td(statusBadge(ex.status || ex.Status || ''))}
       </tr>`).join(''));
   }
 
