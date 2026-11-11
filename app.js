@@ -9245,14 +9245,32 @@ function deletePCTransaction(id) {
     var claimId = rec.fields['Source_Claim_Id'];
     var claimGone = ecLoaded && !ecRecords.find(function(r){ return r.id===claimId; });
     if(!claimGone) {
-      appConfirm({icon:'⚠️',title:'Cannot delete this entry',
-        body:'This transaction was auto-created from an Expense Claim. To remove it, <b>delete the Expense Claim</b> instead.',
-        confirmLabel:'Go to Expense Claim',confirmStyle:'background:var(--accent);color:#fff;border:none',
-        cancelLabel:'Close'
-      }).then(function(go){ if(go){ closePCModal(); goToExpenseClaim(claimId); } });
+      var el=document.getElementById('_app-modal');
+      if(!el){ el=document.createElement('div'); el.id='_app-modal'; el.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:8000;display:flex;align-items:center;justify-content:center;padding:16px'; document.body.appendChild(el); }
+      el.innerHTML='<div style="background:var(--bg);border:1px solid var(--bdr2);border-radius:10px;padding:28px 28px 22px;max-width:420px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.18)">'+
+        '<div style="font-size:32px;margin-bottom:14px;line-height:1">⚠️</div>'+
+        '<div style="font-size:15px;font-weight:700;color:var(--txt);margin-bottom:8px">Linked to an Expense Claim</div>'+
+        '<div style="font-size:13px;color:var(--txt2);line-height:1.6;margin-bottom:22px">This transaction was auto-created from an Expense Claim. You can go to the claim to review it, or override and delete this entry directly.</div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">'+
+          '<button id="_modal-cancel" class="btn-cancel" style="padding:8px 16px">Cancel</button>'+
+          '<button id="_modal-go" style="padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:\'IBM Plex Sans\',sans-serif;background:var(--accent);color:#fff;border:none">Go to Claim</button>'+
+          '<button id="_modal-force" style="padding:8px 16px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;font-family:\'IBM Plex Sans\',sans-serif;background:var(--red);color:#fff;border:none">Delete Anyway</button>'+
+        '</div>'+
+      '</div>';
+      el.style.display='flex';
+      function closeEl(){ el.style.display='none'; el.innerHTML=''; }
+      document.getElementById('_modal-cancel').onclick=function(){ closeEl(); };
+      document.getElementById('_modal-go').onclick=function(){ closeEl(); closePCModal(); goToExpenseClaim(claimId); };
+      document.getElementById('_modal-force').onclick=function(){ closeEl(); _proceedDeletePC(id); };
+      el.onclick=function(ev){ if(ev.target===el) closeEl(); };
       return;
     }
   }
+  _proceedDeletePC(id);
+}
+
+function _proceedDeletePC(id) {
+  var rec = pcRecords.find(function(r){ return r.id===id; });
   pendingPCDeleteId = id;
   var desc = rec ? (rec.fields['Description']||'this transaction') : 'this transaction';
   document.getElementById('confirm-title').textContent = 'Delete transaction?';
